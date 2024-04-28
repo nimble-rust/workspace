@@ -4,9 +4,7 @@
  *--------------------------------------------------------------------------------------------------------*/
 use std::marker::PhantomData;
 
-use nimble_participant::ParticipantId;
-use nimble_participant_steps::ParticipantSteps;
-use nimble_steps::{Deserialize, Step, Steps};
+use nimble_steps::{Deserialize, Steps};
 
 pub trait AssentCallback<CombinedStepT: Deserialize + Clone> {
     fn on_pre_ticks(&mut self) {}
@@ -68,15 +66,13 @@ impl<C, CombinedStepT> Assent<C, CombinedStepT>
 
 #[cfg(test)]
 mod tests {
-    use nimble_steps::Step;
-
     use super::*;
 
     pub struct TestGame {
         pub position_x: i32,
     }
 
-    #[derive(Clone)]
+    #[derive(Clone, Copy)]
     pub enum TestGameStep {
         MoveLeft,
         MoveRight,
@@ -91,17 +87,11 @@ mod tests {
         }
     }
 
-    impl AssentCallback<ParticipantSteps<TestGameStep>> for TestGame {
-        fn on_tick(&mut self, steps: ParticipantSteps<TestGameStep>) {
-            for step in steps.steps.iter() {
-                match step.1 {
-                    Step::Custom(TestGameStep::MoveLeft) => self.position_x -= 1,
-                    Step::Custom(TestGameStep::MoveRight) => self.position_x += 1,
-                    Step::Forced => todo!(),
-                    Step::WaitingForReconnect => todo!(),
-                    Step::Joined(_) => {}
-                    Step::Left => {}
-                }
+    impl AssentCallback<TestGameStep> for TestGame {
+        fn on_tick(&mut self, step: TestGameStep) {
+            match step {
+                TestGameStep::MoveLeft => self.position_x -= 1,
+                TestGameStep::MoveRight => self.position_x += 1,
             }
         }
     }
@@ -109,12 +99,9 @@ mod tests {
     #[test]
     fn test_assent() {
         let mut game = TestGame { position_x: -44 };
-        let mut assent: Assent<TestGame, ParticipantSteps<TestGameStep>> = Assent::new();
-        let mut steps = ParticipantSteps::<TestGameStep>::new();
+        let mut assent: Assent<TestGame, TestGameStep> = Assent::new();
         let step = TestGameStep::MoveLeft;
-        let custom_step = Step::Custom(step);
-        steps.insert(ParticipantId(42), custom_step);
-        assent.push(steps);
+        assent.push(step);
         assent.update(&mut game);
         assert_eq!(game.position_x, -43);
     }

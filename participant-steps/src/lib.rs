@@ -67,7 +67,7 @@ impl<T: Clone> ParticipantSteps<T> {
 }
 
 impl<T:Clone> Deserialize for ParticipantSteps<T> {
-    fn deserialize(bytes: &[u8]) -> Self where Self: Sized {
-
+    fn deserialize(_bytes: &[u8]) -> Self where Self: Sized {
+        todo!()
     }
 }

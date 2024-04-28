@@ -2,54 +2,51 @@
  *  Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/client
  *  Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------------------------------------------------------*/
-use crate::transmute::TransmuteCallback;
-use nimble_steps::{Deserialize, ParticipantStep, ParticipantSteps, Step, Steps};
 use std::marker::PhantomData;
 
+use nimble_steps::{Deserialize, Steps};
+use nimble_transmute::TransmuteCallback;
+
 // Define the Assent struct
-impl<C, StepT> Default for Seer<C, StepT>
+impl<C, CombinedStepT> Default for Seer<C, CombinedStepT>
     where
-        C: TransmuteCallback<StepT>,
-        StepT: Deserialize,
+        C: TransmuteCallback<CombinedStepT>,
+        CombinedStepT: Deserialize,
 {
     fn default() -> Self {
         Self::new()
     }
 }
 
-pub struct Seer<C, StepT>
+pub struct Seer<C, CombinedStepT>
     where
-        C: TransmuteCallback<StepT>,
-        StepT: Deserialize,
+        C: TransmuteCallback<CombinedStepT>,
+        CombinedStepT: Deserialize,
 {
-    steps: Steps<StepT>,
+    combined_steps: Steps<CombinedStepT>,
     authoritative_has_changed: bool,
     phantom: PhantomData<C>,
 }
 
-impl<C, StepT> Seer<C, StepT>
+impl<C, CombinedStepT> Seer<C, CombinedStepT>
     where
-        C: TransmuteCallback<StepT>,
-        StepT: Deserialize,
+        C: TransmuteCallback<CombinedStepT>,
+        CombinedStepT: Deserialize,
 {
     pub fn new() -> Self {
         Seer {
-            steps: Steps::new(),
+            combined_steps: Steps::new(),
             phantom: PhantomData,
             authoritative_has_changed: false,
         }
     }
 
     pub fn update(&mut self, callback: &mut C) {
-        let mut steps = ParticipantSteps::<StepT>::new();
-        let step = ParticipantStep::<StepT>::new(
-            0,
-            Step::Custom(<StepT>::deserialize(&[0])), // Use the deserialize method from the Deserialize trait
-        );
+        callback.on_pre_ticks();
 
-        steps.steps.push(step);
-
-        callback.on_tick(&steps);
+        for combined_step_info in self.combined_steps.iter() {
+            callback.on_tick(&combined_step_info.step);
+        }
 
         callback.on_post_ticks();
         self.authoritative_has_changed = false;
@@ -59,14 +56,15 @@ impl<C, StepT> Seer<C, StepT>
         self.authoritative_has_changed = true;
     }
 
-    pub fn push(&mut self, steps: ParticipantSteps<StepT>) {
-        self.steps.push(steps);
+    pub fn push(&mut self, combined_step: CombinedStepT) {
+        self.combined_steps.push(combined_step);
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use nimble_participant_steps::ParticipantSteps;
+    use nimble_transmute::TransmuteCallback;
+
     use super::*;
 
     pub struct TestGame {
@@ -88,18 +86,14 @@ mod tests {
     }
 
     impl TransmuteCallback<TestGameStep> for TestGame {
-        fn on_tick(&mut self, step: &ParticipantSteps<TestGameStep>) {
-            let first = step.steps.first().unwrap();
-            match &first.step {
-                Step::Custom(game_step) => match game_step {
-                    TestGameStep::MoveLeft => {
-                        self.position_x -= 1;
-                    }
-                    TestGameStep::MoveRight => {
-                        self.position_x += 1;
-                    }
-                },
-                _ => {}
+        fn on_tick(&mut self, step: &TestGameStep) {
+            match step {
+                TestGameStep::MoveLeft => {
+                    self.position_x -= 1;
+                }
+                TestGameStep::MoveRight => {
+                    self.position_x += 1;
+                }
             }
         }
 
@@ -112,7 +106,11 @@ mod tests {
     fn test_seer() {
         let mut game = TestGame { position_x: -44 };
         let mut seer: Seer<TestGame, TestGameStep> = Seer::new();
+        seer.combined_steps.push(TestGameStep::MoveRight);
         seer.update(&mut game);
         assert_eq!(game.position_x, -43);
     }
 }
+
+
+
