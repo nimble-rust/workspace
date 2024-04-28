@@ -1,0 +1,14 @@
+[package]
+name = "nimble-host"
+version = "0.0.1"
+edition = "2021"
+license = "MIT"
+description = "Nimble network host"
+repository = "https://github.com/nimble-rust/host"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+nimble-steps = { path = "../steps" }
+nimble-participant-steps = { path = "../participant-steps" }
+nimble-participant = { path = "../participant" }

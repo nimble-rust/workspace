@@ -1,0 +1,4 @@
+[workspace]
+members = ["nimble", "assent", "client", "host", "participant", "participant-steps", "steps", "nimble", "seer", "transmute"]
+resolver = "2"
+

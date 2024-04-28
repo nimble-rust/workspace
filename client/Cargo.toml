@@ -1,0 +1,12 @@
+[package]
+name = "nimble-client"
+version = "0.0.1"
+edition = "2021"
+license = "MIT"
+description = "Nimble network client"
+repository = "https://github.com/nimble-rust/client"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+nimble-steps = { path = "../steps" }

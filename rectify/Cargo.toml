@@ -1,0 +1,13 @@
+[package]
+name = "nimble-rectify"
+version = "0.0.1"
+edition = "2021"
+license = "MIT"
+description = "Update for assent and seer"
+repository = "https://github.com/nimble-rust/rectify"
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+nimble-assent = { path = "../assent" }
+nimble-seer = { path = "../seer" }
+nimble-steps = { path = "../steps" }
