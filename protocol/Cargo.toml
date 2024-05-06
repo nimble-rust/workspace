@@ -1,0 +1,11 @@
+[package]
+name = "nimble-protocol"
+version = "0.0.1"
+edition = "2021"
+license = "MIT"
+description = "Nimble Protocol"
+repository = "https://github.com/nimble-rust/protocol"
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+flood-rs = "0.0.4"

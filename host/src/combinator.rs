@@ -19,12 +19,12 @@ pub enum CombinatorError {
 
 
 #[derive(Default)]
-pub struct Combinator<T: Clone> {
+pub struct Combinator<T> {
     pub in_buffers: HashMap<ParticipantId, Steps<T>>,
     pub tick_id_to_produce: TickId,
 }
 
-impl<T: Clone> Combinator<T> {
+impl<T> Combinator<T> {
     pub fn new(tick_id_to_produce: TickId) -> Self {
         Combinator {
             in_buffers: HashMap::new(),
@@ -81,6 +81,8 @@ impl<T: Clone> Combinator<T> {
                 }
             }
         }
+
+        self.tick_id_to_produce += 1;
 
         Ok(combined_step)
     }

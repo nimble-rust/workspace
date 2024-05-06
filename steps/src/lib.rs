@@ -24,11 +24,11 @@ pub enum Step<T> {
 }
 
 pub trait Deserialize {
-    fn deserialize(bytes: &[u8]) -> Self where Self : Sized;
+    fn deserialize(bytes: &[u8]) -> Self where Self: Sized;
 }
 
 
-
+#[derive(Clone)]
 pub struct StepInfo<T> {
     pub step: T,
     pub tick_id: TickId,
@@ -41,12 +41,40 @@ pub struct Steps<T> {
 }
 
 impl<T> Steps<T> {
-    pub fn iter(&self) -> impl Iterator<Item = &StepInfo<T>> {
+    pub fn iter(&self) -> impl Iterator<Item=&StepInfo<T>> {
         self.steps.iter().filter(move |step_info| {
             step_info.tick_id == self.expected_read_id
         })
     }
 }
+
+pub struct FromIndexIterator<'a, T> {
+    deque: &'a VecDeque<StepInfo<T>>,
+    start_index: usize,
+    current_index: usize,
+}
+
+impl<'a, T> FromIndexIterator<'a, T> {
+    pub fn new(deque: &'a VecDeque<StepInfo<T>>, start_index: usize) -> Self {
+        Self {
+            deque,
+            start_index,
+            current_index: start_index,
+        }
+    }
+}
+
+
+impl<T: Clone> Iterator for FromIndexIterator<'_, T> {
+    type Item = StepInfo<T>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let item = self.deque.get(self.current_index)?;
+        self.current_index += 1;
+        Some(item.clone())
+    }
+}
+
 
 impl<T> Default for Steps<T> {
     fn default() -> Self {
@@ -64,6 +92,14 @@ impl<T> Steps<T> {
             expected_write_id: TickId::new(0),
         }
     }
+
+
+    pub fn clear(&mut self) {
+        self.steps.clear();
+        self.expected_read_id = TickId(0);
+        self.expected_write_id = TickId(0);
+    }
+
     pub fn new_with_initial_tick(initial_tick_id: TickId) -> Self {
         Self {
             steps: VecDeque::new(),
@@ -122,6 +158,10 @@ impl<T> Steps<T> {
 
     pub fn is_empty(&self) -> bool {
         self.steps.is_empty()
+    }
+
+    pub fn iter_index(&self, start_index: usize) -> FromIndexIterator<T> {
+        FromIndexIterator::new(&self.steps, start_index)
     }
 }
 

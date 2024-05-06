@@ -38,17 +38,17 @@ use nimble_steps::{Deserialize, Step};
 /// In this example, `ParticipantSteps` is used to track the actions of two participants in a single tick.
 /// Each participant has a unique `ParticipantId` and a `Step` that describes their action for the tick.
 #[derive(Clone)]
-pub struct ParticipantSteps<T: Clone> {
+pub struct ParticipantSteps<T> {
     pub steps: HashMap<ParticipantId, Step<T>>,
 }
 
-impl<T: Clone> Default for ParticipantSteps<T> {
+impl<T> Default for ParticipantSteps<T> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<T: Clone> ParticipantSteps<T> {
+impl<T> ParticipantSteps<T> {
     pub fn new() -> Self {
         Self { steps: HashMap::new() }
     }

@@ -10,8 +10,7 @@ use nimble_transmute::TransmuteCallback;
 // Define the Assent struct
 impl<C, CombinedStepT> Default for Seer<C, CombinedStepT>
     where
-        C: TransmuteCallback<CombinedStepT>,
-        CombinedStepT: Deserialize,
+        C: TransmuteCallback<CombinedStepT>
 {
     fn default() -> Self {
         Self::new()
@@ -20,8 +19,7 @@ impl<C, CombinedStepT> Default for Seer<C, CombinedStepT>
 
 pub struct Seer<C, CombinedStepT>
     where
-        C: TransmuteCallback<CombinedStepT>,
-        CombinedStepT: Deserialize,
+        C: TransmuteCallback<CombinedStepT>
 {
     combined_steps: Steps<CombinedStepT>,
     authoritative_has_changed: bool,
@@ -30,8 +28,7 @@ pub struct Seer<C, CombinedStepT>
 
 impl<C, CombinedStepT> Seer<C, CombinedStepT>
     where
-        C: TransmuteCallback<CombinedStepT>,
-        CombinedStepT: Deserialize,
+        C: TransmuteCallback<CombinedStepT>
 {
     pub fn new() -> Self {
         Seer {
@@ -86,6 +83,8 @@ mod tests {
     }
 
     impl TransmuteCallback<TestGameStep> for TestGame {
+        fn on_pre_ticks(&mut self) {}
+
         fn on_tick(&mut self, step: &TestGameStep) {
             match step {
                 TestGameStep::MoveLeft => {
@@ -96,8 +95,6 @@ mod tests {
                 }
             }
         }
-
-        fn on_pre_ticks(&mut self) {}
 
         fn on_post_ticks(&mut self) {}
     }

@@ -4,12 +4,12 @@
  *--------------------------------------------------------------------------------------------------------*/
 use std::marker::PhantomData;
 
-use nimble_steps::{Deserialize, Steps};
+use nimble_steps::Steps;
 
-pub trait AssentCallback<CombinedStepT: Deserialize + Clone> {
+pub trait AssentCallback<CombinedStepT: Clone> {
     fn on_pre_ticks(&mut self) {}
 
-    fn on_tick(&mut self, step: CombinedStepT);
+    fn on_tick(&mut self, step: &CombinedStepT);
 }
 
 #[derive(Debug, PartialEq)]
@@ -22,7 +22,7 @@ pub enum UpdateState {
 // Define the Assent struct
 pub struct Assent<C, CombinedStepT>
     where
-        CombinedStepT: Deserialize + Clone,
+        CombinedStepT: Clone,
         C: AssentCallback<CombinedStepT>,
 {
     phantom: PhantomData<C>,
@@ -31,7 +31,7 @@ pub struct Assent<C, CombinedStepT>
 
 impl<C, CombinedStepT> Default for Assent<C, CombinedStepT>
     where
-        CombinedStepT: Deserialize + Clone,
+        CombinedStepT: Clone,
         C: AssentCallback<CombinedStepT>,
 {
     fn default() -> Self {
@@ -41,7 +41,7 @@ impl<C, CombinedStepT> Default for Assent<C, CombinedStepT>
 
 impl<C, CombinedStepT> Assent<C, CombinedStepT>
     where
-        CombinedStepT: Deserialize + Clone,
+        CombinedStepT: Clone,
         C: AssentCallback<CombinedStepT>,
 {
     pub fn new() -> Self {
@@ -56,9 +56,12 @@ impl<C, CombinedStepT> Assent<C, CombinedStepT>
     }
 
     pub fn update(&mut self, callback: &mut C) -> UpdateState {
-        let bytes = [0u8; 1];
-        let step = CombinedStepT::deserialize(&bytes);
-        callback.on_tick(step);
+        callback.on_pre_ticks();
+        for combined_step_info in self.steps.iter() {
+            callback.on_tick(&combined_step_info.step);
+        }
+
+        self.steps.clear();
 
         UpdateState::ConsumedAllKnowledge
     }
@@ -78,17 +81,9 @@ mod tests {
         MoveRight,
     }
 
-    impl Deserialize for TestGameStep {
-        fn deserialize(bytes: &[u8]) -> Self {
-            match bytes[0] {
-                0 => TestGameStep::MoveRight,
-                _ => TestGameStep::MoveLeft,
-            }
-        }
-    }
 
     impl AssentCallback<TestGameStep> for TestGame {
-        fn on_tick(&mut self, step: TestGameStep) {
+        fn on_tick(&mut self, step: &TestGameStep) {
             match step {
                 TestGameStep::MoveLeft => self.position_x -= 1,
                 TestGameStep::MoveRight => self.position_x += 1,
@@ -101,6 +96,17 @@ mod tests {
         let mut game = TestGame { position_x: -44 };
         let mut assent: Assent<TestGame, TestGameStep> = Assent::new();
         let step = TestGameStep::MoveLeft;
+        assent.push(step);
+        assent.update(&mut game);
+        assert_eq!(game.position_x, -45);
+    }
+
+    #[test]
+    fn test_assent_right() {
+        let mut game = TestGame { position_x: -44 };
+        let mut assent: Assent<TestGame, TestGameStep> = Assent::new();
+        let step = TestGameStep::MoveRight;
+        assent.push(step);
         assent.push(step);
         assent.update(&mut game);
         assert_eq!(game.position_x, -43);

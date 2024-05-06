@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------------------*/
 use nimble_steps::Deserialize;
 
-pub trait TransmuteCallback<CombinedStepT: Deserialize> {
+pub trait TransmuteCallback<CombinedStepT> {
     fn on_pre_ticks(&mut self) {}
 
     fn on_tick(&mut self, step: &CombinedStepT);
