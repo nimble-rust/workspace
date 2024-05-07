@@ -10,3 +10,12 @@ repository = "https://github.com/nimble-rust/client"
 
 [dependencies]
 nimble-steps = { path = "../steps" }
+nimble-protocol = { path = "../protocol" }
+flood-rs = "0.0.4"
+secure-random = { path = "../secure-random" }
+
+
+[dev-dependencies]
+udp-client = { path = "../udp-client" }
+udp-connections = { path = "../udp-connections" }
+datagram = { path = "../datagram" }

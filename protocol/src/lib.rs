@@ -6,7 +6,13 @@ use flood_rs::{ReadOctetStream, WriteOctetStream};
 #[derive(Debug, PartialEq)]
 pub struct Nonce(pub u64);
 
+
 impl Nonce {
+    pub fn new(value: u64) -> Nonce {
+        Self {
+            0: value,
+        }
+    }
     pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> Result<()> {
         stream.write_u64(self.0)?;
         Ok(())
@@ -20,9 +26,9 @@ impl Nonce {
 
 #[derive(Debug, PartialEq)]
 pub struct Version {
-    major: u16,
-    minor: u16,
-    patch: u16,
+    pub major: u16,
+    pub minor: u16,
+    pub patch: u16,
 }
 
 impl Version {
@@ -69,6 +75,16 @@ impl ConnectCommand {
             application_version: Version::from_stream(stream)?,
             nonce: Nonce::from_stream(stream)?,
         })
+    }
+}
+
+pub struct ConnectionId {
+    pub value: u8,
+}
+
+impl ConnectionId {
+    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> Result<()> {
+        stream.write_u8(self.value)
     }
 }
 

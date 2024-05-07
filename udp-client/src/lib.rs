@@ -8,22 +8,26 @@ pub struct UdpClient {
 }
 
 impl UdpClient {
-    fn new(host: &str) -> Result<Self> {
+    pub fn new(host: &str) -> Result<Self> {
         let socket = UdpSocket::bind("0.0.0.0:0")?;
         socket.connect(host)?;
         Ok(UdpClient {
             socket,
         })
     }
-}
 
-impl DatagramSender for UdpClient {
-    fn send_datagram(&self, data: &[u8]) -> Result<()> {
+    pub fn send_datagram(&self, data: &[u8]) -> Result<()> {
         let size = self.socket.send(data)?;
         if size != data.len() {
             return Err(Error::new(ErrorKind::WriteZero, "failed to send the entire datagram"));
         }
         Ok(())
+    }
+}
+
+impl DatagramSender for UdpClient {
+    fn send_datagram(&self, data: &[u8]) -> Result<()> {
+        self.send_datagram(data)
     }
 }
 
