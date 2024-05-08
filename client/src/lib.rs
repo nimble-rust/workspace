@@ -66,7 +66,9 @@ mod tests {
         for _ in 0..100 {
             let datagrams = client.send();
             for datagram in datagrams {
-                communicator.send_datagram(datagram.payload.as_slice()).unwrap();
+                communicator
+                    .send_datagram(datagram.payload.as_slice())
+                    .unwrap();
             }
         }
     }

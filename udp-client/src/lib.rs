@@ -50,7 +50,6 @@ impl DatagramCommunicator for UdpClient {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use datagram::DatagramSender;

@@ -86,7 +86,6 @@ pub struct ClientToHostPacketHeader(PacketHeader);
 #[derive(Debug)]
 pub struct HostToClientPacketHeader(PacketHeader);
 
-
 #[derive(Debug, PartialEq)]
 pub struct ConnectCommand {
     pub nonce: Nonce,
@@ -126,7 +125,6 @@ impl InChallengeCommand {
     }
 }
 
-
 #[derive(Debug, PartialEq)]
 pub struct ClientToHostChallengeCommand {
     pub nonce: Nonce,
@@ -144,8 +142,6 @@ impl ClientToHostChallengeCommand {
         })
     }
 }
-
-
 
 #[derive(Debug)]
 pub enum ClientToHostCommands {
@@ -168,7 +164,6 @@ pub enum HostToClientCommands {
     PacketType(HostToClientPacketHeader),
 }
 
-
 impl HostToClientCommands {
     pub fn to_octet(&self) -> HostToClientCommand {
         match self {
@@ -181,16 +176,22 @@ impl HostToClientCommands {
     pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.to_octet() as u8)?;
         match self {
-            HostToClientCommands::ChallengeType(client_to_host_challenge) => client_to_host_challenge.to_stream(stream),
+            HostToClientCommands::ChallengeType(client_to_host_challenge) => {
+                client_to_host_challenge.to_stream(stream)
+            }
             HostToClientCommands::ConnectType(connect_command) => connect_command.to_stream(stream),
-            HostToClientCommands::PacketType(client_to_host_packet) => client_to_host_packet.0.to_stream(stream),
+            HostToClientCommands::PacketType(client_to_host_packet) => {
+                client_to_host_packet.0.to_stream(stream)
+            }
         }
     }
 
     pub fn from_stream(stream: &mut dyn ReadOctetStream) -> io::Result<Self> {
         let command = stream.read_u8()?;
         let x = match command {
-            CHALLENGE_COMMAND => HostToClientCommands::ChallengeType(InChallengeCommand::from_stream(stream)?),
+            CHALLENGE_COMMAND => {
+                HostToClientCommands::ChallengeType(InChallengeCommand::from_stream(stream)?)
+            }
             _ => {
                 return Err(io::Error::new(
                     ErrorKind::InvalidData,
@@ -201,7 +202,6 @@ impl HostToClientCommands {
         Ok(x)
     }
 }
-
 
 #[derive(Debug, PartialEq)]
 pub struct ChallengeResponse {
@@ -231,7 +231,6 @@ impl ChallengeResponse {
 #define UdpConnectionsSerializeCmdPacketToClient (0x13)
  */
 
-
 #[repr(u8)]
 enum ClientToHostCommand {
     Challenge = 0x01,
@@ -254,9 +253,7 @@ impl TryFrom<u8> for ClientToHostCommand {
 }
 
 fn convert_to_io_result(byte: u8) -> io::Result<ClientToHostCommand> {
-    ClientToHostCommand::try_from(byte).map_err(|e| {
-        Error::new(ErrorKind::InvalidData, e)
-    })
+    ClientToHostCommand::try_from(byte).map_err(|e| Error::new(ErrorKind::InvalidData, e))
 }
 
 impl ClientToHostCommands {
@@ -271,19 +268,23 @@ impl ClientToHostCommands {
     pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.to_octet() as u8)?;
         match self {
-            ClientToHostCommands::ChallengeType(client_to_host_challenge) => client_to_host_challenge.to_stream(stream),
+            ClientToHostCommands::ChallengeType(client_to_host_challenge) => {
+                client_to_host_challenge.to_stream(stream)
+            }
             ClientToHostCommands::ConnectType(connect_command) => connect_command.to_stream(stream),
-            ClientToHostCommands::PacketType(client_to_host_packet) => client_to_host_packet.0.to_stream(stream),
+            ClientToHostCommands::PacketType(client_to_host_packet) => {
+                client_to_host_packet.0.to_stream(stream)
+            }
         }
     }
-
-
 
     pub fn from_stream(stream: &mut dyn ReadOctetStream) -> io::Result<Self> {
         let command_value = stream.read_u8()?;
         let command = convert_to_io_result(command_value)?;
         let x = match command {
-            ClientToHostCommand::Challenge => ClientToHostCommands::ChallengeType(ClientToHostChallengeCommand::from_stream(stream)?),
+            ClientToHostCommand::Challenge => ClientToHostCommands::ChallengeType(
+                ClientToHostChallengeCommand::from_stream(stream)?,
+            ),
             _ => {
                 return Err(io::Error::new(
                     ErrorKind::InvalidData,
@@ -321,25 +322,22 @@ pub struct Client {
 }
 
 impl Client {
-    pub fn new(
-        communicator: Box<dyn DatagramCommunicator>,
-    ) -> Self {
+    pub fn new(communicator: Box<dyn DatagramCommunicator>) -> Self {
         Self { communicator }
     }
 
-    pub fn on_challenge(&mut self, cmd: InChallengeCommand)  -> io::Result<usize> {
+    pub fn on_challenge(&mut self, cmd: InChallengeCommand) -> io::Result<usize> {
         Ok(0)
     }
 
-    pub fn on_connect(&mut self, cmd: ConnectResponse)  -> io::Result<usize> {
+    pub fn on_connect(&mut self, cmd: ConnectResponse) -> io::Result<usize> {
         Ok(0)
     }
 
-    pub fn on_packet(&mut self, cmd: HostToClientPacketHeader)  -> io::Result<usize> {
+    pub fn on_packet(&mut self, cmd: HostToClientPacketHeader) -> io::Result<usize> {
         Ok(0)
     }
 }
-
 
 impl DatagramCommunicator for Client {
     fn send_datagram(&mut self, data: &[u8]) -> io::Result<()> {
@@ -358,7 +356,9 @@ impl DatagramCommunicator for Client {
         let mut in_stream = InOctetStream::new(buffer.to_vec());
         let command = HostToClientCommands::from_stream(&mut in_stream)?;
         match command {
-            HostToClientCommands::ChallengeType(challenge_command) => self.on_challenge(challenge_command),
+            HostToClientCommands::ChallengeType(challenge_command) => {
+                self.on_challenge(challenge_command)
+            }
             HostToClientCommands::ConnectType(connect_command) => self.on_connect(connect_command),
             HostToClientCommands::PacketType(packet_command) => self.on_packet(packet_command),
         }
