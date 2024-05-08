@@ -12,11 +12,13 @@ use nimble_steps::{Step, Steps};
 
 #[derive(Debug)]
 pub enum CombinatorError {
-    NotReadyToProduceStep { can_provide: usize, can_not_provide: usize },
+    NotReadyToProduceStep {
+        can_provide: usize,
+        can_not_provide: usize,
+    },
     OtherError,
     // Add more error variants as needed
 }
-
 
 #[derive(Default)]
 pub struct Combinator<T> {
@@ -58,7 +60,10 @@ impl<T> Combinator<T> {
             }
         }
 
-        (participant_count_that_can_provide_step, participant_count_that_can_not_give_step)
+        (
+            participant_count_that_can_provide_step,
+            participant_count_that_can_not_give_step,
+        )
     }
 
     pub fn produce(&mut self) -> Result<ParticipantSteps<T>, CombinatorError> {
@@ -74,7 +79,10 @@ impl<T> Combinator<T> {
         for (participant_id, steps) in self.in_buffers.iter_mut() {
             if let Some(first_tick) = steps.front_tick_id() {
                 if first_tick == self.tick_id_to_produce {
-                    combined_step.insert(participant_id.clone(), Step::Custom(steps.pop().unwrap().step))
+                    combined_step.insert(
+                        participant_id.clone(),
+                        Step::Custom(steps.pop().unwrap().step),
+                    )
                 } else {
                     combined_step.insert(participant_id.clone(), Step::Forced);
                     steps.pop_up_to(self.tick_id_to_produce);
@@ -108,12 +116,19 @@ mod tests {
         combinator.add(ParticipantId(2), TestStep::SelectTeam(42));
 
         assert_eq!(combinator.in_buffers.len(), 2);
-        assert_eq!(combinator.in_buffers.get(&ParticipantId(1)).unwrap().len(), 1);
-        let steps_for_participant_1: &mut Steps<TestStep> = combinator.in_buffers.get_mut(&ParticipantId(1)).unwrap();
+        assert_eq!(
+            combinator.in_buffers.get(&ParticipantId(1)).unwrap().len(),
+            1
+        );
+        let steps_for_participant_1: &mut Steps<TestStep> =
+            combinator.in_buffers.get_mut(&ParticipantId(1)).unwrap();
         let first_step_for_participant_1 = steps_for_participant_1.pop().unwrap();
         assert_eq!(first_step_for_participant_1.step, TestStep::InGame(-2));
 
-        assert_eq!(combinator.in_buffers.get(&ParticipantId(2)).unwrap().len(), 1);
+        assert_eq!(
+            combinator.in_buffers.get(&ParticipantId(2)).unwrap().len(),
+            1
+        );
 
         let combined_step = combinator.produce().unwrap();
 

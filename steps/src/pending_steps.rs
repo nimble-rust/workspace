@@ -6,9 +6,8 @@ use discoid::discoid::DiscoidBuffer;
 
 use crate::{Step, TickId};
 
-
 #[derive(Clone)]
-pub struct PendingStepInfo<T:Clone> {
+pub struct PendingStepInfo<T: Clone> {
     pub step: Step<T>,
     pub tick_id: TickId,
 }
@@ -43,13 +42,13 @@ pub struct PendingStepInfo<T:Clone> {
 ///
 /// let pending_steps = PendingSteps::<i32>::new(10, TickId::new(1));
 /// ```
-pub struct PendingSteps<T:Clone> {
+pub struct PendingSteps<T: Clone> {
     steps: DiscoidBuffer<PendingStepInfo<T>>,
     front_tick_id: TickId,
     capacity: usize,
 }
 
-impl<T:Clone> PendingSteps<T> {
+impl<T: Clone> PendingSteps<T> {
     pub fn new(window_size: usize, tick_id: TickId) -> Self {
         Self {
             steps: DiscoidBuffer::new(window_size),
@@ -60,14 +59,15 @@ impl<T:Clone> PendingSteps<T> {
 
     pub fn set(&mut self, tick_id: TickId, step: Step<T>) -> Result<(), String> {
         let index_in_discoid = tick_id.value() - self.front_tick_id.value();
-        if index_in_discoid >= self.capacity as u32 { // self.steps.capacity()
+        if index_in_discoid >= self.capacity as u32 {
+            // self.steps.capacity()
             return Err("pending_steps: out of scope".to_string());
         }
 
-        self.steps.set_at_index(index_in_discoid as usize, PendingStepInfo::<T> {
-            step,
-            tick_id,
-        });
+        self.steps.set_at_index(
+            index_in_discoid as usize,
+            PendingStepInfo::<T> { step, tick_id },
+        );
         Ok(())
     }
 
@@ -110,10 +110,14 @@ mod tests {
     fn add_step() {
         let mut steps = PendingSteps::<GameInput>::new(32, TickId(10));
         let first_tick_id = TickId(12);
-        steps.set(first_tick_id, Custom(GameInput::MoveHorizontal(-2))).expect("this should work");
+        steps
+            .set(first_tick_id, Custom(GameInput::MoveHorizontal(-2)))
+            .expect("this should work");
         assert_eq!(steps.front_tick_id(), None);
         assert_eq!(steps.is_empty(), true);
-        steps.set(first_tick_id - 2, Custom(GameInput::Jumping(false))).expect("this should work");
+        steps
+            .set(first_tick_id - 2, Custom(GameInput::Jumping(false)))
+            .expect("this should work");
         assert_eq!(steps.is_empty(), false);
         assert_eq!(steps.front_tick_id().unwrap().value(), 10);
         let first_jumping_step = steps.pop();

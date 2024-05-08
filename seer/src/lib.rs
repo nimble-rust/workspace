@@ -9,8 +9,8 @@ use nimble_transmute::TransmuteCallback;
 
 // Define the Assent struct
 impl<C, CombinedStepT> Default for Seer<C, CombinedStepT>
-    where
-        C: TransmuteCallback<CombinedStepT>
+where
+    C: TransmuteCallback<CombinedStepT>,
 {
     fn default() -> Self {
         Self::new()
@@ -18,8 +18,8 @@ impl<C, CombinedStepT> Default for Seer<C, CombinedStepT>
 }
 
 pub struct Seer<C, CombinedStepT>
-    where
-        C: TransmuteCallback<CombinedStepT>
+where
+    C: TransmuteCallback<CombinedStepT>,
 {
     combined_steps: Steps<CombinedStepT>,
     authoritative_has_changed: bool,
@@ -27,8 +27,8 @@ pub struct Seer<C, CombinedStepT>
 }
 
 impl<C, CombinedStepT> Seer<C, CombinedStepT>
-    where
-        C: TransmuteCallback<CombinedStepT>
+where
+    C: TransmuteCallback<CombinedStepT>,
 {
     pub fn new() -> Self {
         Seer {
@@ -108,6 +108,3 @@ mod tests {
         assert_eq!(game.position_x, -43);
     }
 }
-
-
-

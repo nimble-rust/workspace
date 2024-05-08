@@ -1,7 +1,7 @@
 use std::io::{Error, ErrorKind, Result};
 use std::net::UdpSocket;
 
-use datagram::{DatagramSender, ReceiveDatagram};
+use datagram::{DatagramCommunicator, DatagramReceiver, DatagramSender};
 
 pub struct UdpClient {
     socket: UdpSocket,
@@ -11,28 +11,41 @@ impl UdpClient {
     pub fn new(host: &str) -> Result<Self> {
         let socket = UdpSocket::bind("0.0.0.0:0")?;
         socket.connect(host)?;
-        Ok(UdpClient {
-            socket,
-        })
+        Ok(UdpClient { socket })
     }
 
     pub fn send_datagram(&self, data: &[u8]) -> Result<()> {
         let size = self.socket.send(data)?;
         if size != data.len() {
-            return Err(Error::new(ErrorKind::WriteZero, "failed to send the entire datagram"));
+            return Err(Error::new(
+                ErrorKind::WriteZero,
+                "failed to send the entire datagram",
+            ));
         }
         Ok(())
     }
 }
 
 impl DatagramSender for UdpClient {
-    fn send_datagram(&self, data: &[u8]) -> Result<()> {
-        self.send_datagram(data)
+    fn send_datagram(&mut self, data: &[u8]) -> Result<()> {
+        self.socket.send(data)?;
+        Ok(())
     }
 }
 
-impl ReceiveDatagram for UdpClient {
-    fn receive_datagram(&self, buffer: &mut [u8]) -> Result<usize> {
+impl DatagramReceiver for UdpClient {
+    fn receive_datagram(&mut self, buffer: &mut [u8]) -> Result<usize> {
+        self.socket.recv(buffer)
+    }
+}
+
+impl DatagramCommunicator for UdpClient {
+    fn send_datagram(&mut self, data: &[u8]) -> Result<()> {
+        self.socket.send(data)?;
+        Ok(())
+    }
+
+    fn receive_datagram(&mut self, buffer: &mut [u8]) -> Result<usize> {
         self.socket.recv(buffer)
     }
 }
@@ -41,6 +54,7 @@ impl ReceiveDatagram for UdpClient {
 #[cfg(test)]
 mod tests {
     use datagram::DatagramSender;
+
     use crate::UdpClient;
 
     #[test]

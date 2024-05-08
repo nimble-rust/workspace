@@ -18,21 +18,20 @@ pub enum UpdateState {
     DidNotConsumeAllKnowledge,
 }
 
-
 // Define the Assent struct
 pub struct Assent<C, CombinedStepT>
-    where
-        CombinedStepT: Clone,
-        C: AssentCallback<CombinedStepT>,
+where
+    CombinedStepT: Clone,
+    C: AssentCallback<CombinedStepT>,
 {
     phantom: PhantomData<C>,
     steps: Steps<CombinedStepT>,
 }
 
 impl<C, CombinedStepT> Default for Assent<C, CombinedStepT>
-    where
-        CombinedStepT: Clone,
-        C: AssentCallback<CombinedStepT>,
+where
+    CombinedStepT: Clone,
+    C: AssentCallback<CombinedStepT>,
 {
     fn default() -> Self {
         Assent::new()
@@ -40,9 +39,9 @@ impl<C, CombinedStepT> Default for Assent<C, CombinedStepT>
 }
 
 impl<C, CombinedStepT> Assent<C, CombinedStepT>
-    where
-        CombinedStepT: Clone,
-        C: AssentCallback<CombinedStepT>,
+where
+    CombinedStepT: Clone,
+    C: AssentCallback<CombinedStepT>,
 {
     pub fn new() -> Self {
         Assent {
@@ -80,7 +79,6 @@ mod tests {
         MoveLeft,
         MoveRight,
     }
-
 
     impl AssentCallback<TestGameStep> for TestGame {
         fn on_tick(&mut self, step: &TestGameStep) {

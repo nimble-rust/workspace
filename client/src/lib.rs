@@ -38,38 +38,35 @@ impl Client {
         let client_command = ClientSendCommands::ConnectType(connect_cmd);
 
         let mut out_stream = OutOctetStream::new();
-        let zero_connection_id = ConnectionId {
-            value: 0
-        };
+        let zero_connection_id = ConnectionId { value: 0 };
         zero_connection_id.to_stream(&mut out_stream).unwrap();
         client_command.to_stream(&mut out_stream).unwrap();
 
-        let datagrams = vec![
-            ClientDatagram { payload: out_stream.data },
-        ];
+        let datagrams = vec![ClientDatagram {
+            payload: out_stream.data,
+        }];
         datagrams
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use datagram::DatagramSender;
+    use datagram::{DatagramCommunicator, DatagramSender};
     use udp_client::UdpClient;
 
     use crate::Client;
 
     #[test]
-    fn it_works() {
+    fn send_to_host() {
         let client = Client::new();
         let udp_client = UdpClient::new("127.0.0.1:23000").unwrap();
         let udp_client_box = Box::new(udp_client);
-        let udp_connections_client = udp_connections::Client::new(udp_client_box);
-        let sender: &dyn DatagramSender = &udp_connections_client;
+        let mut udp_connections_client = udp_connections::Client::new(udp_client_box);
+        let mut communicator: &mut dyn DatagramCommunicator = &mut udp_connections_client;
         for _ in 0..100 {
             let datagrams = client.send();
             for datagram in datagrams {
-                sender.send_datagram(datagram.payload.as_slice()).unwrap();
+                communicator.send_datagram(datagram.payload.as_slice()).unwrap();
             }
         }
     }

@@ -6,12 +6,9 @@ use flood_rs::{ReadOctetStream, WriteOctetStream};
 #[derive(Debug, PartialEq)]
 pub struct Nonce(pub u64);
 
-
 impl Nonce {
     pub fn new(value: u64) -> Nonce {
-        Self {
-            0: value,
-        }
+        Self { 0: value }
     }
     pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> Result<()> {
         stream.write_u64(self.0)?;
@@ -49,7 +46,6 @@ impl Version {
     }
 }
 
-
 #[derive(Debug, PartialEq)]
 pub struct ConnectCommand {
     pub nimble_version: Version,
@@ -57,7 +53,6 @@ pub struct ConnectCommand {
     pub application_version: Version,
     pub nonce: Nonce,
 }
-
 
 impl ConnectCommand {
     pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> Result<()> {
@@ -103,9 +98,7 @@ impl ClientSendCommands {
     pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> Result<()> {
         stream.write_u8(self.to_octet())?;
         match self {
-            ClientSendCommands::ConnectType(connect_command) => {
-                connect_command.to_stream(stream)
-            }
+            ClientSendCommands::ConnectType(connect_command) => connect_command.to_stream(stream),
         }
     }
 
@@ -113,12 +106,16 @@ impl ClientSendCommands {
         let command = stream.read_u8()?;
         let x = match command {
             0x05 => ClientSendCommands::ConnectType(ConnectCommand::from_stream(stream)?),
-            _ => return Err(io::Error::new(ErrorKind::InvalidData, format!("unknown command {}", command)))
+            _ => {
+                return Err(io::Error::new(
+                    ErrorKind::InvalidData,
+                    format!("unknown command {}", command),
+                ))
+            }
         };
         Ok(x)
     }
 }
-
 
 #[cfg(test)]
 mod tests {

@@ -24,9 +24,10 @@ pub enum Step<T> {
 }
 
 pub trait Deserialize {
-    fn deserialize(bytes: &[u8]) -> Self where Self: Sized;
+    fn deserialize(bytes: &[u8]) -> Self
+    where
+        Self: Sized;
 }
-
 
 #[derive(Clone)]
 pub struct StepInfo<T> {
@@ -41,10 +42,10 @@ pub struct Steps<T> {
 }
 
 impl<T> Steps<T> {
-    pub fn iter(&self) -> impl Iterator<Item=&StepInfo<T>> {
-        self.steps.iter().filter(move |step_info| {
-            step_info.tick_id == self.expected_read_id
-        })
+    pub fn iter(&self) -> impl Iterator<Item = &StepInfo<T>> {
+        self.steps
+            .iter()
+            .filter(move |step_info| step_info.tick_id == self.expected_read_id)
     }
 }
 
@@ -64,7 +65,6 @@ impl<'a, T> FromIndexIterator<'a, T> {
     }
 }
 
-
 impl<T: Clone> Iterator for FromIndexIterator<'_, T> {
     type Item = StepInfo<T>;
 
@@ -74,7 +74,6 @@ impl<T: Clone> Iterator for FromIndexIterator<'_, T> {
         Some(item.clone())
     }
 }
-
 
 impl<T> Default for Steps<T> {
     fn default() -> Self {
@@ -92,7 +91,6 @@ impl<T> Steps<T> {
             expected_write_id: TickId::new(0),
         }
     }
-
 
     pub fn clear(&mut self) {
         self.steps.clear();

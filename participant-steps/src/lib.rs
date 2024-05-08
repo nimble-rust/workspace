@@ -50,7 +50,9 @@ impl<T> Default for ParticipantSteps<T> {
 
 impl<T> ParticipantSteps<T> {
     pub fn new() -> Self {
-        Self { steps: HashMap::new() }
+        Self {
+            steps: HashMap::new(),
+        }
     }
 
     pub fn insert(&mut self, participant_id: ParticipantId, step: Step<T>) {
@@ -66,8 +68,11 @@ impl<T> ParticipantSteps<T> {
     }
 }
 
-impl<T:Clone> Deserialize for ParticipantSteps<T> {
-    fn deserialize(_bytes: &[u8]) -> Self where Self: Sized {
+impl<T: Clone> Deserialize for ParticipantSteps<T> {
+    fn deserialize(_bytes: &[u8]) -> Self
+    where
+        Self: Sized,
+    {
         todo!()
     }
 }
