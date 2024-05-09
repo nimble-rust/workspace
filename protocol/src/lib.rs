@@ -83,34 +83,62 @@ impl ConnectionId {
     }
 }
 
+#[repr(u8)]
+enum HostToClientCommand {
+    Challenge = 0x11,
+    Connect = 0x12,
+    Packet = 0x13,
+}
+
+#[repr(u8)]
+enum ClientToHostCommand {
+    Challenge = 0x11,
+    Connect = 0x12,
+    Packet = 0x13,
+}
+
+impl TryFrom<u8> for ClientToHostCommand {
+    type Error = io::Error;
+
+    fn try_from(value: u8) -> Result<Self> {
+        match value {
+            0x11 => Ok(ClientToHostCommand::Challenge),
+            0x12 => Ok(ClientToHostCommand::Connect),
+            0x13 => Ok(ClientToHostCommand::Packet),
+            _ => Err(io::Error::new(ErrorKind::InvalidData, format!("Unknown command {}", value))),
+        }
+    }
+}
+
 #[derive(Debug)]
-pub enum ClientSendCommands {
+pub enum ClientToHostCommands {
     ConnectType(ConnectCommand),
 }
 
-impl ClientSendCommands {
+impl ClientToHostCommands {
     pub fn to_octet(&self) -> u8 {
         match self {
-            ClientSendCommands::ConnectType(_) => 0x05,
+            ClientToHostCommands::ConnectType(_) => ClientToHostCommand::Connect as u8,
         }
     }
 
     pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> Result<()> {
         stream.write_u8(self.to_octet())?;
         match self {
-            ClientSendCommands::ConnectType(connect_command) => connect_command.to_stream(stream),
+            ClientToHostCommands::ConnectType(connect_command) => connect_command.to_stream(stream),
         }
     }
 
     pub fn from_stream(stream: &mut dyn ReadOctetStream) -> Result<Self> {
-        let command = stream.read_u8()?;
+        let command_value = stream.read_u8()?;
+        let command = ClientToHostCommand::try_from(command_value)?;
         let x = match command {
-            0x05 => ClientSendCommands::ConnectType(ConnectCommand::from_stream(stream)?),
+            ClientToHostCommand::Connect => ClientToHostCommands::ConnectType(ConnectCommand::from_stream(stream)?),
             _ => {
                 return Err(io::Error::new(
                     ErrorKind::InvalidData,
-                    format!("unknown command {}", command),
-                ))
+                    format!("unknown command {}", command_value),
+                ));
             }
         };
         Ok(x)

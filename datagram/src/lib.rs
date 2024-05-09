@@ -1,3 +1,4 @@
+use std::io;
 use std::io::Result;
 
 pub trait DatagramSender {
@@ -32,4 +33,9 @@ pub trait DatagramCommunicator {
     /// # Returns
     /// A `Result` containing either the number of bytes that were written to the buffer, or an I/O error.
     fn receive_datagram(&mut self, buffer: &mut [u8]) -> Result<usize>;
+}
+
+pub trait DatagramProcessor {
+    fn send_datagram(&mut self, data: &[u8]) -> io::Result<Vec<u8>>;
+    fn receive_datagram(&mut self, buffer: &[u8]) -> io::Result<Vec<u8>>;
 }

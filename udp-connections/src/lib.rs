@@ -3,10 +3,12 @@ use std::io::{Error, ErrorKind};
 
 use flood_rs::{InOctetStream, OutOctetStream, ReadOctetStream, WriteOctetStream};
 
-use datagram::{DatagramCommunicator, DatagramReceiver, DatagramSender};
-use secure_random::get_random_u64;
+use datagram::DatagramProcessor;
+use secure_random::SecureRandom;
 
-#[derive(Debug, PartialEq)]
+use crate::ClientPhase::{Challenge, Connected, Connecting};
+
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Nonce(pub u64);
 
 impl Nonce {
@@ -24,7 +26,7 @@ impl Nonce {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct ConnectionId(pub u64);
 
 impl ConnectionId {
@@ -42,7 +44,7 @@ impl ConnectionId {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct ServerChallenge(pub u64);
 
 impl ServerChallenge {
@@ -57,6 +59,30 @@ impl ServerChallenge {
     pub fn from_stream(stream: &mut dyn ReadOctetStream) -> std::io::Result<Self> {
         let x = stream.read_u64()?;
         Ok(Self(x))
+    }
+}
+
+#[derive(Debug)]
+pub struct ClientToHostPacket {
+    pub header: PacketHeader,
+    pub payload: Vec<u8>,
+}
+
+impl ClientToHostPacket {
+    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> std::io::Result<()> {
+        self.header.to_stream(stream)?;
+        stream.write(self.payload.as_slice())?;
+        Ok(())
+    }
+
+    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> std::io::Result<Self> {
+        let header = PacketHeader::from_stream(stream)?;
+        let mut target_buffer = Vec::with_capacity(header.size as usize);
+        stream.read(&mut target_buffer)?;
+        Ok(Self {
+            header,
+            payload: target_buffer,
+        })
     }
 }
 
@@ -83,6 +109,7 @@ impl PacketHeader {
 
 #[derive(Debug)]
 pub struct ClientToHostPacketHeader(PacketHeader);
+
 #[derive(Debug)]
 pub struct HostToClientPacketHeader(PacketHeader);
 
@@ -110,17 +137,21 @@ impl ConnectCommand {
 #[derive(Debug, PartialEq)]
 pub struct InChallengeCommand {
     pub nonce: Nonce,
+    pub incoming_server_challenge: ServerChallenge,
 }
 
 impl InChallengeCommand {
     pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> std::io::Result<()> {
         self.nonce.to_stream(stream)?;
+        self.incoming_server_challenge.to_stream(stream)?;
+
         Ok(())
     }
 
     pub fn from_stream(stream: &mut dyn ReadOctetStream) -> std::io::Result<Self> {
         Ok(Self {
             nonce: Nonce::from_stream(stream)?,
+            incoming_server_challenge: ServerChallenge::from_stream(stream)?,
         })
     }
 }
@@ -147,7 +178,7 @@ impl ClientToHostChallengeCommand {
 pub enum ClientToHostCommands {
     ChallengeType(ClientToHostChallengeCommand),
     ConnectType(ConnectCommand),
-    PacketType(ClientToHostPacketHeader),
+    PacketType(ClientToHostPacket),
 }
 
 #[repr(u8)]
@@ -156,6 +187,20 @@ enum HostToClientCommand {
     Connect = 0x12,
     Packet = 0x13,
 }
+
+impl TryFrom<u8> for HostToClientCommand {
+    type Error = io::Error;
+
+    fn try_from(value: u8) -> std::io::Result<Self> {
+        match value {
+            0x11 => Ok(HostToClientCommand::Challenge),
+            0x12 => Ok(HostToClientCommand::Connect),
+            0x13 => Ok(HostToClientCommand::Packet),
+            _ => Err(io::Error::new(ErrorKind::InvalidData, format!("Unknown command {}", value))),
+        }
+    }
+}
+
 
 #[derive(Debug)]
 pub enum HostToClientCommands {
@@ -187,15 +232,16 @@ impl HostToClientCommands {
     }
 
     pub fn from_stream(stream: &mut dyn ReadOctetStream) -> io::Result<Self> {
-        let command = stream.read_u8()?;
+        let command_value = stream.read_u8()?;
+        let command = HostToClientCommand::try_from(command_value)?;
         let x = match command {
-            CHALLENGE_COMMAND => {
+            HostToClientCommand::Challenge => {
                 HostToClientCommands::ChallengeType(InChallengeCommand::from_stream(stream)?)
             }
             _ => {
                 return Err(io::Error::new(
                     ErrorKind::InvalidData,
-                    format!("unknown command {}", command),
+                    format!("unknown command {}", command_value),
                 ));
             }
         };
@@ -240,17 +286,18 @@ enum ClientToHostCommand {
 
 // Implement TryFrom to convert u8 to Command
 impl TryFrom<u8> for ClientToHostCommand {
-    type Error = &'static str;
+    type Error = io::Error;
 
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
+    fn try_from(value: u8) -> std::io::Result<Self> {
         match value {
             0x01 => Ok(ClientToHostCommand::Challenge),
             0x02 => Ok(ClientToHostCommand::Connect),
             0x03 => Ok(ClientToHostCommand::Packet),
-            _ => Err("Unknown command"),
+            _ => Err(io::Error::new(ErrorKind::InvalidData, format!("Unknown command {}", value))),
         }
     }
 }
+
 
 fn convert_to_io_result(byte: u8) -> io::Result<ClientToHostCommand> {
     ClientToHostCommand::try_from(byte).map_err(|e| Error::new(ErrorKind::InvalidData, e))
@@ -273,7 +320,7 @@ impl ClientToHostCommands {
             }
             ClientToHostCommands::ConnectType(connect_command) => connect_command.to_stream(stream),
             ClientToHostCommands::PacketType(client_to_host_packet) => {
-                client_to_host_packet.0.to_stream(stream)
+                client_to_host_packet.to_stream(stream)
             }
         }
     }
@@ -317,56 +364,185 @@ impl ConnectResponse {
     }
 }
 
-pub struct Client {
-    communicator: Box<dyn DatagramCommunicator>,
+#[derive(PartialEq)]
+enum ClientPhase {
+    Challenge(Nonce),
+    Connecting(Nonce, ServerChallenge),
+    Connected(ConnectionId),
 }
+
+pub struct Client {
+    random: Box<dyn SecureRandom>,
+    phase: ClientPhase,
+}
+
 
 impl Client {
-    pub fn new(communicator: Box<dyn DatagramCommunicator>) -> Self {
-        Self { communicator }
+    pub fn new(mut random: Box<dyn SecureRandom>) -> Self {
+        let phase = Challenge(Nonce(random.get_random_u64()));
+        Self { random, phase }
     }
 
-    pub fn on_challenge(&mut self, cmd: InChallengeCommand) -> io::Result<usize> {
-        Ok(0)
+    pub fn on_challenge(&mut self, cmd: InChallengeCommand) -> io::Result<()> {
+        match self.phase {
+            Challenge(nonce) => {
+                if cmd.nonce != nonce {
+                    return Err(Error::new(ErrorKind::InvalidData, "Wrong nonce"));
+                }
+                self.phase = Connecting(Nonce(self.random.get_random_u64()), cmd.incoming_server_challenge);
+                Ok(())
+            }
+            _ => return Err(Error::new(ErrorKind::InvalidInput, "Message not applicable in current client state"))
+        }
     }
 
-    pub fn on_connect(&mut self, cmd: ConnectResponse) -> io::Result<usize> {
-        Ok(0)
+    pub fn on_connect(&mut self, cmd: ConnectResponse) -> io::Result<()> {
+        match self.phase {
+            Connecting(nonce, _) => {
+                if cmd.nonce != nonce {
+                    return Err(Error::new(ErrorKind::InvalidData, "Wrong nonce when connecting"));
+                }
+                self.phase = Connected(cmd.connection_id);
+                Ok(())
+            }
+            _ => Err(Error::new(ErrorKind::InvalidInput, "can not receive on_connect in current client state"))
+        }
     }
 
-    pub fn on_packet(&mut self, cmd: HostToClientPacketHeader) -> io::Result<usize> {
-        Ok(0)
+    pub fn on_packet(&mut self, cmd: HostToClientPacketHeader, in_stream: &mut InOctetStream) -> io::Result<Vec<u8>> {
+        match self.phase {
+            Connected(expected_connection_id) => {
+                if cmd.0.connection_id != expected_connection_id {
+                    return Err(Error::new(ErrorKind::InvalidData, "Wrong connection_id for received packet"));
+                }
+                let mut target_buffer = Vec::with_capacity(cmd.0.size as usize);
+                in_stream.read(&mut target_buffer)?;
+
+                Ok(target_buffer)
+            }
+            _ => Err(Error::new(ErrorKind::InvalidInput, "can not receive on_connect in current client state"))
+        }
+    }
+
+    pub fn send_challenge(&mut self) -> io::Result<ClientToHostChallengeCommand> {
+        match self.phase {
+            Challenge(nonce) => {
+                Ok(ClientToHostChallengeCommand {
+                    nonce,
+                })
+            }
+            _ => Err(Error::new(ErrorKind::InvalidInput, "can not send_challenge in current client state"))
+        }
+    }
+
+    pub fn send_connect_request(&mut self) -> io::Result<ConnectCommand> {
+        match self.phase {
+            Connecting(nonce, server_challenge) => {
+                Ok(ConnectCommand {
+                    nonce,
+                    server_challenge,
+                })
+            }
+            _ => Err(Error::new(ErrorKind::InvalidInput, "can not send_connect_request in current client state"))
+        }
+    }
+
+    pub fn send_packet(&mut self, data: &[u8]) -> io::Result<ClientToHostPacket> {
+        match self.phase {
+            Connected(connection_id) => {
+                Ok(ClientToHostPacket {
+                    header: PacketHeader
+                    { connection_id, size: data.len() as u16 },
+                    payload: data.to_vec(),
+                })
+            }
+            _ => Err(Error::new(ErrorKind::InvalidInput, "can not send_connect_request in current client state"))
+        }
+    }
+
+    pub fn send(&mut self, data: &[u8]) -> io::Result<ClientToHostCommands> {
+        match self.phase {
+            Challenge(_) => {
+                let challenge = self.send_challenge()?;
+                Ok(ClientToHostCommands::ChallengeType(challenge))
+            }
+
+            Connecting(_, _) => {
+                let connect_request = self.send_connect_request()?;
+                Ok(ClientToHostCommands::ConnectType(connect_request))
+            }
+
+            Connected(_) => {
+                let challenge = self.send_packet(data)?;
+                Ok(ClientToHostCommands::PacketType(challenge))
+            }
+        }
     }
 }
 
-impl DatagramCommunicator for Client {
-    fn send_datagram(&mut self, data: &[u8]) -> io::Result<()> {
+impl DatagramProcessor for Client {
+    fn send_datagram(&mut self, data: &[u8]) -> io::Result<Vec<u8>> {
         let mut out_stream = OutOctetStream::new();
-        let challenge = ClientToHostChallengeCommand {
-            nonce: Nonce(get_random_u64()),
-        };
-        let client_command = ClientToHostCommands::ChallengeType(challenge);
 
-        client_command.to_stream(&mut out_stream).unwrap();
+        let client_to_server_cmd = self.send(data)?;
+
+        client_to_server_cmd.to_stream(&mut out_stream).unwrap();
         out_stream.write(data)?;
-        self.communicator.send_datagram(out_stream.data.as_slice())
+
+        Ok(out_stream.data)
     }
 
-    fn receive_datagram(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
+    fn receive_datagram(&mut self, buffer: &[u8]) -> io::Result<Vec<u8>> {
         let mut in_stream = InOctetStream::new(buffer.to_vec());
         let command = HostToClientCommands::from_stream(&mut in_stream)?;
         match command {
             HostToClientCommands::ChallengeType(challenge_command) => {
-                self.on_challenge(challenge_command)
+                self.on_challenge(challenge_command)?;
+                Ok(vec![])
             }
-            HostToClientCommands::ConnectType(connect_command) => self.on_connect(connect_command),
-            HostToClientCommands::PacketType(packet_command) => self.on_packet(packet_command),
+            HostToClientCommands::ConnectType(connect_command) => {
+                self.on_connect(connect_command)?;
+                Ok(vec![])
+            }
+            HostToClientCommands::PacketType(packet_command) => {
+                self.on_packet(packet_command, &mut in_stream)
+            }
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use datagram::DatagramProcessor;
+    use secure_random::SecureRandom;
+
+    use crate::Client;
+
+    pub struct FakeRandom {
+        pub counter: u64,
+    }
+
+    impl SecureRandom for FakeRandom {
+        fn get_random_u64(&mut self) -> u64 {
+            self.counter += 1;
+            self.counter
+        }
+    }
+
     #[test]
-    fn it_works() {}
+    fn simple_connection() {
+        let random = FakeRandom { counter: 2 };
+
+        let mut client = Client::new(Box::new(random));
+
+        let example = vec![0x18, 0x24, 0x32];
+
+        let datagram_to_send = client.send_datagram(example.as_slice()).expect("TODO: panic message");
+
+        let expected = vec![
+            1, // Challenge command 0x01
+            0, 0, 0, 0, 0, 0, 0, 3, // Nonce in network order.
+            0x18, 0x24, 0x32];
+        assert_eq!(datagram_to_send, expected, "upd-connections-was wrong")
+    }
 }

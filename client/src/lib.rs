@@ -3,14 +3,11 @@
  *  Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------------------------------------------------------*/
 
-use flood_rs::OutOctetStream;
+use std::io;
+use flood_rs::{InOctetStream, OutOctetStream};
 
-use nimble_protocol::{ClientSendCommands, ConnectCommand, ConnectionId, Nonce, Version};
-use secure_random::get_random_u64;
+use nimble_protocol::{ClientToHostCommands, ConnectCommand, ConnectionId, Nonce, Version};
 
-pub struct ClientDatagram {
-    pub payload: Vec<u8>,
-}
 
 pub struct Client {}
 
@@ -19,7 +16,7 @@ impl Client {
         Client {}
     }
 
-    fn send(&self) -> Vec<ClientDatagram> {
+    fn send(&self) -> Vec<Vec<u8>> {
         let connect_cmd = ConnectCommand {
             nimble_version: Version {
                 major: 1,
@@ -32,20 +29,27 @@ impl Client {
                 minor: 2,
                 patch: 3,
             },
-            nonce: Nonce::new(get_random_u64()),
+            nonce: Nonce::new(0),
         };
 
-        let client_command = ClientSendCommands::ConnectType(connect_cmd);
+        let client_command = ClientToHostCommands::ConnectType(connect_cmd);
 
         let mut out_stream = OutOctetStream::new();
         let zero_connection_id = ConnectionId { value: 0 };
         zero_connection_id.to_stream(&mut out_stream).unwrap();
         client_command.to_stream(&mut out_stream).unwrap();
 
-        let datagrams = vec![ClientDatagram {
-            payload: out_stream.data,
-        }];
+        let datagrams = vec![
+            out_stream.data,
+        ];
         datagrams
+    }
+
+    fn receive(&self, datagram: Vec<u8>) -> io::Result<()> {
+        let in_stream = InOctetStream::new(datagram);
+
+
+        Ok(())
     }
 }
 
@@ -67,7 +71,7 @@ mod tests {
             let datagrams = client.send();
             for datagram in datagrams {
                 communicator
-                    .send_datagram(datagram.payload.as_slice())
+                    .send_datagram(datagram.as_slice())
                     .unwrap();
             }
         }
