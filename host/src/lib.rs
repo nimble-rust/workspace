@@ -12,6 +12,7 @@ use crate::combinator::Combinator;
 
 pub mod combinator;
 
+#[derive(Default)]
 pub struct Host<T> {
     combinator: Combinator<T>,
     authoritative_steps: Steps<ParticipantSteps<T>>,

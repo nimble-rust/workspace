@@ -8,6 +8,7 @@ use std::io;
 
 use nimble_protocol::{ClientToHostCommands, ConnectCommand, ConnectionId, Nonce, Version};
 
+#[derive(Default)]
 pub struct Client {}
 
 impl Client {
@@ -51,7 +52,8 @@ impl Client {
 
 #[cfg(test)]
 mod tests {
-    use datagram::{DatagramCommunicator, DatagramSender};
+    use datagram::{DatagramCommunicator, DatagramProcessor, DatagramSender};
+    use secure_random::GetRandom;
     use udp_client::UdpClient;
 
     use crate::Client;
@@ -59,14 +61,18 @@ mod tests {
     #[test]
     fn send_to_host() {
         let client = Client::new();
-        let udp_client = UdpClient::new("127.0.0.1:23000").unwrap();
-        let udp_client_box = Box::new(udp_client);
-        let mut udp_connections_client = udp_connections::Client::new(udp_client_box);
-        let mut communicator: &mut dyn DatagramCommunicator = &mut udp_connections_client;
+        let mut udp_client = UdpClient::new("127.0.0.1:23000").unwrap();
+        let mut communicator: &mut dyn DatagramCommunicator = &mut udp_client;
+        let random = GetRandom {};
+        let random_box = Box::new(random);
+        let mut udp_connections_client = udp_connections::Client::new(random_box);
+
+        let mut processor: &mut dyn DatagramProcessor = &mut udp_connections_client;
         for _ in 0..100 {
             let datagrams = client.send();
             for datagram in datagrams {
-                communicator.send_datagram(datagram.as_slice()).unwrap();
+                let processed = processor.send_datagram(datagram.as_slice()).unwrap();
+                communicator.send_datagram(processed.as_slice()).unwrap();
             }
         }
     }

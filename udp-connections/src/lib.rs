@@ -13,7 +13,7 @@ pub struct Nonce(pub u64);
 
 impl Nonce {
     pub fn new(value: u64) -> Self {
-        Self { 0: value }
+        Self(value)
     }
     pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> std::io::Result<()> {
         stream.write_u64(self.0)?;
@@ -31,7 +31,7 @@ pub struct ConnectionId(pub u64);
 
 impl ConnectionId {
     pub fn new(value: u64) -> Self {
-        Self { 0: value }
+        Self(value)
     }
     pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> std::io::Result<()> {
         stream.write_u64(self.0)?;
@@ -49,8 +49,9 @@ pub struct ServerChallenge(pub u64);
 
 impl ServerChallenge {
     pub fn new(value: u64) -> Self {
-        Self { 0: value }
+        Self(value)
     }
+
     pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> std::io::Result<()> {
         stream.write_u64(self.0)?;
         Ok(())
@@ -106,9 +107,6 @@ impl PacketHeader {
         })
     }
 }
-
-#[derive(Debug)]
-pub struct ClientToHostPacketHeader(PacketHeader);
 
 #[derive(Debug)]
 pub struct HostToClientPacketHeader(PacketHeader);
@@ -212,7 +210,7 @@ pub enum HostToClientCommands {
 }
 
 impl HostToClientCommands {
-    pub fn to_octet(&self) -> HostToClientCommand {
+    fn to_octet(&self) -> HostToClientCommand {
         match self {
             HostToClientCommands::ChallengeType(_) => HostToClientCommand::Challenge,
             HostToClientCommands::ConnectType(_) => HostToClientCommand::Connect,
@@ -303,12 +301,8 @@ impl TryFrom<u8> for ClientToHostCommand {
     }
 }
 
-fn convert_to_io_result(byte: u8) -> io::Result<ClientToHostCommand> {
-    ClientToHostCommand::try_from(byte).map_err(|e| Error::new(ErrorKind::InvalidData, e))
-}
-
 impl ClientToHostCommands {
-    pub fn to_octet(&self) -> ClientToHostCommand {
+    fn to_octet(&self) -> ClientToHostCommand {
         match self {
             ClientToHostCommands::ChallengeType(_) => ClientToHostCommand::Challenge,
             ClientToHostCommands::ConnectType(_) => ClientToHostCommand::Connect,
@@ -331,7 +325,7 @@ impl ClientToHostCommands {
 
     pub fn from_stream(stream: &mut dyn ReadOctetStream) -> io::Result<Self> {
         let command_value = stream.read_u8()?;
-        let command = convert_to_io_result(command_value)?;
+        let command = ClientToHostCommand::try_from(command_value)?;
         let x = match command {
             ClientToHostCommand::Challenge => ClientToHostCommands::ChallengeType(
                 ClientToHostChallengeCommand::from_stream(stream)?,
@@ -398,12 +392,10 @@ impl Client {
                 );
                 Ok(())
             }
-            _ => {
-                return Err(Error::new(
-                    ErrorKind::InvalidInput,
-                    "Message not applicable in current client state",
-                ))
-            }
+            _ => Err(Error::new(
+                ErrorKind::InvalidInput,
+                "Message not applicable in current client state",
+            )),
         }
     }
 
