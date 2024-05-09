@@ -1,14 +1,15 @@
-use std::io;
+use std::{fmt, io};
 use std::io::{Error, ErrorKind};
 
 use flood_rs::{InOctetStream, OutOctetStream, ReadOctetStream, WriteOctetStream};
+use log::info;
 
 use datagram::DatagramProcessor;
 use secure_random::SecureRandom;
 
 use crate::ClientPhase::{Challenge, Connected, Connecting};
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Default)]
 pub struct Nonce(pub u64);
 
 impl Nonce {
@@ -26,6 +27,13 @@ impl Nonce {
     }
 }
 
+impl fmt::Display for Nonce {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Nonce({:X})", self.0)
+    }
+}
+
+
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct ConnectionId(pub u64);
 
@@ -41,6 +49,12 @@ impl ConnectionId {
     pub fn from_stream(stream: &mut dyn ReadOctetStream) -> std::io::Result<Self> {
         let x = stream.read_u64()?;
         Ok(Self(x))
+    }
+}
+
+impl fmt::Display for ConnectionId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "ConnectionId({:X})", self.0)
     }
 }
 
@@ -62,6 +76,19 @@ impl ServerChallenge {
         Ok(Self(x))
     }
 }
+
+
+impl fmt::Display for ServerChallenge {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "ServerChallenge({:X})", self.0)
+    }
+}
+
+
+fn extremely_unsecure_cypher(public_key: u64, secret_key: u64) -> u64 {
+    public_key ^ secret_key
+}
+
 
 #[derive(Debug)]
 pub struct ClientToHostPacket {
@@ -196,7 +223,7 @@ impl TryFrom<u8> for HostToClientCommand {
             0x13 => Ok(HostToClientCommand::Packet),
             _ => Err(io::Error::new(
                 ErrorKind::InvalidData,
-                format!("Unknown command {}", value),
+                format!("Unknown HostToClient UdpConnections Command {}", value),
             )),
         }
     }
@@ -238,10 +265,13 @@ impl HostToClientCommands {
             HostToClientCommand::Challenge => {
                 HostToClientCommands::ChallengeType(InChallengeCommand::from_stream(stream)?)
             }
+            HostToClientCommand::Connect => {
+                HostToClientCommands::ConnectType(ConnectResponse::from_stream(stream)?)
+            }
             _ => {
                 return Err(io::Error::new(
                     ErrorKind::InvalidData,
-                    format!("unknown command {}", command_value),
+                    format!("UdpConnections: unknown HostToClientCommands command {}", command_value),
                 ));
             }
         };
@@ -362,11 +392,25 @@ impl ConnectResponse {
     }
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 enum ClientPhase {
     Challenge(Nonce),
     Connecting(Nonce, ServerChallenge),
     Connected(ConnectionId),
+}
+
+
+impl fmt::Display for ClientPhase {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ClientPhase::Challenge(nonce) =>
+                write!(f, "clientPhase: Challenge Phase with {}", nonce),
+            ClientPhase::Connecting(nonce, challenge) =>
+                write!(f, "clientPhase: Connecting Phase with {} and {}", nonce, challenge),
+            ClientPhase::Connected(connection_id) =>
+                write!(f, "clientPhase: Connected with {}", connection_id),
+        }
+    }
 }
 
 pub struct Client {
@@ -387,14 +431,14 @@ impl Client {
                     return Err(Error::new(ErrorKind::InvalidData, "Wrong nonce"));
                 }
                 self.phase = Connecting(
-                    Nonce(self.random.get_random_u64()),
+                    nonce,
                     cmd.incoming_server_challenge,
                 );
                 Ok(())
             }
             _ => Err(Error::new(
                 ErrorKind::InvalidInput,
-                "Message not applicable in current client state",
+                format!("on_challenge: Message not applicable in current client state {}", self.phase),
             )),
         }
     }
@@ -408,6 +452,8 @@ impl Client {
                         "Wrong nonce when connecting",
                     ));
                 }
+                println!("connected {}", cmd.connection_id);
+                info!("on_connect connected {}", cmd.connection_id);
                 self.phase = Connected(cmd.connection_id);
                 Ok(())
             }

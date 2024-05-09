@@ -8,3 +8,4 @@ flood-rs = "0.0.4"
 datagram = { path = "../datagram" }
 udp-client = { path = "../udp-client" }
 secure-random = { path = "../secure-random" }
+log = "0.4.21"

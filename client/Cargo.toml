@@ -13,9 +13,12 @@ nimble-steps = { path = "../steps" }
 nimble-protocol = { path = "../protocol" }
 flood-rs = "0.0.4"
 secure-random = { path = "../secure-random" }
+log = "0.4.21"
 
 
 [dev-dependencies]
 udp-client = { path = "../udp-client" }
 udp-connections = { path = "../udp-connections" }
 datagram = { path = "../datagram" }
+env_logger = "0.11.3"
+test-log = "0.2.16"

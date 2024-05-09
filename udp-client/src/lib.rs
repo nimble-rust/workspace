@@ -10,6 +10,7 @@ pub struct UdpClient {
 impl UdpClient {
     pub fn new(host: &str) -> Result<Self> {
         let socket = UdpSocket::bind("0.0.0.0:0")?;
+        socket.set_nonblocking(true)?;
         socket.connect(host)?;
         Ok(UdpClient { socket })
     }

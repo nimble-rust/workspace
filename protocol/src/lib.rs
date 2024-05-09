@@ -3,7 +3,7 @@ use std::io::{ErrorKind, Result};
 
 use flood_rs::{ReadOctetStream, WriteOctetStream};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Default)]
 pub struct Nonce(pub u64);
 
 impl Nonce {
@@ -73,6 +73,7 @@ impl ConnectCommand {
     }
 }
 
+#[derive(PartialEq, Copy, Clone, Debug)]
 pub struct ConnectionId {
     pub value: u8,
 }
@@ -81,6 +82,11 @@ impl ConnectionId {
     pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> Result<()> {
         stream.write_u8(self.value)
     }
+    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> Result<Self> {
+        Ok(Self {
+            value: stream.read_u8()?
+        })
+    }
 }
 
 #[repr(u8)]
@@ -88,6 +94,66 @@ enum HostToClientCommand {
     Challenge = 0x11,
     Connect = 0x12,
     Packet = 0x13,
+}
+
+
+#[derive(Debug, PartialEq)]
+pub struct HostToClientConnectCommand {
+    pub nonce: Nonce,
+    pub connection_id: ConnectionId,
+}
+
+impl HostToClientConnectCommand {
+    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> Result<()> {
+        self.nonce.to_stream(stream)?;
+        self.connection_id.to_stream(stream)?;
+        Ok(())
+    }
+
+    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> Result<Self> {
+        Ok(Self {
+            nonce: Nonce::from_stream(stream)?,
+            connection_id: ConnectionId::from_stream(stream)?,
+        })
+    }
+}
+
+
+#[derive(Debug)]
+pub enum HostToClientCommands {
+    ConnectType(HostToClientConnectCommand),
+}
+
+impl HostToClientCommands {
+    pub fn to_octet(&self) -> u8 {
+        match self {
+            HostToClientCommands::ConnectType(_) => ClientToHostCommand::Connect as u8,
+        }
+    }
+
+    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> Result<()> {
+        stream.write_u8(self.to_octet())?;
+        match self {
+            HostToClientCommands::ConnectType(connect_command) => connect_command.to_stream(stream),
+        }
+    }
+
+    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> Result<Self> {
+        let command_value = stream.read_u8()?;
+        let command = ClientToHostCommand::try_from(command_value)?;
+        let x = match command {
+            ClientToHostCommand::Connect => {
+                HostToClientCommands::ConnectType(HostToClientConnectCommand::from_stream(stream)?)
+            }
+            _ => {
+                return Err(io::Error::new(
+                    ErrorKind::InvalidData,
+                    format!("unknown command {}", command_value),
+                ));
+            }
+        };
+        Ok(x)
+    }
 }
 
 #[repr(u8)]
