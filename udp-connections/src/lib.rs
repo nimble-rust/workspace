@@ -82,10 +82,6 @@ impl fmt::Display for ServerChallenge {
     }
 }
 
-fn extremely_unsecure_cypher(public_key: u64, secret_key: u64) -> u64 {
-    public_key ^ secret_key
-}
-
 #[derive(Debug)]
 pub struct ClientToHostPacket {
     pub header: PacketHeader,
@@ -417,14 +413,13 @@ impl fmt::Display for ClientPhase {
 }
 
 pub struct Client {
-    random: Box<dyn SecureRandom>,
     phase: ClientPhase,
 }
 
 impl Client {
     pub fn new(mut random: Box<dyn SecureRandom>) -> Self {
         let phase = Challenge(Nonce(random.get_random_u64()));
-        Self { random, phase }
+        Self { phase }
     }
 
     pub fn on_challenge(&mut self, cmd: InChallengeCommand) -> io::Result<()> {

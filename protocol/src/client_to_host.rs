@@ -216,7 +216,7 @@ impl JoinPlayerRequests {
     pub fn from_stream(stream: &mut dyn ReadOctetStream) -> std::io::Result<Self> {
         let count = stream.read_u8()?;
         let mut vec = Vec::<JoinPlayerRequest>::with_capacity(count as usize);
-        for mut v in vec.iter_mut() {
+        for v in vec.iter_mut() {
             *v = JoinPlayerRequest::from_stream(stream)?;
         }
 
