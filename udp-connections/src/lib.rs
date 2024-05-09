@@ -196,11 +196,13 @@ impl TryFrom<u8> for HostToClientCommand {
             0x11 => Ok(HostToClientCommand::Challenge),
             0x12 => Ok(HostToClientCommand::Connect),
             0x13 => Ok(HostToClientCommand::Packet),
-            _ => Err(io::Error::new(ErrorKind::InvalidData, format!("Unknown command {}", value))),
+            _ => Err(io::Error::new(
+                ErrorKind::InvalidData,
+                format!("Unknown command {}", value),
+            )),
         }
     }
 }
-
 
 #[derive(Debug)]
 pub enum HostToClientCommands {
@@ -293,11 +295,13 @@ impl TryFrom<u8> for ClientToHostCommand {
             0x01 => Ok(ClientToHostCommand::Challenge),
             0x02 => Ok(ClientToHostCommand::Connect),
             0x03 => Ok(ClientToHostCommand::Packet),
-            _ => Err(io::Error::new(ErrorKind::InvalidData, format!("Unknown command {}", value))),
+            _ => Err(io::Error::new(
+                ErrorKind::InvalidData,
+                format!("Unknown command {}", value),
+            )),
         }
     }
 }
-
 
 fn convert_to_io_result(byte: u8) -> io::Result<ClientToHostCommand> {
     ClientToHostCommand::try_from(byte).map_err(|e| Error::new(ErrorKind::InvalidData, e))
@@ -376,7 +380,6 @@ pub struct Client {
     phase: ClientPhase,
 }
 
-
 impl Client {
     pub fn new(mut random: Box<dyn SecureRandom>) -> Self {
         let phase = Challenge(Nonce(random.get_random_u64()));
@@ -389,10 +392,18 @@ impl Client {
                 if cmd.nonce != nonce {
                     return Err(Error::new(ErrorKind::InvalidData, "Wrong nonce"));
                 }
-                self.phase = Connecting(Nonce(self.random.get_random_u64()), cmd.incoming_server_challenge);
+                self.phase = Connecting(
+                    Nonce(self.random.get_random_u64()),
+                    cmd.incoming_server_challenge,
+                );
                 Ok(())
             }
-            _ => return Err(Error::new(ErrorKind::InvalidInput, "Message not applicable in current client state"))
+            _ => {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    "Message not applicable in current client state",
+                ))
+            }
         }
     }
 
@@ -400,63 +411,82 @@ impl Client {
         match self.phase {
             Connecting(nonce, _) => {
                 if cmd.nonce != nonce {
-                    return Err(Error::new(ErrorKind::InvalidData, "Wrong nonce when connecting"));
+                    return Err(Error::new(
+                        ErrorKind::InvalidData,
+                        "Wrong nonce when connecting",
+                    ));
                 }
                 self.phase = Connected(cmd.connection_id);
                 Ok(())
             }
-            _ => Err(Error::new(ErrorKind::InvalidInput, "can not receive on_connect in current client state"))
+            _ => Err(Error::new(
+                ErrorKind::InvalidInput,
+                "can not receive on_connect in current client state",
+            )),
         }
     }
 
-    pub fn on_packet(&mut self, cmd: HostToClientPacketHeader, in_stream: &mut InOctetStream) -> io::Result<Vec<u8>> {
+    pub fn on_packet(
+        &mut self,
+        cmd: HostToClientPacketHeader,
+        in_stream: &mut InOctetStream,
+    ) -> io::Result<Vec<u8>> {
         match self.phase {
             Connected(expected_connection_id) => {
                 if cmd.0.connection_id != expected_connection_id {
-                    return Err(Error::new(ErrorKind::InvalidData, "Wrong connection_id for received packet"));
+                    return Err(Error::new(
+                        ErrorKind::InvalidData,
+                        "Wrong connection_id for received packet",
+                    ));
                 }
                 let mut target_buffer = Vec::with_capacity(cmd.0.size as usize);
                 in_stream.read(&mut target_buffer)?;
 
                 Ok(target_buffer)
             }
-            _ => Err(Error::new(ErrorKind::InvalidInput, "can not receive on_connect in current client state"))
+            _ => Err(Error::new(
+                ErrorKind::InvalidInput,
+                "can not receive on_connect in current client state",
+            )),
         }
     }
 
     pub fn send_challenge(&mut self) -> io::Result<ClientToHostChallengeCommand> {
         match self.phase {
-            Challenge(nonce) => {
-                Ok(ClientToHostChallengeCommand {
-                    nonce,
-                })
-            }
-            _ => Err(Error::new(ErrorKind::InvalidInput, "can not send_challenge in current client state"))
+            Challenge(nonce) => Ok(ClientToHostChallengeCommand { nonce }),
+            _ => Err(Error::new(
+                ErrorKind::InvalidInput,
+                "can not send_challenge in current client state",
+            )),
         }
     }
 
     pub fn send_connect_request(&mut self) -> io::Result<ConnectCommand> {
         match self.phase {
-            Connecting(nonce, server_challenge) => {
-                Ok(ConnectCommand {
-                    nonce,
-                    server_challenge,
-                })
-            }
-            _ => Err(Error::new(ErrorKind::InvalidInput, "can not send_connect_request in current client state"))
+            Connecting(nonce, server_challenge) => Ok(ConnectCommand {
+                nonce,
+                server_challenge,
+            }),
+            _ => Err(Error::new(
+                ErrorKind::InvalidInput,
+                "can not send_connect_request in current client state",
+            )),
         }
     }
 
     pub fn send_packet(&mut self, data: &[u8]) -> io::Result<ClientToHostPacket> {
         match self.phase {
-            Connected(connection_id) => {
-                Ok(ClientToHostPacket {
-                    header: PacketHeader
-                    { connection_id, size: data.len() as u16 },
-                    payload: data.to_vec(),
-                })
-            }
-            _ => Err(Error::new(ErrorKind::InvalidInput, "can not send_connect_request in current client state"))
+            Connected(connection_id) => Ok(ClientToHostPacket {
+                header: PacketHeader {
+                    connection_id,
+                    size: data.len() as u16,
+                },
+                payload: data.to_vec(),
+            }),
+            _ => Err(Error::new(
+                ErrorKind::InvalidInput,
+                "can not send_connect_request in current client state",
+            )),
         }
     }
 
@@ -537,12 +567,15 @@ mod tests {
 
         let example = vec![0x18, 0x24, 0x32];
 
-        let datagram_to_send = client.send_datagram(example.as_slice()).expect("TODO: panic message");
+        let datagram_to_send = client
+            .send_datagram(example.as_slice())
+            .expect("TODO: panic message");
 
         let expected = vec![
             1, // Challenge command 0x01
             0, 0, 0, 0, 0, 0, 0, 3, // Nonce in network order.
-            0x18, 0x24, 0x32];
+            0x18, 0x24, 0x32,
+        ];
         assert_eq!(datagram_to_send, expected, "upd-connections-was wrong")
     }
 }

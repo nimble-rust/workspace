@@ -16,7 +16,6 @@ impl SecureRandom for GetRandom {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use crate::{GetRandom, SecureRandom};

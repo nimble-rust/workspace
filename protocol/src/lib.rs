@@ -105,7 +105,10 @@ impl TryFrom<u8> for ClientToHostCommand {
             0x11 => Ok(ClientToHostCommand::Challenge),
             0x12 => Ok(ClientToHostCommand::Connect),
             0x13 => Ok(ClientToHostCommand::Packet),
-            _ => Err(io::Error::new(ErrorKind::InvalidData, format!("Unknown command {}", value))),
+            _ => Err(io::Error::new(
+                ErrorKind::InvalidData,
+                format!("Unknown command {}", value),
+            )),
         }
     }
 }
@@ -133,7 +136,9 @@ impl ClientToHostCommands {
         let command_value = stream.read_u8()?;
         let command = ClientToHostCommand::try_from(command_value)?;
         let x = match command {
-            ClientToHostCommand::Connect => ClientToHostCommands::ConnectType(ConnectCommand::from_stream(stream)?),
+            ClientToHostCommand::Connect => {
+                ClientToHostCommands::ConnectType(ConnectCommand::from_stream(stream)?)
+            }
             _ => {
                 return Err(io::Error::new(
                     ErrorKind::InvalidData,

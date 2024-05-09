@@ -3,11 +3,10 @@
  *  Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------------------------------------------------------*/
 
-use std::io;
 use flood_rs::{InOctetStream, OutOctetStream};
+use std::io;
 
 use nimble_protocol::{ClientToHostCommands, ConnectCommand, ConnectionId, Nonce, Version};
-
 
 pub struct Client {}
 
@@ -39,15 +38,12 @@ impl Client {
         zero_connection_id.to_stream(&mut out_stream).unwrap();
         client_command.to_stream(&mut out_stream).unwrap();
 
-        let datagrams = vec![
-            out_stream.data,
-        ];
+        let datagrams = vec![out_stream.data];
         datagrams
     }
 
     fn receive(&self, datagram: Vec<u8>) -> io::Result<()> {
         let in_stream = InOctetStream::new(datagram);
-
 
         Ok(())
     }
@@ -70,9 +66,7 @@ mod tests {
         for _ in 0..100 {
             let datagrams = client.send();
             for datagram in datagrams {
-                communicator
-                    .send_datagram(datagram.as_slice())
-                    .unwrap();
+                communicator.send_datagram(datagram.as_slice()).unwrap();
             }
         }
     }
