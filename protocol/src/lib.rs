@@ -1,7 +1,9 @@
-use std::io;
-use std::io::{ErrorKind, Result};
+use std::io::{Error, ErrorKind, Result};
 
 use flood_rs::{ReadOctetStream, WriteOctetStream};
+
+pub mod client_to_host;
+pub mod host_to_client;
 
 #[derive(Debug, Copy, Clone, PartialEq, Default)]
 pub struct Nonce(pub u64);
@@ -46,33 +48,6 @@ impl Version {
     }
 }
 
-#[derive(Debug, PartialEq)]
-pub struct ConnectCommand {
-    pub nimble_version: Version,
-    pub use_debug_stream: bool,
-    pub application_version: Version,
-    pub nonce: Nonce,
-}
-
-impl ConnectCommand {
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> Result<()> {
-        self.nimble_version.to_stream(stream)?;
-        stream.write_u8(if self.use_debug_stream { 0x01 } else { 0x00 })?;
-        self.application_version.to_stream(stream)?;
-        self.nonce.to_stream(stream)?;
-        Ok(())
-    }
-
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> Result<Self> {
-        Ok(Self {
-            nimble_version: Version::from_stream(stream)?,
-            use_debug_stream: stream.read_u8()? != 0,
-            application_version: Version::from_stream(stream)?,
-            nonce: Nonce::from_stream(stream)?,
-        })
-    }
-}
-
 #[derive(PartialEq, Copy, Clone, Debug)]
 pub struct ConnectionId {
     pub value: u8,
@@ -89,128 +64,52 @@ impl ConnectionId {
     }
 }
 
-#[repr(u8)]
-enum HostToClientCommand {
-    Challenge = 0x11,
-    Connect = 0x12,
-    Packet = 0x13,
+#[derive(PartialEq, Copy, Clone, Debug)]
+pub struct ParticipantId {
+    pub value: u8,
 }
 
-#[derive(Debug, PartialEq)]
-pub struct HostToClientConnectCommand {
-    pub nonce: Nonce,
-    pub connection_id: ConnectionId,
-}
-
-impl HostToClientConnectCommand {
+impl ParticipantId {
     pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> Result<()> {
-        self.nonce.to_stream(stream)?;
-        self.connection_id.to_stream(stream)?;
-        Ok(())
+        stream.write_u8(self.value)
     }
-
     pub fn from_stream(stream: &mut dyn ReadOctetStream) -> Result<Self> {
         Ok(Self {
-            nonce: Nonce::from_stream(stream)?,
-            connection_id: ConnectionId::from_stream(stream)?,
+            value: stream.read_u8()?,
         })
     }
 }
 
-#[derive(Debug)]
-pub enum HostToClientCommands {
-    ConnectType(HostToClientConnectCommand),
+pub fn write_marker(stream: &mut dyn WriteOctetStream, marker: u8) -> Result<()> {
+    stream.write_u8(marker)
 }
 
-impl HostToClientCommands {
-    pub fn to_octet(&self) -> u8 {
-        match self {
-            HostToClientCommands::ConnectType(_) => ClientToHostCommand::Connect as u8,
-        }
+pub fn read_marker(stream: &mut dyn ReadOctetStream, expected_marker: u8) -> Result<()> {
+    let found_marker = stream.read_u8()?;
+
+    if found_marker == expected_marker {
+        return Ok(());
     }
 
+    Err(Error::new(
+        ErrorKind::InvalidData,
+        "Encountered wrong marker",
+    ))
+}
+
+#[derive(PartialEq, Copy, Clone, Debug)]
+pub struct SessionConnectionSecret {
+    pub value: u64,
+}
+
+impl SessionConnectionSecret {
     pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> Result<()> {
-        stream.write_u8(self.to_octet())?;
-        match self {
-            HostToClientCommands::ConnectType(connect_command) => connect_command.to_stream(stream),
-        }
+        stream.write_u64(self.value)
     }
-
     pub fn from_stream(stream: &mut dyn ReadOctetStream) -> Result<Self> {
-        let command_value = stream.read_u8()?;
-        let command = ClientToHostCommand::try_from(command_value)?;
-        let x = match command {
-            ClientToHostCommand::Connect => {
-                HostToClientCommands::ConnectType(HostToClientConnectCommand::from_stream(stream)?)
-            }
-            _ => {
-                return Err(io::Error::new(
-                    ErrorKind::InvalidData,
-                    format!("unknown command {}", command_value),
-                ));
-            }
-        };
-        Ok(x)
-    }
-}
-
-#[repr(u8)]
-enum ClientToHostCommand {
-    Challenge = 0x11,
-    Connect = 0x12,
-    Packet = 0x13,
-}
-
-impl TryFrom<u8> for ClientToHostCommand {
-    type Error = io::Error;
-
-    fn try_from(value: u8) -> Result<Self> {
-        match value {
-            0x11 => Ok(ClientToHostCommand::Challenge),
-            0x12 => Ok(ClientToHostCommand::Connect),
-            0x13 => Ok(ClientToHostCommand::Packet),
-            _ => Err(io::Error::new(
-                ErrorKind::InvalidData,
-                format!("Unknown command {}", value),
-            )),
-        }
-    }
-}
-
-#[derive(Debug)]
-pub enum ClientToHostCommands {
-    ConnectType(ConnectCommand),
-}
-
-impl ClientToHostCommands {
-    pub fn to_octet(&self) -> u8 {
-        match self {
-            ClientToHostCommands::ConnectType(_) => ClientToHostCommand::Connect as u8,
-        }
-    }
-
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> Result<()> {
-        stream.write_u8(self.to_octet())?;
-        match self {
-            ClientToHostCommands::ConnectType(connect_command) => connect_command.to_stream(stream),
-        }
-    }
-
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> Result<Self> {
-        let command_value = stream.read_u8()?;
-        let command = ClientToHostCommand::try_from(command_value)?;
-        let x = match command {
-            ClientToHostCommand::Connect => {
-                ClientToHostCommands::ConnectType(ConnectCommand::from_stream(stream)?)
-            }
-            _ => {
-                return Err(io::Error::new(
-                    ErrorKind::InvalidData,
-                    format!("unknown command {}", command_value),
-                ));
-            }
-        };
-        Ok(x)
+        Ok(Self {
+            value: stream.read_u64()?,
+        })
     }
 }
 

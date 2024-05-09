@@ -9,11 +9,11 @@ use std::io::{Error, ErrorKind};
 use flood_rs::{InOctetStream, OutOctetStream};
 use log::info;
 
-use nimble_protocol::{
-    ClientToHostCommands, ConnectCommand, ConnectionId, HostToClientCommands,
-    HostToClientConnectCommand, Nonce, Version,
-};
+use nimble_protocol::client_to_host::{ClientToHostCommands, ConnectRequest};
+use nimble_protocol::host_to_client::{ConnectionAccepted, HostToClientCommands};
+use nimble_protocol::{ConnectionId, Nonce, Version};
 use secure_random::SecureRandom;
+use udp_connections::ConnectResponse;
 
 use crate::ClientPhase::Challenge;
 
@@ -36,11 +36,11 @@ impl Client {
     }
 
     fn send(&self) -> Vec<Vec<u8>> {
-        let connect_cmd = ConnectCommand {
+        let connect_cmd = ConnectRequest {
             nimble_version: Version {
-                major: 1,
-                minor: 2,
-                patch: 3,
+                major: 0,
+                minor: 0,
+                patch: 4,
             },
             use_debug_stream: false,
             application_version: Version {
@@ -62,16 +62,16 @@ impl Client {
         datagrams
     }
 
-    fn on_connect(&mut self, cmd: HostToClientConnectCommand) -> io::Result<()> {
+    fn on_connect(&mut self, cmd: ConnectionAccepted) -> io::Result<()> {
         match self.phase {
             ClientPhase::Connecting(nonce) => {
-                if cmd.nonce != nonce {
+                if cmd.response_to_nonce != nonce {
                     return Err(Error::new(
                         ErrorKind::InvalidData,
                         "Wrong nonce when connecting",
                     ));
                 }
-                self.phase = ClientPhase::Connected(cmd.connection_id);
+                self.phase = ClientPhase::Connected(cmd.host_assigned_connection_id);
                 info!("connected!");
                 Ok(())
             }
