@@ -9,7 +9,10 @@ use std::io::{Error, ErrorKind};
 use flood_rs::{InOctetStream, OutOctetStream};
 use log::info;
 
-use nimble_protocol::{ClientToHostCommands, ConnectCommand, ConnectionId, HostToClientCommands, HostToClientConnectCommand, Nonce, Version};
+use nimble_protocol::{
+    ClientToHostCommands, ConnectCommand, ConnectionId, HostToClientCommands,
+    HostToClientConnectCommand, Nonce, Version,
+};
 use secure_random::SecureRandom;
 
 use crate::ClientPhase::Challenge;
@@ -21,12 +24,10 @@ enum ClientPhase {
     Connected(ConnectionId),
 }
 
-
 pub struct Client {
     phase: ClientPhase,
     random: Box<dyn SecureRandom>,
 }
-
 
 impl Client {
     pub fn new(mut random: Box<dyn SecureRandom>) -> Client {
@@ -89,7 +90,7 @@ impl Client {
                 self.on_connect(connect_command)?;
                 return Ok(());
             }
-            _ => todo!()
+            _ => todo!(),
         }
         Ok(())
     }
@@ -125,7 +126,9 @@ mod tests {
         for _ in 0..10 {
             let datagrams_to_send = client.send();
             for datagram_to_send in datagrams_to_send {
-                let processed = processor.send_datagram(datagram_to_send.as_slice()).unwrap();
+                let processed = processor
+                    .send_datagram(datagram_to_send.as_slice())
+                    .unwrap();
                 communicator.send_datagram(processed.as_slice()).unwrap();
             }
             if let Ok(size) = communicator.receive_datagram(&mut buf) {
@@ -139,7 +142,7 @@ mod tests {
                             //client.receive(datagram_fo_client)?,
                         }
                     }
-                    Err(some_error) => println!("error {}", some_error)
+                    Err(some_error) => println!("error {}", some_error),
                 }
                 //client.receive(buf.as_slice()[0..size].to_vec()).unwrap();
             }

@@ -84,7 +84,7 @@ impl ConnectionId {
     }
     pub fn from_stream(stream: &mut dyn ReadOctetStream) -> Result<Self> {
         Ok(Self {
-            value: stream.read_u8()?
+            value: stream.read_u8()?,
         })
     }
 }
@@ -95,7 +95,6 @@ enum HostToClientCommand {
     Connect = 0x12,
     Packet = 0x13,
 }
-
 
 #[derive(Debug, PartialEq)]
 pub struct HostToClientConnectCommand {
@@ -117,7 +116,6 @@ impl HostToClientConnectCommand {
         })
     }
 }
-
 
 #[derive(Debug)]
 pub enum HostToClientCommands {

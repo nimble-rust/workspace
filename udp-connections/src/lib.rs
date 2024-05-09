@@ -1,5 +1,5 @@
-use std::{fmt, io};
 use std::io::{Error, ErrorKind};
+use std::{fmt, io};
 
 use flood_rs::{InOctetStream, OutOctetStream, ReadOctetStream, WriteOctetStream};
 use log::info;
@@ -32,7 +32,6 @@ impl fmt::Display for Nonce {
         write!(f, "Nonce({:X})", self.0)
     }
 }
-
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct ConnectionId(pub u64);
@@ -77,18 +76,15 @@ impl ServerChallenge {
     }
 }
 
-
 impl fmt::Display for ServerChallenge {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "ServerChallenge({:X})", self.0)
     }
 }
 
-
 fn extremely_unsecure_cypher(public_key: u64, secret_key: u64) -> u64 {
     public_key ^ secret_key
 }
-
 
 #[derive(Debug)]
 pub struct ClientToHostPacket {
@@ -271,7 +267,10 @@ impl HostToClientCommands {
             _ => {
                 return Err(io::Error::new(
                     ErrorKind::InvalidData,
-                    format!("UdpConnections: unknown HostToClientCommands command {}", command_value),
+                    format!(
+                        "UdpConnections: unknown HostToClientCommands command {}",
+                        command_value
+                    ),
                 ));
             }
         };
@@ -399,16 +398,20 @@ enum ClientPhase {
     Connected(ConnectionId),
 }
 
-
 impl fmt::Display for ClientPhase {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ClientPhase::Challenge(nonce) =>
-                write!(f, "clientPhase: Challenge Phase with {}", nonce),
-            ClientPhase::Connecting(nonce, challenge) =>
-                write!(f, "clientPhase: Connecting Phase with {} and {}", nonce, challenge),
-            ClientPhase::Connected(connection_id) =>
-                write!(f, "clientPhase: Connected with {}", connection_id),
+            ClientPhase::Challenge(nonce) => {
+                write!(f, "clientPhase: Challenge Phase with {}", nonce)
+            }
+            ClientPhase::Connecting(nonce, challenge) => write!(
+                f,
+                "clientPhase: Connecting Phase with {} and {}",
+                nonce, challenge
+            ),
+            ClientPhase::Connected(connection_id) => {
+                write!(f, "clientPhase: Connected with {}", connection_id)
+            }
         }
     }
 }
@@ -430,15 +433,15 @@ impl Client {
                 if cmd.nonce != nonce {
                     return Err(Error::new(ErrorKind::InvalidData, "Wrong nonce"));
                 }
-                self.phase = Connecting(
-                    nonce,
-                    cmd.incoming_server_challenge,
-                );
+                self.phase = Connecting(nonce, cmd.incoming_server_challenge);
                 Ok(())
             }
             _ => Err(Error::new(
                 ErrorKind::InvalidInput,
-                format!("on_challenge: Message not applicable in current client state {}", self.phase),
+                format!(
+                    "on_challenge: Message not applicable in current client state {}",
+                    self.phase
+                ),
             )),
         }
     }
