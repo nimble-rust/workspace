@@ -1,3 +1,7 @@
+/*----------------------------------------------------------------------------------------------------------
+ *  Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
+ *  Licensed under the MIT License. See LICENSE in the project root for license information.
+ *--------------------------------------------------------------------------------------------------------*/
 use std::io::{Error, ErrorKind, Result};
 
 use flood_rs::{ReadOctetStream, WriteOctetStream};
@@ -23,7 +27,7 @@ impl Nonce {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Version {
     pub major: u16,
     pub minor: u16,

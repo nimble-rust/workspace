@@ -1,12 +1,11 @@
 /*----------------------------------------------------------------------------------------------------------
- *  Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/client
+ *  Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  *  Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------------------------------------------------------*/
-
 use std::io;
 use std::io::{Error, ErrorKind};
 
-use flood_rs::{InOctetStream, OutOctetStream};
+use flood_rs::{InOctetStream, OutOctetStream, WriteOctetStream};
 use log::info;
 
 use nimble_protocol::client_to_host::{ClientToHostCommands, ConnectRequest};
@@ -14,9 +13,8 @@ use nimble_protocol::host_to_client::{ConnectionAccepted, HostToClientCommands};
 use nimble_protocol::{ConnectionId, Nonce, Version};
 use secure_random::SecureRandom;
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 enum ClientPhase {
-    Challenge(Nonce),
     Connecting(Nonce),
     Connected(ConnectionId),
 }
@@ -27,35 +25,51 @@ pub struct Client {
 
 impl Client {
     pub fn new(mut random: Box<dyn SecureRandom>) -> Client {
-        let phase = ClientPhase::Challenge(Nonce(random.get_random_u64()));
+        let phase = ClientPhase::Connecting(Nonce(random.get_random_u64()));
         Client { phase }
     }
 
-    fn send(&self) -> Vec<Vec<u8>> {
-        let connect_cmd = ConnectRequest {
-            nimble_version: Version {
-                major: 0,
-                minor: 0,
-                patch: 4,
-            },
-            use_debug_stream: false,
-            application_version: Version {
-                major: 1,
-                minor: 2,
-                patch: 3,
-            },
-            nonce: Nonce::new(0),
-        };
+    fn send_to_command(&self) -> ClientToHostCommands {
+        match self.phase {
+            ClientPhase::Connecting(nonce) => {
+                let connect_cmd = ConnectRequest {
+                    nimble_version: Version {
+                        major: 0,
+                        minor: 0,
+                        patch: 4,
+                    },
+                    use_debug_stream: false,
+                    application_version: Version {
+                        major: 1,
+                        minor: 0,
+                        patch: 0,
+                    },
+                    nonce,
+                };
 
-        let client_command = ClientToHostCommands::ConnectType(connect_cmd);
+                ClientToHostCommands::ConnectType(connect_cmd)
+            }
+            ClientPhase::Connected(connection_id) => {
+                println!("connected. send steps {:?}", connection_id);
+                ClientToHostCommands::Steps
+            }
+        }
+    }
 
+    fn send(&self) -> io::Result<Vec<Vec<u8>>> {
         let mut out_stream = OutOctetStream::new();
-        let zero_connection_id = ConnectionId { value: 0 };
-        zero_connection_id.to_stream(&mut out_stream).unwrap();
+        let client_command = self.send_to_command();
+        match client_command {
+            ClientToHostCommands::ConnectType(cmd) => {
+                let zero_connection_id = ConnectionId { value: 0 }; // oob
+                zero_connection_id.to_stream(&mut out_stream).unwrap(); // OOB
+            }
+            _ => {}
+        }
         client_command.to_stream(&mut out_stream).unwrap();
 
         let datagrams = vec![out_stream.data];
-        datagrams
+        Ok(datagrams)
     }
 
     fn on_connect(&mut self, cmd: ConnectionAccepted) -> io::Result<()> {
@@ -73,7 +87,10 @@ impl Client {
             }
             _ => Err(Error::new(
                 ErrorKind::InvalidInput,
-                "can not receive on_connect in current client state",
+                format!(
+                    "can not receive on_connect in current client state {:?}",
+                    self.phase
+                ),
             )),
         }
     }
@@ -109,7 +126,7 @@ mod tests {
     fn send_to_host() {
         let random = GetRandom {};
         let random_box = Box::new(random);
-        let client = Client::new(random_box);
+        let mut client = Client::new(random_box);
         let mut udp_client = UdpClient::new("127.0.0.1:23000").unwrap();
         let communicator: &mut dyn DatagramCommunicator = &mut udp_client;
         let random2 = GetRandom {};
@@ -119,7 +136,7 @@ mod tests {
         let processor: &mut dyn DatagramProcessor = &mut udp_connections_client;
         let mut buf = [1u8; 1200];
         for _ in 0..10 {
-            let datagrams_to_send = client.send();
+            let datagrams_to_send = client.send().unwrap();
             for datagram_to_send in datagrams_to_send {
                 let processed = processor
                     .send_datagram(datagram_to_send.as_slice())
@@ -134,12 +151,11 @@ mod tests {
                     Ok(datagram_for_client) => {
                         if datagram_for_client.len() > 0 {
                             println!("received datagram to client: {:?}", datagram_for_client);
-                            //client.receive(datagram_fo_client)?,
+                            client.receive(datagram_for_client).unwrap();
                         }
                     }
                     Err(some_error) => println!("error {}", some_error),
                 }
-                //client.receive(buf.as_slice()[0..size].to_vec()).unwrap();
             }
             thread::sleep(Duration::from_millis(16));
         }

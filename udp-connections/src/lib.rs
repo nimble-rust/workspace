@@ -1,3 +1,7 @@
+/*----------------------------------------------------------------------------------------------------------
+ *  Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
+ *  Licensed under the MIT License. See LICENSE in the project root for license information.
+ *--------------------------------------------------------------------------------------------------------*/
 use std::io::{Error, ErrorKind};
 use std::{fmt, io};
 
@@ -130,7 +134,14 @@ impl PacketHeader {
 #[derive(Debug)]
 pub struct HostToClientPacketHeader(PacketHeader);
 
-#[derive(Debug, PartialEq)]
+impl HostToClientPacketHeader {
+    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> std::io::Result<Self> {
+        println!("packet from host");
+        Ok(Self(PacketHeader::from_stream(stream)?))
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct ConnectCommand {
     pub nonce: Nonce,
     pub server_challenge: ServerChallenge,
@@ -260,14 +271,8 @@ impl HostToClientCommands {
             HostToClientCommand::Connect => {
                 HostToClientCommands::ConnectType(ConnectResponse::from_stream(stream)?)
             }
-            _ => {
-                return Err(io::Error::new(
-                    ErrorKind::InvalidData,
-                    format!(
-                        "UdpConnections: unknown HostToClientCommands command {}",
-                        command_value
-                    ),
-                ));
+            HostToClientCommand::Packet => {
+                HostToClientCommands::PacketType(HostToClientPacketHeader::from_stream(stream)?)
             }
         };
         Ok(x)
@@ -457,7 +462,7 @@ impl Client {
             }
             _ => Err(Error::new(
                 ErrorKind::InvalidInput,
-                "can not receive on_connect in current client state",
+                "udp_connections: can not receive on_connect in current client state",
             )),
         }
     }
@@ -477,7 +482,7 @@ impl Client {
                 }
                 let mut target_buffer = Vec::with_capacity(cmd.0.size as usize);
                 in_stream.read(&mut target_buffer)?;
-
+                println!("target buffer {}  {:?}", cmd.0.size, target_buffer);
                 Ok(target_buffer)
             }
             _ => Err(Error::new(
@@ -527,6 +532,7 @@ impl Client {
     }
 
     pub fn send(&mut self, data: &[u8]) -> io::Result<ClientToHostCommands> {
+        println!("udp_connections: self.phase: {}", self.phase);
         match self.phase {
             Challenge(_) => {
                 let challenge = self.send_challenge()?;
@@ -539,8 +545,10 @@ impl Client {
             }
 
             Connected(_) => {
-                let challenge = self.send_packet(data)?;
-                Ok(ClientToHostCommands::PacketType(challenge))
+                info!("connected");
+                let packet = self.send_packet(data)?;
+                println!("connected {:?}", packet);
+                Ok(ClientToHostCommands::PacketType(packet))
             }
         }
     }
@@ -552,7 +560,7 @@ impl DatagramProcessor for Client {
 
         let client_to_server_cmd = self.send(data)?;
 
-        client_to_server_cmd.to_stream(&mut out_stream).unwrap();
+        client_to_server_cmd.to_stream(&mut out_stream)?;
         out_stream.write(data)?;
 
         Ok(out_stream.data)

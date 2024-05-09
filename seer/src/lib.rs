@@ -1,10 +1,10 @@
 /*----------------------------------------------------------------------------------------------------------
- *  Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/client
+ *  Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  *  Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------------------------------------------------------*/
 use std::marker::PhantomData;
 
-use nimble_steps::{Deserialize, Steps};
+use nimble_steps::Steps;
 use nimble_transmute::TransmuteCallback;
 
 // Define the Assent struct

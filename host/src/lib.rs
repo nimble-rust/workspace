@@ -1,5 +1,5 @@
 /*----------------------------------------------------------------------------------------------------------
- *  Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/host
+ *  Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  *  Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------------------------------------------------------*/
 use tick_id::TickId;
@@ -34,7 +34,7 @@ impl<T> Host<T> {
     }
 
     fn produce_authoritative_steps(&mut self) {
-        for i in 0..10 {
+        for _ in 0..10 {
             if let Ok(new_combined_step) = self.combinator.produce() {
                 self.authoritative_steps.push(new_combined_step);
             } else {

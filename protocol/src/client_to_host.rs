@@ -1,3 +1,7 @@
+/*----------------------------------------------------------------------------------------------------------
+ *  Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
+ *  Licensed under the MIT License. See LICENSE in the project root for license information.
+ *--------------------------------------------------------------------------------------------------------*/
 use std::io;
 use std::io::ErrorKind;
 
@@ -9,6 +13,7 @@ use crate::{Nonce, ParticipantId, SessionConnectionSecret, Version};
 enum ClientToHostCommand {
     Connect = 0x05,
     JoinGame = 0x01,
+    Steps = 0x02,
 }
 
 impl TryFrom<u8> for ClientToHostCommand {
@@ -26,15 +31,17 @@ impl TryFrom<u8> for ClientToHostCommand {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum ClientToHostCommands {
     ConnectType(ConnectRequest),
+    Steps,
 }
 
 impl ClientToHostCommands {
     pub fn to_octet(&self) -> u8 {
         match self {
             ClientToHostCommands::ConnectType(_) => ClientToHostCommand::Connect as u8,
+            ClientToHostCommands::Steps => ClientToHostCommand::Steps as u8,
         }
     }
 
@@ -42,6 +49,7 @@ impl ClientToHostCommands {
         stream.write_u8(self.to_octet())?;
         match self {
             ClientToHostCommands::ConnectType(connect_command) => connect_command.to_stream(stream),
+            ClientToHostCommands::Steps => Ok(()),
         }
     }
 
@@ -65,7 +73,7 @@ impl ClientToHostCommands {
 
 // --- Individual commands ---
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct ConnectRequest {
     pub nimble_version: Version,
     pub use_debug_stream: bool,

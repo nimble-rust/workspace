@@ -1,3 +1,7 @@
+/*----------------------------------------------------------------------------------------------------------
+ *  Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
+ *  Licensed under the MIT License. See LICENSE in the project root for license information.
+ *--------------------------------------------------------------------------------------------------------*/
 use std::io;
 use std::io::ErrorKind;
 
@@ -8,7 +12,7 @@ use crate::{ConnectionId, Nonce, SessionConnectionSecret};
 #[repr(u8)]
 enum HostToClientCommand {
     Challenge = 0x11,
-    Connect = 0x12,
+    Connect = 0x0d,
     Packet = 0x13,
 }
 
@@ -18,7 +22,7 @@ impl TryFrom<u8> for HostToClientCommand {
     fn try_from(value: u8) -> std::io::Result<Self> {
         match value {
             0x11 => Ok(HostToClientCommand::Challenge),
-            0x12 => Ok(HostToClientCommand::Connect),
+            0x0d => Ok(HostToClientCommand::Connect),
             0x13 => Ok(HostToClientCommand::Packet),
             _ => Err(io::Error::new(
                 ErrorKind::InvalidData,
