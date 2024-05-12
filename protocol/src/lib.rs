@@ -2,6 +2,7 @@
  *  Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  *  Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------------------------------------------------------*/
+use std::fmt;
 use std::io::{Error, ErrorKind, Result};
 
 use flood_rs::{ReadOctetStream, WriteOctetStream};
@@ -11,6 +12,12 @@ pub mod host_to_client;
 
 #[derive(Debug, Copy, Clone, PartialEq, Default)]
 pub struct Nonce(pub u64);
+
+impl fmt::Display for Nonce {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Nonce({:X})", self.0)
+    }
+}
 
 impl Nonce {
     pub fn new(value: u64) -> Nonce {
@@ -25,6 +32,14 @@ impl Nonce {
         let x = stream.read_u64()?;
         Ok(Self(x))
     }
+}
+
+pub fn hex_output(data: &[u8]) -> String {
+    let mut hex_string = String::new();
+    for byte in data {
+        hex_string.push_str(&format!("{:02X} ", byte));
+    }
+    hex_string.trim_end().to_string() // Remove the trailing space and convert to String
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]

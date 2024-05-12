@@ -136,7 +136,7 @@ pub struct HostToClientPacketHeader(PacketHeader);
 
 impl HostToClientPacketHeader {
     pub fn from_stream(stream: &mut dyn ReadOctetStream) -> std::io::Result<Self> {
-        println!("packet from host");
+        info!("packet from host");
         Ok(Self(PacketHeader::from_stream(stream)?))
     }
 }
@@ -331,6 +331,14 @@ impl TryFrom<u8> for ClientToHostCommand {
     }
 }
 
+pub fn hex_output(data: &[u8]) -> String {
+    let mut hex_string = String::new();
+    for byte in data {
+        hex_string.push_str(&format!("{:02X} ", byte));
+    }
+    hex_string.trim_end().to_string() // Remove the trailing space and convert to String
+}
+
 impl ClientToHostCommands {
     fn to_octet(&self) -> ClientToHostCommand {
         match self {
@@ -455,8 +463,10 @@ impl Client {
                         "Wrong nonce when connecting",
                     ));
                 }
-                println!("connected {}", cmd.connection_id);
-                info!("on_connect connected {}", cmd.connection_id);
+                info!(
+                    "udp_connections: on_connect connected {}",
+                    cmd.connection_id
+                );
                 self.phase = Connected(cmd.connection_id);
                 Ok(())
             }
@@ -480,9 +490,14 @@ impl Client {
                         "Wrong connection_id for received packet",
                     ));
                 }
-                let mut target_buffer = Vec::with_capacity(cmd.0.size as usize);
+                let mut target_buffer = vec![0u8; cmd.0.size as usize];
                 in_stream.read(&mut target_buffer)?;
-                println!("target buffer {}  {:?}", cmd.0.size, target_buffer);
+                info!(
+                    "send packet of size: {} target:{}  {}",
+                    cmd.0.size,
+                    target_buffer.len(),
+                    hex_output(target_buffer.as_slice())
+                );
                 Ok(target_buffer)
             }
             _ => Err(Error::new(
@@ -532,7 +547,7 @@ impl Client {
     }
 
     pub fn send(&mut self, data: &[u8]) -> io::Result<ClientToHostCommands> {
-        println!("udp_connections: self.phase: {}", self.phase);
+        info!("self.phase: {}", self.phase);
         match self.phase {
             Challenge(_) => {
                 let challenge = self.send_challenge()?;
@@ -547,7 +562,7 @@ impl Client {
             Connected(_) => {
                 info!("connected");
                 let packet = self.send_packet(data)?;
-                println!("connected {:?}", packet);
+                info!("connected sending datagram {:?}", packet);
                 Ok(ClientToHostCommands::PacketType(packet))
             }
         }

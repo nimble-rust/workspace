@@ -90,7 +90,7 @@ mod tests {
 
     impl RectifyCallback for TestCallback {
         fn on_copy_from_authoritative(&mut self) {
-            println!("on_copy_from_authoritative");
+            info!("on_copy_from_authoritative");
         }
     }
 

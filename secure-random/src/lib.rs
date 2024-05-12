@@ -28,6 +28,6 @@ mod tests {
     fn check_random() {
         let mut random = GetRandom {};
         let result = random.get_random_u64();
-        println!("result: {}", result)
+        info!("result: {}", result)
     }
 }

@@ -50,7 +50,7 @@ impl Client {
                 ClientToHostCommands::ConnectType(connect_cmd)
             }
             ClientPhase::Connected(connection_id) => {
-                println!("connected. send steps {:?}", connection_id);
+                info!("connected. send steps {:?}", connection_id);
                 ClientToHostCommands::Steps
             }
         }
@@ -78,7 +78,10 @@ impl Client {
                 if cmd.response_to_nonce != nonce {
                     return Err(Error::new(
                         ErrorKind::InvalidData,
-                        "Wrong nonce when connecting",
+                        format!(
+                            "Wrong nonce when connecting {} vs {}",
+                            cmd.response_to_nonce, nonce
+                        ),
                     ));
                 }
                 self.phase = ClientPhase::Connected(cmd.host_assigned_connection_id);
@@ -97,6 +100,7 @@ impl Client {
 
     fn receive(&mut self, datagram: Vec<u8>) -> io::Result<()> {
         let mut in_stream = InOctetStream::new(datagram);
+        let connection_id = ConnectionId::from_stream(&mut in_stream);
         let command = HostToClientCommands::from_stream(&mut in_stream)?;
         match command {
             HostToClientCommands::ConnectType(connect_command) => {
@@ -113,10 +117,11 @@ mod tests {
     use std::thread;
     use std::time::Duration;
 
-    use log::info;
+    use log::{error, info, warn};
     use test_log::test;
 
     use datagram::{DatagramCommunicator, DatagramProcessor};
+    use nimble_protocol::hex_output;
     use secure_random::GetRandom;
     use udp_client::UdpClient;
 
@@ -145,16 +150,24 @@ mod tests {
             }
             if let Ok(size) = communicator.receive_datagram(&mut buf) {
                 let received_buf = &buf[0..size];
-                info!("received datagram of size: {}", size);
-                println!("received datagram of size2: {} {:?}", size, received_buf);
+                info!(
+                    "received datagram of size: {} {}",
+                    size,
+                    hex_output(received_buf)
+                );
                 match processor.receive_datagram(received_buf) {
                     Ok(datagram_for_client) => {
                         if datagram_for_client.len() > 0 {
-                            println!("received datagram to client: {:?}", datagram_for_client);
-                            client.receive(datagram_for_client).unwrap();
+                            info!(
+                                "received datagram to client: {}",
+                                hex_output(&datagram_for_client)
+                            );
+                            if let Err(e) = client.receive(datagram_for_client) {
+                                warn!("receive error {}", e);
+                            }
                         }
                     }
-                    Err(some_error) => println!("error {}", some_error),
+                    Err(some_error) => error!("error {}", some_error),
                 }
             }
             thread::sleep(Duration::from_millis(16));
