@@ -8,9 +8,12 @@ use std::io::{Error, ErrorKind};
 use flood_rs::{InOctetStream, OutOctetStream, WriteOctetStream};
 use log::info;
 
-use nimble_protocol::client_to_host::{ClientToHostCommands, ConnectRequest};
-use nimble_protocol::host_to_client::{ConnectionAccepted, HostToClientCommands};
+use connection_layer::{prepare_out_stream, write_to_stream};
+use datagram_pinger::{client_out_ping, ClientTime};
 use nimble_protocol::{ConnectionId, Nonce, Version};
+use nimble_protocol::client_to_host::{ClientToHostCommands, ConnectRequest, JoinGameRequest, JoinGameType, JoinPlayerRequest, JoinPlayerRequests};
+use nimble_protocol::host_to_client::{ConnectionAccepted, HostToClientCommands};
+use ordered_datagram::OrderedOut;
 use secure_random::SecureRandom;
 
 #[derive(PartialEq, Debug)]
@@ -21,15 +24,23 @@ enum ClientPhase {
 
 pub struct Client {
     phase: ClientPhase,
+    joining_player: Option<JoinGameRequest>,
+    random: Box<dyn SecureRandom>,
+    ordered_datagram_out: OrderedOut,
 }
+
 
 impl Client {
     pub fn new(mut random: Box<dyn SecureRandom>) -> Client {
         let phase = ClientPhase::Connecting(Nonce(random.get_random_u64()));
-        Client { phase }
+        Client { phase, random, joining_player: None, ordered_datagram_out: OrderedOut::default() }
     }
 
-    fn send_to_command(&self) -> ClientToHostCommands {
+    // At this client level, it should not mutate when sending a command
+    // mutation should happen when receiving commands.
+    fn send_to_command(&self) -> Vec<ClientToHostCommands> {
+        let mut commands: Vec<ClientToHostCommands> = vec![];
+
         match self.phase {
             ClientPhase::Connecting(nonce) => {
                 let connect_cmd = ConnectRequest {
@@ -47,26 +58,57 @@ impl Client {
                     nonce,
                 };
 
-                ClientToHostCommands::ConnectType(connect_cmd)
+                commands.push(ClientToHostCommands::ConnectType(connect_cmd))
             }
             ClientPhase::Connected(connection_id) => {
-                info!("connected. send steps {:?}", connection_id);
-                ClientToHostCommands::Steps
+                if let Some(joining_game) = &self.joining_player {
+                    info!("connected. send join_game_request {:?}", connection_id);
+                    commands.push(ClientToHostCommands::JoinGameType(joining_game.clone()));
+                }
+
+                commands.push(ClientToHostCommands::Steps);
+            }
+        };
+
+        commands
+    }
+
+    fn write_header(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
+        match self.phase {
+            ClientPhase::Connected(_) => {
+                prepare_out_stream(stream)?;
+
+                self.ordered_datagram_out.to_stream(stream)?;
+
+                let client_time = ClientTime::new(0);
+                client_out_ping(client_time, stream)
+            }
+            _ => {
+                let zero_connection_id = ConnectionId { value: 0 }; // oob
+                zero_connection_id.to_stream(stream) // OOB
             }
         }
     }
 
+    fn write_to_start_of_header(&self, out_stream: &mut OutOctetStream) -> io::Result<()> {
+        let payload = out_stream.data.as_mut_slice();
+        let mut hash_stream = OutOctetStream::new();
+        write_to_stream(&mut hash_stream, payload)?;
+        payload[..hash_stream.data.len()].copy_from_slice(hash_stream.data.as_slice());
+        Ok(())
+    }
+
+
     fn send(&self) -> io::Result<Vec<Vec<u8>>> {
         let mut out_stream = OutOctetStream::new();
-        let client_command = self.send_to_command();
-        match client_command {
-            ClientToHostCommands::ConnectType(cmd) => {
-                let zero_connection_id = ConnectionId { value: 0 }; // oob
-                zero_connection_id.to_stream(&mut out_stream).unwrap(); // OOB
-            }
-            _ => {}
+        self.write_header(&mut out_stream)?;
+
+        let client_commands_to_send = self.send_to_command();
+        for command_to_send in client_commands_to_send.iter() {
+            command_to_send.to_stream(&mut out_stream)?;
         }
-        client_command.to_stream(&mut out_stream).unwrap();
+
+        self.write_to_start_of_header(&mut out_stream)?;
 
         let datagrams = vec![out_stream.data];
         Ok(datagrams)
@@ -85,6 +127,18 @@ impl Client {
                     ));
                 }
                 self.phase = ClientPhase::Connected(cmd.host_assigned_connection_id);
+
+                ClientToHostCommands::JoinGameType(JoinGameRequest {
+                    nonce: Nonce(self.random.get_random_u64()),
+                    join_game_type: JoinGameType::NoSecret,
+                    player_requests: JoinPlayerRequests {
+                        players: vec![
+                            JoinPlayerRequest {
+                                local_index: 42,
+                            }
+                        ]
+                    },
+                });
                 info!("connected!");
                 Ok(())
             }
@@ -100,7 +154,7 @@ impl Client {
 
     fn receive(&mut self, datagram: Vec<u8>) -> io::Result<()> {
         let mut in_stream = InOctetStream::new(datagram);
-        let connection_id = ConnectionId::from_stream(&mut in_stream);
+        let _connection_id = ConnectionId::from_stream(&mut in_stream);
         let command = HostToClientCommands::from_stream(&mut in_stream)?;
         match command {
             HostToClientCommands::ConnectType(connect_command) => {

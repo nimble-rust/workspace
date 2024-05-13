@@ -10,7 +10,7 @@ use flood_rs::{ReadOctetStream, WriteOctetStream};
 pub mod client_to_host;
 pub mod host_to_client;
 
-#[derive(Debug, Copy, Clone, PartialEq, Default)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Nonce(pub u64);
 
 impl fmt::Display for Nonce {
@@ -21,7 +21,7 @@ impl fmt::Display for Nonce {
 
 impl Nonce {
     pub fn new(value: u64) -> Nonce {
-        Self { 0: value }
+        Self ( value )
     }
     pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> Result<()> {
         stream.write_u64(self.0)?;

@@ -31,9 +31,10 @@ impl TryFrom<u8> for ClientToHostCommand {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub enum ClientToHostCommands {
     ConnectType(ConnectRequest),
+    JoinGameType(JoinGameRequest),
     Steps,
 }
 
@@ -42,6 +43,7 @@ impl ClientToHostCommands {
         match self {
             ClientToHostCommands::ConnectType(_) => ClientToHostCommand::Connect as u8,
             ClientToHostCommands::Steps => ClientToHostCommand::Steps as u8,
+            ClientToHostCommands::JoinGameType(_) => ClientToHostCommand::JoinGame as u8
         }
     }
 
@@ -50,6 +52,7 @@ impl ClientToHostCommands {
         match self {
             ClientToHostCommands::ConnectType(connect_command) => connect_command.to_stream(stream),
             ClientToHostCommands::Steps => Ok(()),
+            ClientToHostCommands::JoinGameType(join_game_request) => join_game_request.to_stream(stream),
         }
     }
 
@@ -128,7 +131,7 @@ impl JoinGameTypeValue {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum JoinGameType {
     NoSecret,
     UseSessionSecret(SessionConnectionSecret),
@@ -190,7 +193,7 @@ impl JoinGameType {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct JoinPlayerRequest {
     pub local_index: u8,
 }
@@ -207,7 +210,7 @@ impl JoinPlayerRequest {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct JoinPlayerRequests {
     pub players: Vec<JoinPlayerRequest>,
 }
@@ -232,7 +235,7 @@ impl JoinPlayerRequests {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct JoinGameRequest {
     pub nonce: Nonce,
     pub join_game_type: JoinGameType,
