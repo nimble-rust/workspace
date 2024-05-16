@@ -2,7 +2,8 @@
  *  Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  *  Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------------------------------------------------------*/
-use std::io;
+use std::{fmt, io};
+use std::fmt::Pointer;
 use std::io::ErrorKind;
 
 use flood_rs::{ReadOctetStream, WriteOctetStream};
@@ -74,6 +75,16 @@ impl ClientToHostCommands {
     }
 }
 
+impl fmt::Display for ClientToHostCommands {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ClientToHostCommands::ConnectType(connect) => write!(f, "connect {:?}", connect),
+            ClientToHostCommands::JoinGameType(join) => write!(f, "join {:?}", join),
+            ClientToHostCommands::Steps => write!(f, "steps")
+        }
+    }
+}
+
 // --- Individual commands ---
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -102,6 +113,7 @@ impl ConnectRequest {
         })
     }
 }
+
 
 #[repr(u8)]
 pub enum JoinGameTypeValue {

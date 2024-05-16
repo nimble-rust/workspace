@@ -75,25 +75,27 @@ impl Client {
 
     fn write_header(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
         match self.phase {
-            ClientPhase::Connected(_) => {
-                prepare_out_stream(stream)?;
-
+            ClientPhase::Connected(assigned_connection_id) => {
+                prepare_out_stream(stream)?; // Add hash stream
+                assigned_connection_id.to_stream(stream)?;
                 self.ordered_datagram_out.to_stream(stream)?;
+                info!("add connect header {}", self.ordered_datagram_out.sequence_to_send);
 
                 let client_time = ClientTime::new(0);
                 client_out_ping(client_time, stream)
             }
             _ => {
+                info!("oob zero connection");
                 let zero_connection_id = ConnectionId { value: 0 }; // oob
                 zero_connection_id.to_stream(stream) // OOB
             }
         }
     }
 
-    fn write_to_start_of_header(&self, out_stream: &mut OutOctetStream) -> io::Result<()> {
+    fn write_to_start_of_header(&self, connection_id: ConnectionId, out_stream: &mut OutOctetStream) -> io::Result<()> {
         let payload = out_stream.data.as_mut_slice();
         let mut hash_stream = OutOctetStream::new();
-        write_to_stream(&mut hash_stream, payload)?;
+        write_to_stream(&mut hash_stream, payload)?; // Write hash connection layer header
         payload[..hash_stream.data.len()].copy_from_slice(hash_stream.data.as_slice());
         Ok(())
     }
@@ -105,10 +107,16 @@ impl Client {
 
         let client_commands_to_send = self.send_to_command();
         for command_to_send in client_commands_to_send.iter() {
+            info!("sending command {}", command_to_send);
             command_to_send.to_stream(&mut out_stream)?;
         }
 
-        self.write_to_start_of_header(&mut out_stream)?;
+        match self.phase {
+            ClientPhase::Connected(connection_id) => {
+                self.write_to_start_of_header(connection_id, &mut out_stream)?
+            }
+            _ => {}
+        }
 
         let datagrams = vec![out_stream.data];
         Ok(datagrams)
@@ -139,13 +147,13 @@ impl Client {
                         ]
                     },
                 });
-                info!("connected!");
+                info!("connected! cmd:{:?}", cmd);
                 Ok(())
             }
             _ => Err(Error::new(
                 ErrorKind::InvalidInput,
                 format!(
-                    "can not receive on_connect in current client state {:?}",
+                    "can not receive on_connect in current client state '{:?}'",
                     self.phase
                 ),
             )),
@@ -197,6 +205,7 @@ mod tests {
         for _ in 0..10 {
             let datagrams_to_send = client.send().unwrap();
             for datagram_to_send in datagrams_to_send {
+                info!("send nimble datagram of size: {} payload: {}", datagram_to_send.len(), hex_output(datagram_to_send.as_slice()));
                 let processed = processor
                     .send_datagram(datagram_to_send.as_slice())
                     .unwrap();
@@ -205,7 +214,7 @@ mod tests {
             if let Ok(size) = communicator.receive_datagram(&mut buf) {
                 let received_buf = &buf[0..size];
                 info!(
-                    "received datagram of size: {} {}",
+                    "received datagram of size: {} payload: {}",
                     size,
                     hex_output(received_buf)
                 );

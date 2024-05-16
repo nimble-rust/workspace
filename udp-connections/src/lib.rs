@@ -2,8 +2,8 @@
  *  Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  *  Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------------------------------------------------------*/
-use std::io::{Error, ErrorKind};
 use std::{fmt, io};
+use std::io::{Error, ErrorKind};
 
 use flood_rs::{InOctetStream, OutOctetStream, ReadOctetStream, WriteOctetStream};
 use log::info;
@@ -472,7 +472,7 @@ impl Client {
             }
             _ => Err(Error::new(
                 ErrorKind::InvalidInput,
-                "udp_connections: can not receive on_connect in current client state",
+                format!("can not receive on_connect in current client state {:?}", self.phase),
             )),
         }
     }
@@ -493,7 +493,7 @@ impl Client {
                 let mut target_buffer = vec![0u8; cmd.0.size as usize];
                 in_stream.read(&mut target_buffer)?;
                 info!(
-                    "send packet of size: {} target:{}  {}",
+                    "receive packet of size: {} target:{}  {}",
                     cmd.0.size,
                     target_buffer.len(),
                     hex_output(target_buffer.as_slice())
@@ -502,7 +502,7 @@ impl Client {
             }
             _ => Err(Error::new(
                 ErrorKind::InvalidInput,
-                "can not receive on_connect in current client state",
+                format!("can not receive on_packet in current client state {:?}", self.phase),
             )),
         }
     }
@@ -532,13 +532,16 @@ impl Client {
 
     pub fn send_packet(&mut self, data: &[u8]) -> io::Result<ClientToHostPacket> {
         match self.phase {
-            Connected(connection_id) => Ok(ClientToHostPacket {
-                header: PacketHeader {
-                    connection_id,
-                    size: data.len() as u16,
-                },
-                payload: data.to_vec(),
-            }),
+            Connected(connection_id) => {
+                info!("send packet: {}", hex_output(data));
+                Ok(ClientToHostPacket {
+                    header: PacketHeader {
+                        connection_id,
+                        size: data.len() as u16,
+                    },
+                    payload: data.to_vec(),
+                })
+            }
             _ => Err(Error::new(
                 ErrorKind::InvalidInput,
                 "can not send_connect_request in current client state",

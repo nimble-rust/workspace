@@ -1,6 +1,6 @@
-use std::io;
+use std::{fmt, io};
 
-use flood_rs::{InOctetStream, OutOctetStream, ReadOctetStream, WriteOctetStream};
+use flood_rs::{ReadOctetStream, WriteOctetStream};
 
 #[derive(Debug, Default, Copy, Clone)]
 pub struct DatagramId(u16);
@@ -12,6 +12,12 @@ impl DatagramId {
 
     fn from_stream(stream: &mut dyn ReadOctetStream) -> io::Result<DatagramId> {
         Ok(Self(stream.read_u16()?))
+    }
+}
+
+impl fmt::Display for DatagramId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "DatagramId({:X})", self.0)
     }
 }
 

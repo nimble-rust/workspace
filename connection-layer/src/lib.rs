@@ -1,15 +1,17 @@
 use std::io;
 
-use flood_rs::{InOctetStream, OutOctetStream, ReadOctetStream, WriteOctetStream};
+use flood_rs::{ReadOctetStream, WriteOctetStream};
 use murmur3::murmur3_32;
 
 pub fn prepare_out_stream(stream: &mut dyn WriteOctetStream) -> io::Result<()> {
-    stream.write_u32(0)
+    stream.write_u8(0x8a)?; // add marker
+    stream.write_u32(0) // prepare hash value
 }
 
 pub fn write_to_stream(stream: &mut dyn WriteOctetStream, payload: &[u8]) -> io::Result<()> {
-    let  cursor = &mut io::Cursor::new(payload);
+    let cursor = &mut io::Cursor::new(payload);
     let calculated_hash = murmur3_32(cursor, 0)?;
+    stream.write_u8(0x8a)?; // add marker
     stream.write_u32(calculated_hash)
 }
 
