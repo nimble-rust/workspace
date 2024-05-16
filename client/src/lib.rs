@@ -8,9 +8,9 @@ use std::io::{Error, ErrorKind};
 use flood_rs::{InOctetStream, OutOctetStream, WriteOctetStream};
 use log::info;
 
-use connection_layer::{prepare_out_stream, write_to_stream};
+use connection_layer::{ConnectionId, ConnectionSecretSeed, prepare_out_stream, write_to_stream};
 use datagram_pinger::{client_out_ping, ClientTime};
-use nimble_protocol::{ConnectionId, Nonce, Version};
+use nimble_protocol::{Nonce, Version};
 use nimble_protocol::client_to_host::{ClientToHostCommands, ConnectRequest, JoinGameRequest, JoinGameType, JoinPlayerRequest, JoinPlayerRequests};
 use nimble_protocol::host_to_client::{ConnectionAccepted, HostToClientCommands};
 use ordered_datagram::OrderedOut;
@@ -19,7 +19,7 @@ use secure_random::SecureRandom;
 #[derive(PartialEq, Debug)]
 enum ClientPhase {
     Connecting(Nonce),
-    Connected(ConnectionId),
+    Connected(ConnectionId, ConnectionSecretSeed),
 }
 
 pub struct Client {
@@ -60,7 +60,7 @@ impl Client {
 
                 commands.push(ClientToHostCommands::ConnectType(connect_cmd))
             }
-            ClientPhase::Connected(connection_id) => {
+            ClientPhase::Connected(connection_id, _) => {
                 if let Some(joining_game) = &self.joining_player {
                     info!("connected. send join_game_request {:?}", connection_id);
                     commands.push(ClientToHostCommands::JoinGameType(joining_game.clone()));
@@ -75,7 +75,7 @@ impl Client {
 
     fn write_header(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
         match self.phase {
-            ClientPhase::Connected(assigned_connection_id) => {
+            ClientPhase::Connected(assigned_connection_id, _) => {
                 prepare_out_stream(stream)?; // Add hash stream
                 assigned_connection_id.to_stream(stream)?;
                 self.ordered_datagram_out.to_stream(stream)?;
@@ -92,10 +92,10 @@ impl Client {
         }
     }
 
-    fn write_to_start_of_header(&self, connection_id: ConnectionId, out_stream: &mut OutOctetStream) -> io::Result<()> {
+    fn write_to_start_of_header(&self, connection_id: ConnectionId, seed: ConnectionSecretSeed, out_stream: &mut OutOctetStream) -> io::Result<()> {
         let payload = out_stream.data.as_mut_slice();
         let mut hash_stream = OutOctetStream::new();
-        write_to_stream(&mut hash_stream, payload)?; // Write hash connection layer header
+        write_to_stream(&mut hash_stream, connection_id, seed, payload)?; // Write hash connection layer header
         payload[..hash_stream.data.len()].copy_from_slice(hash_stream.data.as_slice());
         Ok(())
     }
@@ -112,8 +112,8 @@ impl Client {
         }
 
         match self.phase {
-            ClientPhase::Connected(connection_id) => {
-                self.write_to_start_of_header(connection_id, &mut out_stream)?
+            ClientPhase::Connected(connection_id, seed) => {
+                self.write_to_start_of_header(connection_id, seed, &mut out_stream)?
             }
             _ => {}
         }
@@ -134,7 +134,9 @@ impl Client {
                         ),
                     ));
                 }
-                self.phase = ClientPhase::Connected(cmd.host_assigned_connection_id);
+                let half_secret = cmd.host_assigned_connection_secret.value as u32;
+                info!("half_secret: {:X}", half_secret);
+                self.phase = ClientPhase::Connected(cmd.host_assigned_connection_id, ConnectionSecretSeed(half_secret));
 
                 ClientToHostCommands::JoinGameType(JoinGameRequest {
                     nonce: Nonce(self.random.get_random_u64()),

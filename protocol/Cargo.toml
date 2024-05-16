@@ -9,3 +9,4 @@ repository = "https://github.com/nimble-rust/protocol"
 
 [dependencies]
 flood-rs = "0.0.4"
+connection-layer = { path = "../connection-layer" }

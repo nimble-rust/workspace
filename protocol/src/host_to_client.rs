@@ -7,7 +7,9 @@ use std::io::ErrorKind;
 
 use flood_rs::{ReadOctetStream, WriteOctetStream};
 
-use crate::{ConnectionId, Nonce, SessionConnectionSecret};
+use connection_layer::ConnectionId;
+
+use crate::{Nonce, SessionConnectionSecret};
 
 #[repr(u8)]
 enum HostToClientCommand {

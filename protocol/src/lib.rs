@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------------------------------------------------------*/
 use std::fmt;
+use std::fmt::Formatter;
 use std::io::{Error, ErrorKind, Result};
 
 use flood_rs::{ReadOctetStream, WriteOctetStream};
@@ -21,7 +22,7 @@ impl fmt::Display for Nonce {
 
 impl Nonce {
     pub fn new(value: u64) -> Nonce {
-        Self ( value )
+        Self(value)
     }
     pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> Result<()> {
         stream.write_u64(self.0)?;
@@ -67,21 +68,6 @@ impl Version {
     }
 }
 
-#[derive(PartialEq, Copy, Clone, Debug)]
-pub struct ConnectionId {
-    pub value: u8,
-}
-
-impl ConnectionId {
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> Result<()> {
-        stream.write_u8(self.value)
-    }
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> Result<Self> {
-        Ok(Self {
-            value: stream.read_u8()?,
-        })
-    }
-}
 
 #[derive(PartialEq, Copy, Clone, Debug)]
 pub struct ParticipantId {
@@ -116,7 +102,7 @@ pub fn read_marker(stream: &mut dyn ReadOctetStream, expected_marker: u8) -> Res
     ))
 }
 
-#[derive(PartialEq, Copy, Clone, Debug)]
+#[derive(PartialEq, Copy, Clone)]
 pub struct SessionConnectionSecret {
     pub value: u64,
 }
@@ -129,6 +115,18 @@ impl SessionConnectionSecret {
         Ok(Self {
             value: stream.read_u64()?,
         })
+    }
+}
+
+impl fmt::Display for SessionConnectionSecret {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "session_secret: {:X}", self.value)
+    }
+}
+
+impl fmt::Debug for SessionConnectionSecret {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "session_secret: {:X}", self.value)
     }
 }
 
