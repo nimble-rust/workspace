@@ -77,7 +77,6 @@ impl Client {
         match self.phase {
             ClientPhase::Connected(assigned_connection_id, _) => {
                 prepare_out_stream(stream)?; // Add hash stream
-                assigned_connection_id.to_stream(stream)?;
                 self.ordered_datagram_out.to_stream(stream)?;
                 info!("add connect header {}", self.ordered_datagram_out.sequence_to_send);
 
@@ -93,9 +92,11 @@ impl Client {
     }
 
     fn write_to_start_of_header(&self, connection_id: ConnectionId, seed: ConnectionSecretSeed, out_stream: &mut OutOctetStream) -> io::Result<()> {
-        let payload = out_stream.data.as_mut_slice();
+        let mut payload = out_stream.data.as_mut_slice();
         let mut hash_stream = OutOctetStream::new();
-        write_to_stream(&mut hash_stream, connection_id, seed, payload)?; // Write hash connection layer header
+        let payload_to_calculate_on = &payload[6..];
+        info!("payload: {:?}", payload_to_calculate_on);
+        write_to_stream(&mut hash_stream, connection_id, seed, payload_to_calculate_on)?; // Write hash connection layer header
         payload[..hash_stream.data.len()].copy_from_slice(hash_stream.data.as_slice());
         Ok(())
     }
@@ -113,6 +114,7 @@ impl Client {
 
         match self.phase {
             ClientPhase::Connected(connection_id, seed) => {
+                info!("writing connected header");
                 self.write_to_start_of_header(connection_id, seed, &mut out_stream)?
             }
             _ => {}
