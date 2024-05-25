@@ -36,14 +36,14 @@ impl TryFrom<u8> for ClientToHostCommand {
 pub enum ClientToHostCommands {
     ConnectType(ConnectRequest),
     JoinGameType(JoinGameRequest),
-    Steps,
+    Steps(StepsRequest),
 }
 
 impl ClientToHostCommands {
     pub fn to_octet(&self) -> u8 {
         match self {
             ClientToHostCommands::ConnectType(_) => ClientToHostCommand::Connect as u8,
-            ClientToHostCommands::Steps => ClientToHostCommand::Steps as u8,
+            ClientToHostCommands::Steps(_) => ClientToHostCommand::Steps as u8,
             ClientToHostCommands::JoinGameType(_) => ClientToHostCommand::JoinGame as u8
         }
     }
@@ -52,7 +52,7 @@ impl ClientToHostCommands {
         stream.write_u8(self.to_octet())?;
         match self {
             ClientToHostCommands::ConnectType(connect_command) => connect_command.to_stream(stream),
-            ClientToHostCommands::Steps => Ok(()),
+            ClientToHostCommands::Steps(predicted_steps_and_ack) => predicted_steps_and_ack.to_stream(stream),
             ClientToHostCommands::JoinGameType(join_game_request) => join_game_request.to_stream(stream),
         }
     }
@@ -80,7 +80,7 @@ impl fmt::Display for ClientToHostCommands {
         match self {
             ClientToHostCommands::ConnectType(connect) => write!(f, "connect {:?}", connect),
             ClientToHostCommands::JoinGameType(join) => write!(f, "join {:?}", join),
-            ClientToHostCommands::Steps => write!(f, "steps")
+            ClientToHostCommands::Steps(predicted_steps_and_ack) => write!(f, "steps {:?}", predicted_steps_and_ack)
         }
     }
 }
@@ -258,6 +258,7 @@ impl JoinGameRequest {
     pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> std::io::Result<()> {
         self.nonce.to_stream(stream)?;
         self.join_game_type.to_stream(stream)?;
+        // TODO: Add more for other join game types.
         self.player_requests.to_stream(stream)?;
         Ok(())
     }
@@ -267,6 +268,87 @@ impl JoinGameRequest {
             nonce: Nonce::from_stream(stream)?,
             join_game_type: JoinGameType::from_stream(stream)?,
             player_requests: JoinPlayerRequests::from_stream(stream)?,
+        })
+    }
+}
+
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct StepsAck {
+    pub latest_received_step_tick_id: u32,
+    pub lost_steps_mask_after_last_received: u64,
+}
+
+impl StepsAck {
+    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> std::io::Result<()> {
+        stream.write_u32(self.latest_received_step_tick_id)?;
+        stream.write_u64(self.lost_steps_mask_after_last_received)?;
+        Ok(())
+    }
+
+    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> io::Result<Self> {
+        Ok(Self {
+            latest_received_step_tick_id: stream.read_u32()?,
+            lost_steps_mask_after_last_received: stream.read_u64()?,
+        })
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct CombinedPredictedSteps {
+    pub first_step_id: u32,
+    pub combined_steps_octets: Vec<Vec<u8>>,
+}
+
+impl CombinedPredictedSteps {
+    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
+        stream.write_u32(self.first_step_id)?;
+        stream.write_u8(self.combined_steps_octets.len() as u8)?;
+
+        for combined_predicted_step in self.combined_steps_octets.iter() {
+            stream.write_u8(combined_predicted_step.len() as u8)?;
+            stream.write(combined_predicted_step)?;
+        }
+
+        Ok(())
+    }
+    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> io::Result<Self> {
+        let first_step_id = stream.read_u32()?;
+        let step_count = stream.read_u8()?;
+
+        let mut temp = vec![0u8; 256];
+        let mut steps_vec = Vec::with_capacity(step_count as usize);
+
+        for _ in 0..step_count {
+            let octet_count = stream.read_u8()? as usize;
+            stream.read(&mut temp[0..octet_count])?;
+            steps_vec.push(temp[0..octet_count].to_vec());
+        }
+
+        Ok(Self {
+            first_step_id,
+            combined_steps_octets: steps_vec,
+        })
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct StepsRequest {
+    pub ack: StepsAck,
+    pub combined_predicted_steps: CombinedPredictedSteps,
+}
+
+impl StepsRequest {
+    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
+        self.ack.to_stream(stream)?;
+        self.combined_predicted_steps.to_stream(stream)?;
+        Ok(())
+    }
+
+    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> std::io::Result<Self> {
+        Ok(Self {
+            ack: StepsAck::from_stream(stream)?,
+            combined_predicted_steps: CombinedPredictedSteps::from_stream(stream)?,
         })
     }
 }
