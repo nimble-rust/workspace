@@ -11,7 +11,7 @@ use log::info;
 use connection_layer::{ConnectionId, ConnectionSecretSeed, prepare_out_stream, write_to_stream};
 use datagram_pinger::{client_out_ping, ClientTime};
 use nimble_protocol::{Nonce, Version};
-use nimble_protocol::client_to_host::{ClientToHostCommands, ConnectRequest, JoinGameRequest, JoinGameType, JoinPlayerRequest, JoinPlayerRequests};
+use nimble_protocol::client_to_host::{ClientToHostCommands, CombinedPredictedSteps, ConnectRequest, JoinGameRequest, JoinGameType, JoinPlayerRequest, JoinPlayerRequests, StepsAck, StepsRequest};
 use nimble_protocol::host_to_client::{ConnectionAccepted, HostToClientCommands};
 use ordered_datagram::OrderedOut;
 use secure_random::SecureRandom;
@@ -27,18 +27,36 @@ pub struct Client {
     joining_player: Option<JoinGameRequest>,
     random: Box<dyn SecureRandom>,
     ordered_datagram_out: OrderedOut,
+    tick_id: u32,
+    debug_tick_id_to_send: u32,
 }
 
 
 impl Client {
     pub fn new(mut random: Box<dyn SecureRandom>) -> Client {
         let phase = ClientPhase::Connecting(Nonce(random.get_random_u64()));
-        Client { phase, random, joining_player: None, ordered_datagram_out: OrderedOut::default() }
+        Client {
+            phase,
+            random,
+            joining_player: None,
+            ordered_datagram_out: OrderedOut::default(),
+            tick_id: 0,
+            debug_tick_id_to_send: 0,
+        }
+    }
+
+    pub fn set_joining_player(&mut self, join_game_request: JoinGameRequest) {
+        self.joining_player = Some(join_game_request);
+    }
+
+    pub fn debug_set_tick_id(&mut self, tick_id: u32) {
+        self.tick_id = tick_id;
+        self.debug_tick_id_to_send = self.tick_id;
     }
 
     // At this client level, it should not mutate when sending a command
     // mutation should happen when receiving commands.
-    fn send_to_command(&self) -> Vec<ClientToHostCommands> {
+    fn send_to_command(&mut self) -> Vec<ClientToHostCommands> {
         let mut commands: Vec<ClientToHostCommands> = vec![];
 
         match self.phase {
@@ -66,7 +84,24 @@ impl Client {
                     commands.push(ClientToHostCommands::JoinGameType(joining_game.clone()));
                 }
 
-                commands.push(ClientToHostCommands::Steps);
+                let payload = vec![0xfau8, 64];
+
+                let steps_request = StepsRequest {
+                    ack: StepsAck {
+                        latest_received_step_tick_id: self.tick_id,
+                        lost_steps_mask_after_last_received: 0,
+                    },
+                    combined_predicted_steps: CombinedPredictedSteps {
+                        first_step_id: self.debug_tick_id_to_send,
+                        combined_steps_octets: vec![payload],
+                    },
+                };
+
+                self.debug_tick_id_to_send += 1;
+
+                let steps_command = ClientToHostCommands::Steps(steps_request);
+
+                commands.push(steps_command);
             }
         };
 
@@ -102,7 +137,7 @@ impl Client {
     }
 
 
-    fn send(&self) -> io::Result<Vec<Vec<u8>>> {
+    fn send(&mut self) -> io::Result<Vec<Vec<u8>>> {
         let mut out_stream = OutOctetStream::new();
         self.write_header(&mut out_stream)?;
 
@@ -187,7 +222,8 @@ mod tests {
     use test_log::test;
 
     use datagram::{DatagramCommunicator, DatagramProcessor};
-    use nimble_protocol::hex_output;
+    use nimble_protocol::{hex_output, Nonce};
+    use nimble_protocol::client_to_host::{JoinGameRequest, JoinGameType, JoinPlayerRequest, JoinPlayerRequests};
     use secure_random::GetRandom;
     use udp_client::UdpClient;
 
@@ -205,6 +241,18 @@ mod tests {
         let mut udp_connections_client = udp_connections::Client::new(random2_box);
 
         let processor: &mut dyn DatagramProcessor = &mut udp_connections_client;
+        let joining_player = JoinPlayerRequest {
+            local_index: 32,
+        };
+
+        let join_game_request = JoinGameRequest {
+            nonce: Nonce(0),
+            join_game_type: JoinGameType::NoSecret,
+            player_requests: JoinPlayerRequests { players: vec![joining_player] },
+        };
+        client.set_joining_player(join_game_request);
+        client.debug_set_tick_id(0x8BADF00D);
+
         let mut buf = [1u8; 1200];
         for _ in 0..10 {
             let datagrams_to_send = client.send().unwrap();
