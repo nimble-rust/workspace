@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-flood-rs = "0.0.4"
+flood-rs = "0.0.5"
 datagram = { path = "../datagram" }
 udp-client = { path = "../udp-client" }
 secure-random = { path = "../secure-random" }

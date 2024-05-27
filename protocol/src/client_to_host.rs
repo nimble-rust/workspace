@@ -295,12 +295,12 @@ impl StepsAck {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct CombinedPredictedSteps {
+pub struct PredictedStepsForPlayer {
     pub first_step_id: u32,
     pub combined_steps_octets: Vec<Vec<u8>>,
 }
 
-impl CombinedPredictedSteps {
+impl PredictedStepsForPlayer {
     pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
         stream.write_u32(self.first_step_id)?;
         stream.write_u8(self.combined_steps_octets.len() as u8)?;
@@ -333,9 +333,40 @@ impl CombinedPredictedSteps {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+pub struct PredictedStepsForPlayers {
+    pub predicted_steps_for_players: Vec<PredictedStepsForPlayer>,
+}
+
+impl PredictedStepsForPlayers {
+    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
+        stream.write_u8(self.predicted_steps_for_players.len() as u8)?;
+
+        for predicted_steps_for_player in self.predicted_steps_for_players.iter() {
+            predicted_steps_for_player.to_stream(stream)?;
+        }
+
+        Ok(())
+    }
+    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> io::Result<Self> {
+        let player_count = stream.read_u8()?;
+
+        let mut predicted_steps_for_players = Vec::<PredictedStepsForPlayer>::with_capacity(player_count as usize);
+
+        for _ in 0..player_count {
+            let predicted_steps_for_player = PredictedStepsForPlayer::from_stream(stream)?;
+            predicted_steps_for_players.push(predicted_steps_for_player);
+        }
+
+        Ok(Self {
+            predicted_steps_for_players,
+        })
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub struct StepsRequest {
     pub ack: StepsAck,
-    pub combined_predicted_steps: CombinedPredictedSteps,
+    pub combined_predicted_steps: PredictedStepsForPlayers,
 }
 
 impl StepsRequest {
@@ -348,7 +379,7 @@ impl StepsRequest {
     pub fn from_stream(stream: &mut dyn ReadOctetStream) -> std::io::Result<Self> {
         Ok(Self {
             ack: StepsAck::from_stream(stream)?,
-            combined_predicted_steps: CombinedPredictedSteps::from_stream(stream)?,
+            combined_predicted_steps: PredictedStepsForPlayers::from_stream(stream)?,
         })
     }
 }

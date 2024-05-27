@@ -40,7 +40,7 @@ pub fn write_to_stream(stream: &mut dyn WriteOctetStream, connection_id: Connect
 
 pub fn read_and_verify(stream: &mut dyn ReadOctetStream, payload: &[u8]) -> io::Result<()> {
     let expected_hash = stream.read_u32()?;
-    let mut cursor = &mut io::Cursor::new(payload);
+    let cursor = &mut io::Cursor::new(payload);
     let calculated_hash = murmur3_32(cursor, 0)?;
     if calculated_hash != expected_hash {
         Err(io::Error::new(

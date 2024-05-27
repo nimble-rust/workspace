@@ -11,7 +11,7 @@ use log::info;
 use connection_layer::{ConnectionId, ConnectionSecretSeed, prepare_out_stream, write_to_stream};
 use datagram_pinger::{client_out_ping, ClientTime};
 use nimble_protocol::{Nonce, Version};
-use nimble_protocol::client_to_host::{ClientToHostCommands, CombinedPredictedSteps, ConnectRequest, JoinGameRequest, JoinGameType, JoinPlayerRequest, JoinPlayerRequests, StepsAck, StepsRequest};
+use nimble_protocol::client_to_host::{ClientToHostCommands, PredictedStepsForPlayers, ConnectRequest, JoinGameRequest, JoinGameType, JoinPlayerRequest, JoinPlayerRequests, StepsAck, StepsRequest, PredictedStepsForPlayer};
 use nimble_protocol::host_to_client::{ConnectionAccepted, HostToClientCommands};
 use ordered_datagram::OrderedOut;
 use secure_random::SecureRandom;
@@ -65,7 +65,7 @@ impl Client {
                     nimble_version: Version {
                         major: 0,
                         minor: 0,
-                        patch: 4,
+                        patch: 5,
                     },
                     use_debug_stream: false,
                     application_version: Version {
@@ -86,18 +86,23 @@ impl Client {
 
                 let payload = vec![0xfau8, 64];
 
+                let predicted_steps_for_one_player = PredictedStepsForPlayer {
+                    first_step_id: self.debug_tick_id_to_send,
+                    combined_steps_octets: vec![payload],
+                };
+
+                self.debug_tick_id_to_send += 1;
+
+
                 let steps_request = StepsRequest {
                     ack: StepsAck {
                         latest_received_step_tick_id: self.tick_id,
                         lost_steps_mask_after_last_received: 0,
                     },
-                    combined_predicted_steps: CombinedPredictedSteps {
-                        first_step_id: self.debug_tick_id_to_send,
-                        combined_steps_octets: vec![payload],
+                    combined_predicted_steps: PredictedStepsForPlayers {
+                        predicted_steps_for_players: vec![predicted_steps_for_one_player],
                     },
                 };
-
-                self.debug_tick_id_to_send += 1;
 
                 let steps_command = ClientToHostCommands::Steps(steps_request);
 
