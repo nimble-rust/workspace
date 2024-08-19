@@ -204,8 +204,8 @@ impl Client {
         }
     }
 
-    fn receive(&mut self, datagram: Vec<u8>) -> io::Result<()> {
-        let mut in_stream = InOctetStream::new(datagram);
+    fn receive(&mut self, datagram: &[u8]) -> io::Result<()> {
+        let mut in_stream = InOctetStream::new(datagram.to_vec());
         let _connection_id = ConnectionId::from_stream(&mut in_stream);
         let command = HostToClientCommands::from_stream(&mut in_stream)?;
         match command {
@@ -282,7 +282,7 @@ mod tests {
                                 "received datagram to client: {}",
                                 hex_output(&datagram_for_client)
                             );
-                            if let Err(e) = client.receive(datagram_for_client) {
+                            if let Err(e) = client.receive(datagram_for_client.as_slice()) {
                                 warn!("receive error {}", e);
                             }
                         }

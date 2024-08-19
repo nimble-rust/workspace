@@ -60,6 +60,7 @@ where
 
 #[cfg(test)]
 mod tests {
+    use nimble_steps::Deserialize;
     use nimble_transmute::TransmuteCallback;
 
     use super::*;

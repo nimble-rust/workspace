@@ -137,7 +137,8 @@ impl fmt::Debug for SessionConnectionSecret {
 mod tests {
     use flood_rs::{InOctetStream, OutOctetStream};
 
-    use crate::{ConnectCommand, Nonce, Version};
+    use crate::{Nonce, Version};
+    use crate::client_to_host::ConnectRequest;
 
     #[test]
     fn check_version() {
@@ -163,7 +164,7 @@ mod tests {
             minor: 66,
             patch: 33,
         };
-        let connect = ConnectCommand {
+        let connect = ConnectRequest {
             nimble_version,
             use_debug_stream: false,
             application_version: version,
@@ -173,7 +174,7 @@ mod tests {
 
         let mut in_stream = InOctetStream::new(Vec::from(out_stream.data));
 
-        let received_connect = ConnectCommand::from_stream(&mut in_stream).unwrap();
+        let received_connect = ConnectRequest::from_stream(&mut in_stream).unwrap();
 
         assert_eq!(received_connect, connect);
     }

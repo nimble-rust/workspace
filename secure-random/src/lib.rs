@@ -22,6 +22,7 @@ impl SecureRandom for GetRandom {
 
 #[cfg(test)]
 mod tests {
+    use log::info;
     use crate::{GetRandom, SecureRandom};
 
     #[test]
