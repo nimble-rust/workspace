@@ -87,8 +87,9 @@ impl Client {
                 let payload = vec![0xfau8, 64];
 
                 let predicted_steps_for_one_player = PredictedStepsForPlayer {
+                    participant_party_index: 0,
                     first_step_id: self.debug_tick_id_to_send,
-                    combined_steps_octets: vec![payload],
+                    serialized_predicted_steps: vec![payload],
                 };
 
                 self.debug_tick_id_to_send += 1;
@@ -259,7 +260,7 @@ mod tests {
         client.debug_set_tick_id(0x8BADF00D);
 
         let mut buf = [1u8; 1200];
-        for _ in 0..10 {
+        for _ in 0..20 {
             let datagrams_to_send = client.send().unwrap();
             for datagram_to_send in datagrams_to_send {
                 info!("send nimble datagram of size: {} payload: {}", datagram_to_send.len(), hex_output(datagram_to_send.as_slice()));

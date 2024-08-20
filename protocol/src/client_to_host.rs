@@ -296,23 +296,26 @@ impl StepsAck {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct PredictedStepsForPlayer {
+    pub participant_party_index: u8,
     pub first_step_id: u32,
-    pub combined_steps_octets: Vec<Vec<u8>>,
+    pub serialized_predicted_steps: Vec<Vec<u8>>,
 }
 
 impl PredictedStepsForPlayer {
     pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
+        stream.write_u8(self.participant_party_index)?;
         stream.write_u32(self.first_step_id)?;
-        stream.write_u8(self.combined_steps_octets.len() as u8)?;
+        stream.write_u8(self.serialized_predicted_steps.len() as u8)?;
 
-        for combined_predicted_step in self.combined_steps_octets.iter() {
-            stream.write_u8(combined_predicted_step.len() as u8)?;
-            stream.write(combined_predicted_step)?;
+        for serialized_predicted_step in self.serialized_predicted_steps.iter() {
+            stream.write_u8(serialized_predicted_step.len() as u8)?;
+            stream.write(serialized_predicted_step)?;
         }
 
         Ok(())
     }
     pub fn from_stream(stream: &mut dyn ReadOctetStream) -> io::Result<Self> {
+        let participant_party_index = stream.read_u8()?;
         let first_step_id = stream.read_u32()?;
         let step_count = stream.read_u8()?;
 
@@ -326,8 +329,9 @@ impl PredictedStepsForPlayer {
         }
 
         Ok(Self {
+            participant_party_index,
             first_step_id,
-            combined_steps_octets: steps_vec,
+            serialized_predicted_steps: steps_vec,
         })
     }
 }
