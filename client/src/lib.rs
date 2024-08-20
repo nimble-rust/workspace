@@ -12,7 +12,7 @@ use connection_layer::{ConnectionId, ConnectionSecretSeed, prepare_out_stream, w
 use datagram_pinger::{client_out_ping, ClientTime};
 use nimble_protocol::{Nonce, Version};
 use nimble_protocol::client_to_host::{ClientToHostCommands, PredictedStepsForPlayers, ConnectRequest, JoinGameRequest, JoinGameType, JoinPlayerRequest, JoinPlayerRequests, StepsAck, StepsRequest, PredictedStepsForPlayer};
-use nimble_protocol::host_to_client::{ConnectionAccepted, HostToClientCommands};
+use nimble_protocol::host_to_client::{ConnectionAccepted, GameStepResponse, HostToClientCommands, JoinGameAccepted};
 use ordered_datagram::OrderedOut;
 use secure_random::SecureRandom;
 
@@ -165,6 +165,16 @@ impl Client {
         Ok(datagrams)
     }
 
+    fn on_join_game(&mut self, cmd: JoinGameAccepted) -> io::Result<()> {
+        info!("join game accepted: {:?}", cmd);
+        Ok(())
+    }
+
+    fn on_game_step(&mut self, cmd: GameStepResponse) -> io::Result<()> {
+        info!("game step response: {:?}", cmd);
+        Ok(())
+    }
+
     fn on_connect(&mut self, cmd: ConnectionAccepted) -> io::Result<()> {
         match self.phase {
             ClientPhase::Connecting(nonce) => {
@@ -212,9 +222,16 @@ impl Client {
         match command {
             HostToClientCommands::ConnectType(connect_command) => {
                 self.on_connect(connect_command)?;
-                return Ok(());
+                Ok(())
             }
-            _ => todo!(),
+            HostToClientCommands::JoinGame(join_game_response) => {
+                self.on_join_game(join_game_response)?;
+                Ok(())
+            }
+            HostToClientCommands::GameStep(game_step_response) => {
+                self.on_game_step(game_step_response)?;
+                Ok(())
+            }
         }
     }
 }
