@@ -10,6 +10,7 @@ impl DatagramId {
         stream.write_u16(self.0)
     }
 
+    #[allow(unused)]
     fn from_stream(stream: &mut dyn ReadOctetStream) -> io::Result<DatagramId> {
         Ok(Self(stream.read_u16()?))
     }

@@ -19,7 +19,7 @@ use crate::{Nonce, ParticipantId, SessionConnectionSecret};
 
 
 #[repr(u8)]
-enum HostToClientCommand {
+pub enum HostToClientCommand {
     GameStep = 0x08,
     JoinGame = 0x0A,
     Connect = 0x0D,
@@ -35,7 +35,7 @@ impl TryFrom<u8> for HostToClientCommand {
             0x08 => Ok(HostToClientCommand::GameStep),
             _ => Err(io::Error::new(
                 ErrorKind::InvalidData,
-                format!("Unknown command {}", value),
+                format!("Unknown host to client command {}", value),
             )),
         }
     }

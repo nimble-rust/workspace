@@ -1,4 +1,4 @@
-use flood_rs::{InOctetStream, OutOctetStream, ReadOctetStream, WriteOctetStream};
+use flood_rs::{InOctetStream, ReadOctetStream, WriteOctetStream};
 
 pub struct ClientTime(u16);
 

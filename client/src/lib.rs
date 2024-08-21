@@ -8,11 +8,11 @@ use std::io::{Error, ErrorKind};
 use flood_rs::{InOctetStream, OutOctetStream, WriteOctetStream};
 use log::info;
 
-use connection_layer::{ConnectionId, ConnectionSecretSeed, prepare_out_stream, write_to_stream};
+use connection_layer::{prepare_out_stream, verify_hash, write_to_stream, ConnectionId, ConnectionLayerMode, ConnectionSecretSeed};
 use datagram_pinger::{client_out_ping, ClientTime};
-use nimble_protocol::{Nonce, Version};
-use nimble_protocol::client_to_host::{ClientToHostCommands, PredictedStepsForPlayers, ConnectRequest, JoinGameRequest, JoinGameType, JoinPlayerRequest, JoinPlayerRequests, StepsAck, StepsRequest, PredictedStepsForPlayer};
+use nimble_protocol::client_to_host::{ClientToHostCommands, ConnectRequest, JoinGameRequest, JoinGameType, JoinPlayerRequest, JoinPlayerRequests, PredictedStepsForPlayer, PredictedStepsForPlayers, StepsAck, StepsRequest};
 use nimble_protocol::host_to_client::{ConnectionAccepted, GameStepResponse, HostToClientCommands, JoinGameAccepted};
+use nimble_protocol::{Nonce, Version};
 use ordered_datagram::OrderedOut;
 use secure_random::SecureRandom;
 
@@ -116,7 +116,7 @@ impl Client {
 
     fn write_header(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
         match self.phase {
-            ClientPhase::Connected(assigned_connection_id, _) => {
+            ClientPhase::Connected(_, _) => {
                 prepare_out_stream(stream)?; // Add hash stream
                 self.ordered_datagram_out.to_stream(stream)?;
                 info!("add connect header {}", self.ordered_datagram_out.sequence_to_send);
@@ -133,9 +133,9 @@ impl Client {
     }
 
     fn write_to_start_of_header(&self, connection_id: ConnectionId, seed: ConnectionSecretSeed, out_stream: &mut OutOctetStream) -> io::Result<()> {
-        let mut payload = out_stream.data.as_mut_slice();
+        let payload = out_stream.data.as_mut_slice();
         let mut hash_stream = OutOctetStream::new();
-        let payload_to_calculate_on = &payload[6..];
+        let payload_to_calculate_on = &payload[5..];
         info!("payload: {:?}", payload_to_calculate_on);
         write_to_stream(&mut hash_stream, connection_id, seed, payload_to_calculate_on)?; // Write hash connection layer header
         payload[..hash_stream.data.len()].copy_from_slice(hash_stream.data.as_slice());
@@ -217,20 +217,58 @@ impl Client {
 
     fn receive(&mut self, datagram: &[u8]) -> io::Result<()> {
         let mut in_stream = InOctetStream::new(datagram.to_vec());
-        let _connection_id = ConnectionId::from_stream(&mut in_stream);
-        let command = HostToClientCommands::from_stream(&mut in_stream)?;
-        match command {
-            HostToClientCommands::ConnectType(connect_command) => {
-                self.on_connect(connect_command)?;
-                Ok(())
+        let connection_mode = ConnectionLayerMode::from_stream(&mut in_stream)?;
+        match connection_mode {
+            ConnectionLayerMode::OOB => {
+                let command = HostToClientCommands::from_stream(&mut in_stream)?;
+                match command {
+                    HostToClientCommands::ConnectType(connect_command) => {
+                        self.on_connect(connect_command)?;
+                        Ok(())
+                    }
+                    _ => Err(Error::new(
+                        ErrorKind::InvalidData,
+                        "unknown OOB command",
+                    ))
+                }
             }
-            HostToClientCommands::JoinGame(join_game_response) => {
-                self.on_join_game(join_game_response)?;
-                Ok(())
-            }
-            HostToClientCommands::GameStep(game_step_response) => {
-                self.on_game_step(game_step_response)?;
-                Ok(())
+            ConnectionLayerMode::Connection(connection_layer) => {
+                match self.phase {
+                    ClientPhase::Connecting(_) => {
+                        Err(Error::new(
+                            ErrorKind::InvalidData,
+                            "received connection layer connection mode without a connection",
+                        ))
+                    }
+                    ClientPhase::Connected(connection_id, connection_seed) => {
+                        if connection_layer.connection_id != connection_id {
+                            return Err(Error::new(
+                                ErrorKind::InvalidData,
+                                "wrong connection id",
+                            ))
+                        }
+
+                        verify_hash(connection_layer.murmur3_hash, connection_seed, &datagram[5..])?;
+
+                        let command = HostToClientCommands::from_stream(&mut in_stream)?;
+                        match command {
+                            HostToClientCommands::JoinGame(join_game_response) => {
+                                self.on_join_game(join_game_response)?;
+                                Ok(())
+                            }
+                            HostToClientCommands::GameStep(game_step_response) => {
+                                self.on_game_step(game_step_response)?;
+                                Ok(())
+                            }
+                            _ => Err(Error::new(
+                                ErrorKind::InvalidData,
+                                "unknown command for host to layer connected client command",
+                            ))
+                        }
+                    }
+                }
+
+
             }
         }
     }
@@ -245,8 +283,8 @@ mod tests {
     use test_log::test;
 
     use datagram::{DatagramCommunicator, DatagramProcessor};
-    use nimble_protocol::{hex_output, Nonce};
     use nimble_protocol::client_to_host::{JoinGameRequest, JoinGameType, JoinPlayerRequest, JoinPlayerRequests};
+    use nimble_protocol::{hex_output, Nonce};
     use secure_random::GetRandom;
     use udp_client::UdpClient;
 

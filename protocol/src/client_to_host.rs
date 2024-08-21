@@ -3,7 +3,6 @@
  *  Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------------------------------------------------------*/
 use std::{fmt, io};
-use std::fmt::Pointer;
 use std::io::ErrorKind;
 
 use flood_rs::{ReadOctetStream, WriteOctetStream};

@@ -51,6 +51,7 @@ impl<T> Steps<T> {
 
 pub struct FromIndexIterator<'a, T> {
     deque: &'a VecDeque<StepInfo<T>>,
+    #[allow(unused)]
     start_index: usize,
     current_index: usize,
 }
