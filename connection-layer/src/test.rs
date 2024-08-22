@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-    use crate::murmur3_x86_32;
     use super::*;
+    use crate::murmur3_x86_32;
 
     #[test]
     fn test_murmur3_x86_32() {
@@ -23,7 +23,11 @@ mod tests {
 
         for (input, seed, expected) in test_vectors {
             let result = murmur3_x86_32(input, seed);
-            assert_eq!(result, expected, "Failed for input: '{:?}', seed: {}, got: {:x}, expected: {:x}", input, seed, result, expected);
+            assert_eq!(
+                result, expected,
+                "Failed for input: '{:?}', seed: {}, got: {:x}, expected: {:x}",
+                input, seed, result, expected
+            );
         }
 
         println!("All tests passed!");

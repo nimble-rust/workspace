@@ -68,7 +68,6 @@ impl Version {
     }
 }
 
-
 #[derive(PartialEq, Copy, Clone, Debug)]
 pub struct ParticipantId {
     pub value: u8,

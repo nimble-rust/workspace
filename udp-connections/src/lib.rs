@@ -2,8 +2,8 @@
  *  Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  *  Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------------------------------------------------------*/
-use std::{fmt, io};
 use std::io::{Error, ErrorKind};
+use std::{fmt, io};
 
 use flood_rs::{InOctetStream, OutOctetStream, ReadOctetStream, WriteOctetStream};
 use log::info;
@@ -472,7 +472,10 @@ impl Client {
             }
             _ => Err(Error::new(
                 ErrorKind::InvalidInput,
-                format!("can not receive on_connect in current client state {:?}", self.phase),
+                format!(
+                    "can not receive on_connect in current client state {:?}",
+                    self.phase
+                ),
             )),
         }
     }
@@ -502,7 +505,10 @@ impl Client {
             }
             _ => Err(Error::new(
                 ErrorKind::InvalidInput,
-                format!("can not receive on_packet in current client state {:?}", self.phase),
+                format!(
+                    "can not receive on_packet in current client state {:?}",
+                    self.phase
+                ),
             )),
         }
     }

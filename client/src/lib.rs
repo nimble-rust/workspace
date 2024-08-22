@@ -8,10 +8,18 @@ use std::io::{Error, ErrorKind};
 use flood_rs::{InOctetStream, OutOctetStream, WriteOctetStream};
 use log::info;
 
-use connection_layer::{prepare_out_stream, verify_hash, write_to_stream, ConnectionId, ConnectionLayerMode, ConnectionSecretSeed};
+use connection_layer::{
+    prepare_out_stream, verify_hash, write_to_stream, ConnectionId, ConnectionLayerMode,
+    ConnectionSecretSeed,
+};
 use datagram_pinger::{client_in_ping, client_out_ping, ClientTime};
-use nimble_protocol::client_to_host::{ClientToHostCommands, ConnectRequest, JoinGameRequest, JoinGameType, JoinPlayerRequest, JoinPlayerRequests, PredictedStepsForPlayer, PredictedStepsForPlayers, StepsAck, StepsRequest};
-use nimble_protocol::host_to_client::{ConnectionAccepted, GameStepResponse, HostToClientCommands, JoinGameAccepted};
+use nimble_protocol::client_to_host::{
+    ClientToHostCommands, ConnectRequest, JoinGameRequest, JoinGameType, JoinPlayerRequest,
+    JoinPlayerRequests, PredictedStepsForPlayer, PredictedStepsForPlayers, StepsAck, StepsRequest,
+};
+use nimble_protocol::host_to_client::{
+    ConnectionAccepted, GameStepResponse, HostToClientCommands, JoinGameAccepted,
+};
 use nimble_protocol::{Nonce, Version};
 use ordered_datagram::{OrderedIn, OrderedOut};
 use secure_random::SecureRandom;
@@ -31,7 +39,6 @@ pub struct Client {
     tick_id: u32,
     debug_tick_id_to_send: u32,
 }
-
 
 impl Client {
     pub fn new(mut random: Box<dyn SecureRandom>) -> Client {
@@ -96,7 +103,6 @@ impl Client {
 
                 self.debug_tick_id_to_send += 1;
 
-
                 let steps_request = StepsRequest {
                     ack: StepsAck {
                         latest_received_step_tick_id: self.tick_id,
@@ -121,7 +127,10 @@ impl Client {
             ClientPhase::Connected(_, _) => {
                 prepare_out_stream(stream)?; // Add hash stream
                 self.ordered_datagram_out.to_stream(stream)?;
-                info!("add connect header {}", self.ordered_datagram_out.sequence_to_send);
+                info!(
+                    "add connect header {}",
+                    self.ordered_datagram_out.sequence_to_send
+                );
 
                 let client_time = ClientTime::new(0);
                 client_out_ping(client_time, stream)
@@ -134,16 +143,25 @@ impl Client {
         }
     }
 
-    fn write_to_start_of_header(&self, connection_id: ConnectionId, seed: ConnectionSecretSeed, out_stream: &mut OutOctetStream) -> io::Result<()> {
+    fn write_to_start_of_header(
+        &self,
+        connection_id: ConnectionId,
+        seed: ConnectionSecretSeed,
+        out_stream: &mut OutOctetStream,
+    ) -> io::Result<()> {
         let payload = out_stream.data.as_mut_slice();
         let mut hash_stream = OutOctetStream::new();
         let payload_to_calculate_on = &payload[5..];
         info!("payload: {:?}", payload_to_calculate_on);
-        write_to_stream(&mut hash_stream, connection_id, seed, payload_to_calculate_on)?; // Write hash connection layer header
+        write_to_stream(
+            &mut hash_stream,
+            connection_id,
+            seed,
+            payload_to_calculate_on,
+        )?; // Write hash connection layer header
         payload[..hash_stream.data.len()].copy_from_slice(hash_stream.data.as_slice());
         Ok(())
     }
-
 
     fn send(&mut self) -> io::Result<Vec<Vec<u8>>> {
         let mut out_stream = OutOctetStream::new();
@@ -191,17 +209,16 @@ impl Client {
                 }
                 let half_secret = cmd.host_assigned_connection_secret.value as u32;
                 info!("half_secret: {:X}", half_secret);
-                self.phase = ClientPhase::Connected(cmd.host_assigned_connection_id, ConnectionSecretSeed(half_secret));
+                self.phase = ClientPhase::Connected(
+                    cmd.host_assigned_connection_id,
+                    ConnectionSecretSeed(half_secret),
+                );
 
                 ClientToHostCommands::JoinGameType(JoinGameRequest {
                     nonce: Nonce(self.random.get_random_u64()),
                     join_game_type: JoinGameType::NoSecret,
                     player_requests: JoinPlayerRequests {
-                        players: vec![
-                            JoinPlayerRequest {
-                                local_index: 42,
-                            }
-                        ]
+                        players: vec![JoinPlayerRequest { local_index: 42 }],
                     },
                 });
                 info!("connected! cmd:{:?}", cmd);
@@ -228,29 +245,31 @@ impl Client {
                         self.on_connect(connect_command)?;
                         Ok(())
                     }
-                    _ => Err(Error::new(
-                        ErrorKind::InvalidData,
-                        "unknown OOB command",
-                    ))
+                    _ => Err(Error::new(ErrorKind::InvalidData, "unknown OOB command")),
                 }
             }
             ConnectionLayerMode::Connection(connection_layer) => {
                 match self.phase {
-                    ClientPhase::Connecting(_) => {
-                        Err(Error::new(
-                            ErrorKind::InvalidData,
-                            "received connection layer connection mode without a connection",
-                        ))
-                    }
+                    ClientPhase::Connecting(_) => Err(Error::new(
+                        ErrorKind::InvalidData,
+                        "received connection layer connection mode without a connection",
+                    )),
                     ClientPhase::Connected(connection_id, connection_seed) => {
                         if connection_layer.connection_id != connection_id {
                             return Err(Error::new(
                                 ErrorKind::InvalidData,
-                                format!("wrong connection id, expected {:?} but received {:?}", connection_id, connection_layer.connection_id),
+                                format!(
+                                    "wrong connection id, expected {:?} but received {:?}",
+                                    connection_id, connection_layer.connection_id
+                                ),
                             ));
                         }
 
-                        verify_hash(connection_layer.murmur3_hash, connection_seed, &datagram[5..])?;
+                        verify_hash(
+                            connection_layer.murmur3_hash,
+                            connection_seed,
+                            &datagram[5..],
+                        )?;
 
                         self.ordered_datagram_in.read_and_verify(&mut in_stream)?;
                         let _ = client_in_ping(&mut in_stream)?;
@@ -269,7 +288,7 @@ impl Client {
                                 _ => return Err(Error::new(
                                     ErrorKind::InvalidData,
                                     "unknown command for host to layer connected client command",
-                                ))
+                                )),
                             }
                         }
 
@@ -290,7 +309,9 @@ mod tests {
     use test_log::test;
 
     use datagram::{DatagramCommunicator, DatagramProcessor};
-    use nimble_protocol::client_to_host::{JoinGameRequest, JoinGameType, JoinPlayerRequest, JoinPlayerRequests};
+    use nimble_protocol::client_to_host::{
+        JoinGameRequest, JoinGameType, JoinPlayerRequest, JoinPlayerRequests,
+    };
     use nimble_protocol::{hex_output, Nonce};
     use secure_random::GetRandom;
     use udp_client::UdpClient;
@@ -309,14 +330,14 @@ mod tests {
         let mut udp_connections_client = udp_connections::Client::new(random2_box);
 
         let processor: &mut dyn DatagramProcessor = &mut udp_connections_client;
-        let joining_player = JoinPlayerRequest {
-            local_index: 32,
-        };
+        let joining_player = JoinPlayerRequest { local_index: 32 };
 
         let join_game_request = JoinGameRequest {
             nonce: Nonce(0),
             join_game_type: JoinGameType::NoSecret,
-            player_requests: JoinPlayerRequests { players: vec![joining_player] },
+            player_requests: JoinPlayerRequests {
+                players: vec![joining_player],
+            },
         };
         client.set_joining_player(join_game_request);
         client.debug_set_tick_id(0x8BADF00D);
@@ -325,7 +346,11 @@ mod tests {
         for _ in 0..20 {
             let datagrams_to_send = client.send().unwrap();
             for datagram_to_send in datagrams_to_send {
-                info!("send nimble datagram of size: {} payload: {}", datagram_to_send.len(), hex_output(datagram_to_send.as_slice()));
+                info!(
+                    "send nimble datagram of size: {} payload: {}",
+                    datagram_to_send.len(),
+                    hex_output(datagram_to_send.as_slice())
+                );
                 let processed = processor
                     .send_datagram(datagram_to_send.as_slice())
                     .unwrap();

@@ -2,8 +2,8 @@
  *  Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  *  Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------------------------------------------------------*/
-use std::{fmt, io};
 use std::io::ErrorKind;
+use std::{fmt, io};
 
 use flood_rs::{ReadOctetStream, WriteOctetStream};
 
@@ -43,7 +43,7 @@ impl ClientToHostCommands {
         match self {
             ClientToHostCommands::ConnectType(_) => ClientToHostCommand::Connect as u8,
             ClientToHostCommands::Steps(_) => ClientToHostCommand::Steps as u8,
-            ClientToHostCommands::JoinGameType(_) => ClientToHostCommand::JoinGame as u8
+            ClientToHostCommands::JoinGameType(_) => ClientToHostCommand::JoinGame as u8,
         }
     }
 
@@ -51,8 +51,12 @@ impl ClientToHostCommands {
         stream.write_u8(self.to_octet())?;
         match self {
             ClientToHostCommands::ConnectType(connect_command) => connect_command.to_stream(stream),
-            ClientToHostCommands::Steps(predicted_steps_and_ack) => predicted_steps_and_ack.to_stream(stream),
-            ClientToHostCommands::JoinGameType(join_game_request) => join_game_request.to_stream(stream),
+            ClientToHostCommands::Steps(predicted_steps_and_ack) => {
+                predicted_steps_and_ack.to_stream(stream)
+            }
+            ClientToHostCommands::JoinGameType(join_game_request) => {
+                join_game_request.to_stream(stream)
+            }
         }
     }
 
@@ -79,7 +83,9 @@ impl fmt::Display for ClientToHostCommands {
         match self {
             ClientToHostCommands::ConnectType(connect) => write!(f, "connect {:?}", connect),
             ClientToHostCommands::JoinGameType(join) => write!(f, "join {:?}", join),
-            ClientToHostCommands::Steps(predicted_steps_and_ack) => write!(f, "steps {:?}", predicted_steps_and_ack)
+            ClientToHostCommands::Steps(predicted_steps_and_ack) => {
+                write!(f, "steps {:?}", predicted_steps_and_ack)
+            }
         }
     }
 }
@@ -112,7 +118,6 @@ impl ConnectRequest {
         })
     }
 }
-
 
 #[repr(u8)]
 pub enum JoinGameTypeValue {
@@ -271,7 +276,6 @@ impl JoinGameRequest {
     }
 }
 
-
 #[derive(Debug, PartialEq, Clone)]
 pub struct StepsAck {
     pub latest_received_step_tick_id: u32,
@@ -353,7 +357,8 @@ impl PredictedStepsForPlayers {
     pub fn from_stream(stream: &mut dyn ReadOctetStream) -> io::Result<Self> {
         let player_count = stream.read_u8()?;
 
-        let mut predicted_steps_for_players = Vec::<PredictedStepsForPlayer>::with_capacity(player_count as usize);
+        let mut predicted_steps_for_players =
+            Vec::<PredictedStepsForPlayer>::with_capacity(player_count as usize);
 
         for _ in 0..player_count {
             let predicted_steps_for_player = PredictedStepsForPlayer::from_stream(stream)?;

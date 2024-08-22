@@ -37,7 +37,6 @@ pub struct OrderedOut {
     pub sequence_to_send: DatagramId,
 }
 
-
 impl OrderedOut {
     pub fn new() -> Self {
         Self {
@@ -49,7 +48,6 @@ impl OrderedOut {
     }
 }
 
-
 #[derive(Debug, Default, Clone, Copy)]
 pub struct OrderedIn {
     expected_sequence: DatagramId,
@@ -59,26 +57,31 @@ impl OrderedIn {
     pub fn read_and_verify(&mut self, stream: &mut dyn ReadOctetStream) -> io::Result<()> {
         let potential_successor = DatagramId::from_stream(stream)?;
 
-        if self.expected_sequence.is_valid_successor(potential_successor) {
+        if self
+            .expected_sequence
+            .is_valid_successor(potential_successor)
+        {
             self.expected_sequence = potential_successor;
             Ok(())
         } else {
             Err(io::Error::new(
                 ErrorKind::InvalidData,
-                format!("wrong datagram order. expected {} but received {}", self.expected_sequence, potential_successor),
+                format!(
+                    "wrong datagram order. expected {} but received {}",
+                    self.expected_sequence, potential_successor
+                ),
             ))
         }
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use crate::{DatagramId, Ordered};
+    use crate::{DatagramId, OrderedOut};
 
     #[test]
     fn ordered_out() {
-        let out = Ordered {
+        let out = OrderedOut {
             sequence_to_send: DatagramId(32),
         };
         assert_eq!(out.sequence_to_send.0, 32);

@@ -22,8 +22,8 @@ impl SecureRandom for GetRandom {
 
 #[cfg(test)]
 mod tests {
-    use log::info;
     use crate::{GetRandom, SecureRandom};
+    use log::info;
 
     #[test]
     fn check_random() {

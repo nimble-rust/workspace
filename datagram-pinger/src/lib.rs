@@ -8,7 +8,10 @@ impl ClientTime {
     }
 }
 
-pub fn client_out_ping(client_time: ClientTime, stream: &mut dyn WriteOctetStream) -> std::io::Result<()> {
+pub fn client_out_ping(
+    client_time: ClientTime,
+    stream: &mut dyn WriteOctetStream,
+) -> std::io::Result<()> {
     stream.write_u16(client_time.0)
 }
 

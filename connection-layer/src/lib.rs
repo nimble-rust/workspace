@@ -7,7 +7,6 @@ use flood_rs::{ReadOctetStream, WriteOctetStream};
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ConnectionSecretSeed(pub u32);
 
-
 #[derive(PartialEq, Copy, Clone, Default, Debug)]
 pub struct ConnectionId {
     pub value: u8,
@@ -104,7 +103,6 @@ pub struct ConnectionLayer {
     pub murmur3_hash: u32,
 }
 
-
 pub enum ConnectionLayerMode {
     OOB,
     Connection(ConnectionLayer),
@@ -117,7 +115,7 @@ impl ConnectionLayerMode {
             ConnectionLayerMode::Connection(layer) => {
                 layer.connection_id.to_stream(stream)?;
                 stream.write_u32(layer.murmur3_hash)
-            },
+            }
         }
     }
     pub fn from_stream(stream: &mut dyn ReadOctetStream) -> std::io::Result<Self> {
@@ -127,28 +125,40 @@ impl ConnectionLayerMode {
             _ => ConnectionLayerMode::Connection(ConnectionLayer {
                 connection_id,
                 murmur3_hash: stream.read_u32()?,
-            })
+            }),
         };
 
         Ok(mode)
     }
 }
 
-
-pub fn write_to_stream(stream: &mut dyn WriteOctetStream, connection_id: ConnectionId, seed: ConnectionSecretSeed, payload: &[u8]) -> io::Result<()> {
+pub fn write_to_stream(
+    stream: &mut dyn WriteOctetStream,
+    connection_id: ConnectionId,
+    seed: ConnectionSecretSeed,
+    payload: &[u8],
+) -> io::Result<()> {
     let calculated_hash = murmur3_x86_32(payload, seed.0);
     ConnectionLayerMode::Connection(ConnectionLayer {
         connection_id,
         murmur3_hash: calculated_hash,
-    }).to_stream(stream)
+    })
+    .to_stream(stream)
 }
 
-pub fn verify_hash(expected_hash: u32, seed: ConnectionSecretSeed, payload: &[u8]) -> io::Result<()> {
+pub fn verify_hash(
+    expected_hash: u32,
+    seed: ConnectionSecretSeed,
+    payload: &[u8],
+) -> io::Result<()> {
     let calculated_hash = murmur3_x86_32(payload, seed.0);
     if calculated_hash != expected_hash {
         Err(io::Error::new(
             io::ErrorKind::InvalidData,
-            format!("hash mismatch: the data does not match the expected hash. {} vs {}", calculated_hash, expected_hash),
+            format!(
+                "hash mismatch: the data does not match the expected hash. {} vs {}",
+                calculated_hash, expected_hash
+            ),
         ))
     } else {
         Ok(())

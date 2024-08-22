@@ -17,7 +17,6 @@ use crate::{Nonce, ParticipantId, SessionConnectionSecret};
 // #define NimbleSerializeCmdJoinGameOutOfParticipantSlotsResponse (0x0c)
 // #define NimbleSerializeCmdConnectResponse (0x0d)
 
-
 #[repr(u8)]
 pub enum HostToClientCommand {
     GameStep = 0x08,
@@ -61,8 +60,12 @@ impl HostToClientCommands {
         stream.write_u8(self.to_octet())?;
         match self {
             HostToClientCommands::ConnectType(connect_command) => connect_command.to_stream(stream),
-            HostToClientCommands::JoinGame(join_game_response) => join_game_response.to_stream(stream),
-            HostToClientCommands::GameStep(game_step_response) => game_step_response.to_stream(stream),
+            HostToClientCommands::JoinGame(join_game_response) => {
+                join_game_response.to_stream(stream)
+            }
+            HostToClientCommands::GameStep(game_step_response) => {
+                game_step_response.to_stream(stream)
+            }
         }
     }
 
@@ -78,16 +81,15 @@ impl HostToClientCommands {
             }
             HostToClientCommand::GameStep => {
                 HostToClientCommands::GameStep(GameStepResponse::from_stream(stream)?)
-            }
-            /*
-             => {
-                return Err(io::Error::new(
-                    ErrorKind::InvalidData,
-                    format!("unknown command {}", command_value),
-                ));
-            }
+            } /*
+               => {
+                  return Err(io::Error::new(
+                      ErrorKind::InvalidData,
+                      format!("unknown command {}", command_value),
+                  ));
+              }
 
-             */
+               */
         };
         Ok(x)
     }
@@ -122,13 +124,11 @@ impl ConnectionAccepted {
     }
 }
 
-
 #[derive(Debug, PartialEq)]
 pub struct PartyAndSessionSecret {
     pub session_secret: SessionConnectionSecret,
     pub party_id: u8,
 }
-
 
 impl PartyAndSessionSecret {
     pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> std::io::Result<()> {
@@ -209,7 +209,6 @@ impl JoinGameAccepted {
     }
 }
 
-
 #[derive(Debug, PartialEq)]
 pub struct GameStepResponseHeader {
     pub connection_buffer_count: u8,
@@ -232,7 +231,6 @@ impl GameStepResponseHeader {
         })
     }
 }
-
 
 #[derive(Debug, PartialEq)]
 pub struct AuthoritativeStepRange {
@@ -289,7 +287,8 @@ impl AuthoritativeStepRanges {
         let start_step_id = stream.read_u32()?;
         let range_count = stream.read_u8()?;
 
-        let mut authoritative_step_ranges = Vec::<AuthoritativeStepRange>::with_capacity(range_count as usize);
+        let mut authoritative_step_ranges =
+            Vec::<AuthoritativeStepRange>::with_capacity(range_count as usize);
 
         for _ in 0..range_count {
             authoritative_step_ranges.push(AuthoritativeStepRange::from_stream(stream)?);
