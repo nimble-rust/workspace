@@ -5,7 +5,7 @@
 use std::io;
 use std::io::{Error, ErrorKind};
 
-use flood_rs::{InOctetStream, OutOctetStream, WriteOctetStream};
+use flood_rs::{InOctetStream, OutOctetStream, ReadOctetStream, WriteOctetStream};
 use log::info;
 
 use connection_layer::{
@@ -276,7 +276,11 @@ impl Client {
 
                         // TODO: Add latency calculations
 
-                        for _ in 0..5 {
+                        for _ in 0..8 {
+                            // only allowed to have at maximum eight commands in one datagram
+                            if in_stream.has_reached_end() {
+                                break;
+                            }
                             let command = HostToClientCommands::from_stream(&mut in_stream)?;
                             match command {
                                 HostToClientCommands::JoinGame(join_game_response) => {

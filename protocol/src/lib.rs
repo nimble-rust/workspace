@@ -4,7 +4,7 @@
  */
 use std::fmt;
 use std::fmt::Formatter;
-use std::io::{Error, ErrorKind, Result};
+use std::io::Result;
 
 use flood_rs::{ReadOctetStream, WriteOctetStream};
 
@@ -84,30 +84,12 @@ impl ParticipantId {
     }
 }
 
-pub fn write_marker(stream: &mut dyn WriteOctetStream, marker: u8) -> Result<()> {
-    stream.write_u8(marker)
-}
-
-pub fn read_marker(stream: &mut dyn ReadOctetStream, expected_marker: u8) -> Result<()> {
-    let found_marker = stream.read_u8()?;
-
-    if found_marker == expected_marker {
-        return Ok(());
-    }
-
-    Err(Error::new(
-        ErrorKind::InvalidData,
-        "Encountered wrong marker",
-    ))
-}
-
 #[derive(PartialEq, Copy, Clone)]
 pub struct SessionConnectionSecret {
     pub value: u64,
 }
 
 impl SessionConnectionSecret {
-    const MARKER: u8 = 0x68;
     pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> Result<()> {
         stream.write_u64(self.value)
     }

@@ -160,7 +160,7 @@ pub fn verify_hash(
         Err(io::Error::new(
             io::ErrorKind::InvalidData,
             format!(
-                "hash mismatch: the data does not match the expected hash. {} vs {}",
+                "hash mismatch: the data does not match the expected hash. {:x} vs {:x}",
                 calculated_hash, expected_hash
             ),
         ))

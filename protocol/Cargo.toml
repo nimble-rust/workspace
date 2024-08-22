@@ -8,5 +8,5 @@ repository = "https://github.com/nimble-rust/protocol"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-flood-rs = "0.0.5"
+flood-rs = "0.0.6"
 connection-layer = { path = "../connection-layer" }

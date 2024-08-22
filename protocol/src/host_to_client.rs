@@ -103,8 +103,6 @@ pub struct ConnectionAccepted {
     pub host_assigned_connection_secret: SessionConnectionSecret,
 }
 
-//const SECRET_MARKER: u8 = 0x65;
-
 impl ConnectionAccepted {
     pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> std::io::Result<()> {
         stream.write_u8(self.flags)?;
@@ -179,8 +177,8 @@ impl JoinGameParticipants {
     pub fn from_stream(stream: &mut dyn ReadOctetStream) -> std::io::Result<Self> {
         let count = stream.read_u8()?;
         let mut vec = Vec::<JoinGameParticipant>::with_capacity(count as usize);
-        for v in vec.iter_mut() {
-            *v = JoinGameParticipant::from_stream(stream)?;
+        for _ in 0..count {
+            vec.push(JoinGameParticipant::from_stream(stream)?);
         }
 
         Ok(Self(vec))
@@ -192,8 +190,6 @@ pub struct JoinGameAccepted {
     pub party_and_session_secret: PartyAndSessionSecret,
     pub participants: JoinGameParticipants,
 }
-
-//const SECRET_MARKER: u8 = 0x65;
 
 impl JoinGameAccepted {
     pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> std::io::Result<()> {

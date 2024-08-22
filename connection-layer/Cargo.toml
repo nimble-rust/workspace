@@ -4,5 +4,5 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-flood-rs = "0.0.5"
+flood-rs = "0.0.6"
 log = "0.4.21"
