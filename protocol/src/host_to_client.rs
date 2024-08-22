@@ -21,7 +21,7 @@ use crate::{Nonce, ParticipantId, SessionConnectionSecret};
 #[repr(u8)]
 pub enum HostToClientCommand {
     GameStep = 0x08,
-    JoinGame = 0x0A,
+    JoinGame = 0x09,
     Connect = 0x0D,
 }
 
@@ -31,7 +31,7 @@ impl TryFrom<u8> for HostToClientCommand {
     fn try_from(value: u8) -> std::io::Result<Self> {
         match value {
             0x0D => Ok(HostToClientCommand::Connect),
-            0x0A => Ok(HostToClientCommand::JoinGame),
+            0x09 => Ok(HostToClientCommand::JoinGame),
             0x08 => Ok(HostToClientCommand::GameStep),
             _ => Err(io::Error::new(
                 ErrorKind::InvalidData,

@@ -110,11 +110,9 @@ pub struct SessionConnectionSecret {
 impl SessionConnectionSecret {
     const MARKER: u8 = 0x68;
     pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> Result<()> {
-        stream.write_debug_marker(SessionConnectionSecret::MARKER)?;
         stream.write_u64(self.value)
     }
     pub fn from_stream(stream: &mut dyn ReadOctetStream) -> Result<Self> {
-        stream.verify_debug_marker(SessionConnectionSecret::MARKER)?;
         Ok(Self {
             value: stream.read_u64()?,
         })
@@ -137,8 +135,8 @@ impl fmt::Debug for SessionConnectionSecret {
 mod tests {
     use flood_rs::{InOctetStream, OutOctetStream};
 
-    use crate::{Nonce, Version};
     use crate::client_to_host::ConnectRequest;
+    use crate::{Nonce, Version};
 
     #[test]
     fn check_version() {
