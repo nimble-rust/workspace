@@ -12,6 +12,6 @@ pub fn client_out_ping(client_time: ClientTime, stream: &mut dyn WriteOctetStrea
     stream.write_u16(client_time.0)
 }
 
-pub fn host_in_ping(stream: &mut InOctetStream) -> std::io::Result<ClientTime> {
+pub fn client_in_ping(stream: &mut InOctetStream) -> std::io::Result<ClientTime> {
     Ok(ClientTime(stream.read_u16()?))
 }

@@ -9,11 +9,11 @@ use flood_rs::{InOctetStream, OutOctetStream, WriteOctetStream};
 use log::info;
 
 use connection_layer::{prepare_out_stream, verify_hash, write_to_stream, ConnectionId, ConnectionLayerMode, ConnectionSecretSeed};
-use datagram_pinger::{client_out_ping, ClientTime};
+use datagram_pinger::{client_in_ping, client_out_ping, ClientTime};
 use nimble_protocol::client_to_host::{ClientToHostCommands, ConnectRequest, JoinGameRequest, JoinGameType, JoinPlayerRequest, JoinPlayerRequests, PredictedStepsForPlayer, PredictedStepsForPlayers, StepsAck, StepsRequest};
 use nimble_protocol::host_to_client::{ConnectionAccepted, GameStepResponse, HostToClientCommands, JoinGameAccepted};
 use nimble_protocol::{Nonce, Version};
-use ordered_datagram::OrderedOut;
+use ordered_datagram::{OrderedIn, OrderedOut};
 use secure_random::SecureRandom;
 
 #[derive(PartialEq, Debug)]
@@ -27,6 +27,7 @@ pub struct Client {
     joining_player: Option<JoinGameRequest>,
     random: Box<dyn SecureRandom>,
     ordered_datagram_out: OrderedOut,
+    ordered_datagram_in: OrderedIn,
     tick_id: u32,
     debug_tick_id_to_send: u32,
 }
@@ -40,6 +41,7 @@ impl Client {
             random,
             joining_player: None,
             ordered_datagram_out: OrderedOut::default(),
+            ordered_datagram_in: OrderedIn::default(),
             tick_id: 0,
             debug_tick_id_to_send: 0,
         }
@@ -244,31 +246,36 @@ impl Client {
                         if connection_layer.connection_id != connection_id {
                             return Err(Error::new(
                                 ErrorKind::InvalidData,
-                                "wrong connection id",
-                            ))
+                                format!("wrong connection id, expected {:?} but received {:?}", connection_id, connection_layer.connection_id),
+                            ));
                         }
 
                         verify_hash(connection_layer.murmur3_hash, connection_seed, &datagram[5..])?;
 
-                        let command = HostToClientCommands::from_stream(&mut in_stream)?;
-                        match command {
-                            HostToClientCommands::JoinGame(join_game_response) => {
-                                self.on_join_game(join_game_response)?;
-                                Ok(())
+                        self.ordered_datagram_in.read_and_verify(&mut in_stream)?;
+                        let _ = client_in_ping(&mut in_stream)?;
+
+                        // TODO: Add latency calculations
+
+                        for _ in 0..5 {
+                            let command = HostToClientCommands::from_stream(&mut in_stream)?;
+                            match command {
+                                HostToClientCommands::JoinGame(join_game_response) => {
+                                    self.on_join_game(join_game_response)?;
+                                }
+                                HostToClientCommands::GameStep(game_step_response) => {
+                                    self.on_game_step(game_step_response)?;
+                                }
+                                _ => return Err(Error::new(
+                                    ErrorKind::InvalidData,
+                                    "unknown command for host to layer connected client command",
+                                ))
                             }
-                            HostToClientCommands::GameStep(game_step_response) => {
-                                self.on_game_step(game_step_response)?;
-                                Ok(())
-                            }
-                            _ => Err(Error::new(
-                                ErrorKind::InvalidData,
-                                "unknown command for host to layer connected client command",
-                            ))
                         }
+
+                        Ok(())
                     }
                 }
-
-
             }
         }
     }

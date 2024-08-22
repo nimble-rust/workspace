@@ -419,7 +419,7 @@ impl fmt::Display for ClientPhase {
                 nonce, challenge
             ),
             ClientPhase::Connected(connection_id) => {
-                write!(f, "clientPhase: Connected with {}", connection_id)
+                write!(f, "clientPhase: Connected with {}", *connection_id)
             }
         }
     }
