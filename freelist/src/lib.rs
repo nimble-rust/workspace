@@ -6,6 +6,7 @@ struct FreeList {
     free_numbers: Vec<u8>,
 }
 
+#[allow(unused)]
 impl FreeList {
     fn new(count: u8) -> Self {
         let mut free_numbers = Vec::with_capacity(count as usize);

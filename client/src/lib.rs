@@ -13,14 +13,17 @@ use connection_layer::{
     ConnectionSecretSeed,
 };
 use datagram_pinger::{client_in_ping, client_out_ping, ClientTime};
+use nimble_assent::{Assent, AssentCallback, UpdateState};
+
 use nimble_protocol::client_to_host::{
-    ClientToHostCommands, ConnectRequest, JoinGameRequest, JoinGameType, JoinPlayerRequest,
-    JoinPlayerRequests, PredictedStepsForPlayer, PredictedStepsForPlayers, StepsAck, StepsRequest,
+    ClientToHostCommands, ConnectRequest, JoinGameRequest, PredictedStepsForPlayer,
+    PredictedStepsForPlayers, StepsAck, StepsRequest,
 };
 use nimble_protocol::host_to_client::{
     ConnectionAccepted, GameStepResponse, HostToClientCommands, JoinGameAccepted,
 };
 use nimble_protocol::{Nonce, Version};
+use nimble_seer::{Seer, SeerCallback};
 use ordered_datagram::{OrderedIn, OrderedOut};
 use secure_random::SecureRandom;
 
@@ -30,20 +33,23 @@ enum ClientPhase {
     Connected(ConnectionId, ConnectionSecretSeed),
 }
 
-pub struct Client {
+pub struct Client<Game: SeerCallback<StepT> + AssentCallback<StepT>, StepT: Clone> {
     phase: ClientPhase,
     joining_player: Option<JoinGameRequest>,
+    #[allow(unused)]
     random: Box<dyn SecureRandom>,
     ordered_datagram_out: OrderedOut,
     ordered_datagram_in: OrderedIn,
     tick_id: u32,
     debug_tick_id_to_send: u32,
+    seer: Seer<Game, StepT>,
+    assent: Assent<Game, StepT>,
 }
 
-impl Client {
-    pub fn new(mut random: Box<dyn SecureRandom>) -> Client {
+impl<Game: SeerCallback<StepT> + AssentCallback<StepT>, StepT: Clone> Client<Game, StepT> {
+    pub fn new(mut random: Box<dyn SecureRandom>) -> Client<Game, StepT> {
         let phase = ClientPhase::Connecting(Nonce(random.get_random_u64()));
-        Client {
+        Self {
             phase,
             random,
             joining_player: None,
@@ -51,6 +57,8 @@ impl Client {
             ordered_datagram_in: OrderedIn::default(),
             tick_id: 0,
             debug_tick_id_to_send: 0,
+            seer: Seer::new(),
+            assent: Assent::new(),
         }
     }
 
@@ -63,9 +71,7 @@ impl Client {
         self.debug_tick_id_to_send = self.tick_id;
     }
 
-    // At this client level, it should not mutate when sending a command
-    // mutation should happen when receiving commands.
-    fn send_to_command(&mut self) -> Vec<ClientToHostCommands> {
+    fn send_to_command(&self) -> Vec<ClientToHostCommands> {
         let mut commands: Vec<ClientToHostCommands> = vec![];
 
         match self.phase {
@@ -101,7 +107,7 @@ impl Client {
                     serialized_predicted_steps: vec![payload],
                 };
 
-                self.debug_tick_id_to_send += 1;
+                //self.debug_tick_id_to_send += 1;
 
                 let steps_request = StepsRequest {
                     ack: StepsAck {
@@ -120,6 +126,14 @@ impl Client {
         };
 
         commands
+    }
+
+    pub fn update(&mut self, game: &mut Game) -> UpdateState {
+        self.assent.update(game)
+    }
+
+    pub fn add_predicted_step(&mut self, step: StepT) {
+        self.seer.push(step);
     }
 
     fn write_header(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
@@ -163,7 +177,7 @@ impl Client {
         Ok(())
     }
 
-    fn send(&mut self) -> io::Result<Vec<Vec<u8>>> {
+    pub fn send(&mut self) -> io::Result<Vec<Vec<u8>>> {
         let mut out_stream = OutOctetStream::new();
         self.write_header(&mut out_stream)?;
 
@@ -173,12 +187,9 @@ impl Client {
             command_to_send.to_stream(&mut out_stream)?;
         }
 
-        match self.phase {
-            ClientPhase::Connected(connection_id, seed) => {
-                info!("writing connected header");
-                self.write_to_start_of_header(connection_id, seed, &mut out_stream)?
-            }
-            _ => {}
+        if let ClientPhase::Connected(connection_id, seed) = self.phase {
+            info!("writing connected header");
+            self.write_to_start_of_header(connection_id, seed, &mut out_stream)?
         }
 
         let datagrams = vec![out_stream.data];
@@ -214,6 +225,7 @@ impl Client {
                     ConnectionSecretSeed(half_secret),
                 );
 
+                /*
                 ClientToHostCommands::JoinGameType(JoinGameRequest {
                     nonce: Nonce(self.random.get_random_u64()),
                     join_game_type: JoinGameType::NoSecret,
@@ -221,6 +233,8 @@ impl Client {
                         players: vec![JoinPlayerRequest { local_index: 42 }],
                     },
                 });
+
+                 */
                 info!("connected! cmd:{:?}", cmd);
                 Ok(())
             }
@@ -234,7 +248,7 @@ impl Client {
         }
     }
 
-    fn receive(&mut self, datagram: &[u8]) -> io::Result<()> {
+    pub fn receive(&mut self, datagram: &[u8]) -> io::Result<()> {
         let mut in_stream = InOctetStream::new(datagram.to_vec());
         let connection_mode = ConnectionLayerMode::from_stream(&mut in_stream)?;
         match connection_mode {
@@ -300,89 +314,6 @@ impl Client {
                     }
                 }
             }
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use std::thread;
-    use std::time::Duration;
-
-    use log::{error, info, warn};
-    use test_log::test;
-
-    use datagram::{DatagramCommunicator, DatagramProcessor};
-    use nimble_protocol::client_to_host::{
-        JoinGameRequest, JoinGameType, JoinPlayerRequest, JoinPlayerRequests,
-    };
-    use nimble_protocol::{hex_output, Nonce};
-    use secure_random::GetRandom;
-    use udp_client::UdpClient;
-
-    use crate::Client;
-
-    #[test]
-    fn send_to_host() {
-        let random = GetRandom {};
-        let random_box = Box::new(random);
-        let mut client = Client::new(random_box);
-        let mut udp_client = UdpClient::new("127.0.0.1:23000").unwrap();
-        let communicator: &mut dyn DatagramCommunicator = &mut udp_client;
-        let random2 = GetRandom {};
-        let random2_box = Box::new(random2);
-        let mut udp_connections_client = udp_connections::Client::new(random2_box);
-
-        let processor: &mut dyn DatagramProcessor = &mut udp_connections_client;
-        let joining_player = JoinPlayerRequest { local_index: 32 };
-
-        let join_game_request = JoinGameRequest {
-            nonce: Nonce(0),
-            join_game_type: JoinGameType::NoSecret,
-            player_requests: JoinPlayerRequests {
-                players: vec![joining_player],
-            },
-        };
-        client.set_joining_player(join_game_request);
-        client.debug_set_tick_id(0x8BADF00D);
-
-        let mut buf = [1u8; 1200];
-        for _ in 0..20 {
-            let datagrams_to_send = client.send().unwrap();
-            for datagram_to_send in datagrams_to_send {
-                info!(
-                    "send nimble datagram of size: {} payload: {}",
-                    datagram_to_send.len(),
-                    hex_output(datagram_to_send.as_slice())
-                );
-                let processed = processor
-                    .send_datagram(datagram_to_send.as_slice())
-                    .unwrap();
-                communicator.send_datagram(processed.as_slice()).unwrap();
-            }
-            if let Ok(size) = communicator.receive_datagram(&mut buf) {
-                let received_buf = &buf[0..size];
-                info!(
-                    "received datagram of size: {} payload: {}",
-                    size,
-                    hex_output(received_buf)
-                );
-                match processor.receive_datagram(received_buf) {
-                    Ok(datagram_for_client) => {
-                        if datagram_for_client.len() > 0 {
-                            info!(
-                                "received datagram to client: {}",
-                                hex_output(&datagram_for_client)
-                            );
-                            if let Err(e) = client.receive(datagram_for_client.as_slice()) {
-                                warn!("receive error {}", e);
-                            }
-                        }
-                    }
-                    Err(some_error) => error!("error {}", some_error),
-                }
-            }
-            thread::sleep(Duration::from_millis(16));
         }
     }
 }

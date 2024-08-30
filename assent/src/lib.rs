@@ -10,6 +10,8 @@ pub trait AssentCallback<CombinedStepT: Clone> {
     fn on_pre_ticks(&mut self) {}
 
     fn on_tick(&mut self, step: &CombinedStepT);
+
+    fn on_post_ticks(&mut self) {}
 }
 
 #[derive(Debug, PartialEq)]

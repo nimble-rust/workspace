@@ -10,4 +10,3 @@ repository = "https://github.com/nimble-rust/seer"
 
 [dependencies]
 nimble-steps = { path = "../steps" }
-nimble-transmute = { path = "../transmute" }

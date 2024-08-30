@@ -43,7 +43,7 @@ impl<T> Host<T> {
         }
     }
 
-    pub fn get_steps_from(&self, tick_id: TickId) -> Vec<ParticipantSteps<T>> {
+    pub fn get_steps_from(&self, _: TickId) -> Vec<ParticipantSteps<T>> {
         todo!()
     }
 }

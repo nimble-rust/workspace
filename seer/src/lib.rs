@@ -5,30 +5,37 @@
 use std::marker::PhantomData;
 
 use nimble_steps::Steps;
-use nimble_transmute::TransmuteCallback;
+
+pub trait SeerCallback<CombinedStepT> {
+    fn on_pre_ticks(&mut self) {}
+
+    fn on_tick(&mut self, step: &CombinedStepT);
+
+    fn on_post_ticks(&mut self) {}
+}
 
 // Define the Assent struct
-impl<C, CombinedStepT> Default for Seer<C, CombinedStepT>
+impl<Callback, CombinedStepT> Default for Seer<Callback, CombinedStepT>
 where
-    C: TransmuteCallback<CombinedStepT>,
+    Callback: SeerCallback<CombinedStepT>,
 {
     fn default() -> Self {
         Self::new()
     }
 }
 
-pub struct Seer<C, CombinedStepT>
+pub struct Seer<Callback, CombinedStepT>
 where
-    C: TransmuteCallback<CombinedStepT>,
+    Callback: SeerCallback<CombinedStepT>,
 {
     combined_steps: Steps<CombinedStepT>,
     authoritative_has_changed: bool,
-    phantom: PhantomData<C>,
+    phantom: PhantomData<Callback>,
 }
 
-impl<C, CombinedStepT> Seer<C, CombinedStepT>
+impl<Callback, CombinedStepT> Seer<Callback, CombinedStepT>
 where
-    C: TransmuteCallback<CombinedStepT>,
+    Callback: SeerCallback<CombinedStepT>,
 {
     pub fn new() -> Self {
         Seer {
@@ -38,7 +45,7 @@ where
         }
     }
 
-    pub fn update(&mut self, callback: &mut C) {
+    pub fn update(&mut self, callback: &mut Callback) {
         callback.on_pre_ticks();
 
         for combined_step_info in self.combined_steps.iter() {
@@ -61,7 +68,6 @@ where
 #[cfg(test)]
 mod tests {
     use nimble_steps::Deserialize;
-    use nimble_transmute::TransmuteCallback;
 
     use super::*;
 
@@ -83,7 +89,7 @@ mod tests {
         }
     }
 
-    impl TransmuteCallback<TestGameStep> for TestGame {
+    impl SeerCallback<TestGameStep> for TestGame {
         fn on_pre_ticks(&mut self) {}
 
         fn on_tick(&mut self, step: &TestGameStep) {

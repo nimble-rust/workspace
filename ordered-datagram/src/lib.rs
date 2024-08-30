@@ -12,7 +12,7 @@ use std::{fmt, io};
 pub struct DatagramId(u16);
 
 impl DatagramId {
-    fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
+    fn to_stream(self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
         stream.write_u16(self.0)
     }
 
@@ -35,7 +35,7 @@ impl DatagramId {
     fn is_equal_or_successor(self, after: DatagramId) -> bool {
         const ORDERED_DATAGRAM_ID_ACCEPTABLE_DIFF: i32 = 625; // 10 datagrams / tick * tickFrequency (62.5) * 1 second latency
         let diff = self.diff(after);
-        diff >= 0 && diff <= ORDERED_DATAGRAM_ID_ACCEPTABLE_DIFF
+        (0..=ORDERED_DATAGRAM_ID_ACCEPTABLE_DIFF).contains(&diff)
     }
 }
 

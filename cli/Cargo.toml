@@ -1,0 +1,8 @@
+[package]
+name = "cli"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+easy-repl = "0.2.1"
+anyhow = "1.0.86"

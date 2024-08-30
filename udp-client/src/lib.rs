@@ -57,8 +57,6 @@ impl DatagramCommunicator for UdpClient {
 
 #[cfg(test)]
 mod tests {
-    use datagram::DatagramSender;
-
     use crate::UdpClient;
 
     #[test]

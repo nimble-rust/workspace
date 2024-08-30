@@ -1,12 +1,7 @@
 [package]
-name = "nimble-client"
-version = "0.0.1"
+name = "example_client"
+version = "0.1.0"
 edition = "2021"
-license = "MIT"
-description = "Nimble network client"
-repository = "https://github.com/nimble-rust/client"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 nimble-steps = { path = "../steps" }
@@ -16,14 +11,14 @@ secure-random = { path = "../secure-random" }
 ordered-datagram = { path = "../ordered-datagram" }
 datagram-pinger = { path = "../datagram-pinger" }
 log = "0.4.21"
+nimble-client = { path = "../client" }
 connection-layer = { path = "../connection-layer" }
-nimble-participant-steps = { path = "../participant-steps" }
-nimble-assent = { path = "../assent" }
-nimble-seer = { path = "../seer" }
-
-[dev-dependencies]
 udp-client = { path = "../udp-client" }
 udp-connections = { path = "../udp-connections" }
 datagram = { path = "../datagram" }
+nimble-seer = { path = "../seer"}
+nimble-assent = { path = "../assent"}
+
+[dev-dependencies]
 env_logger = "0.11.3"
 test-log = "0.2.16"

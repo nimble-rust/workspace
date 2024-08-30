@@ -136,14 +136,14 @@ impl JoinGameTypeValue {
             }
         }
     }
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> std::io::Result<()> {
+    pub fn to_stream(self, stream: &mut dyn WriteOctetStream) -> std::io::Result<()> {
         stream.write_u8(self.to_octet())?;
         Ok(())
     }
 
     pub fn from_stream(stream: &mut dyn ReadOctetStream) -> std::io::Result<Self> {
         let join_game_type_value_raw = stream.read_u8()?;
-        Ok(JoinGameTypeValue::try_from(join_game_type_value_raw)?)
+        JoinGameTypeValue::try_from(join_game_type_value_raw)
     }
 }
 
