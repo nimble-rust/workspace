@@ -1,8 +1,10 @@
 use log::info;
 use nimble_assent::AssentCallback;
+use nimble_participant::ParticipantId;
 use nimble_participant_steps::ParticipantSteps;
 use nimble_rectify::{Rectify, RectifyCallback};
 use nimble_seer::SeerCallback;
+use nimble_steps::Step::Custom;
 use nimble_steps::{Deserialize, Step};
 use std::io;
 
@@ -64,8 +66,7 @@ impl AssentCallback<ParticipantSteps<TestGameStep>> for CombinedGame {
         self.authoritative_game.on_tick(combined_step);
     }
 }
-use nimble_participant::ParticipantId;
-use nimble_steps::Step::Custom;
+
 
 #[test]
 fn verify_rectify() {

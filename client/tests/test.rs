@@ -23,7 +23,7 @@ use secure_random::GetRandom;
 use udp_client::UdpClient;
 
 #[derive(Clone)]
-struct ExampleStep(i32);
+pub struct ExampleStep(i32);
 
 impl Deserialize for ExampleStep {
     fn deserialize(bytes: &[u8]) -> io::Result<Self>
