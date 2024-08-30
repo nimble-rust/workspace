@@ -2,8 +2,6 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-mod test;
-
 use flood_rs::{ReadOctetStream, WriteOctetStream};
 use std::io::ErrorKind;
 use std::{fmt, io};
@@ -12,6 +10,14 @@ use std::{fmt, io};
 pub struct DatagramId(u16);
 
 impl DatagramId {
+    pub fn new(id: u16) -> Self {
+        Self(id)
+    }
+
+    pub fn inner(self) -> u16 {
+        self.0
+    }
+
     fn to_stream(self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
         stream.write_u16(self.0)
     }
@@ -26,7 +32,7 @@ impl DatagramId {
     }
 
     #[allow(unused)]
-    fn is_valid_successor(self, after: DatagramId) -> bool {
+    pub fn is_valid_successor(self, after: DatagramId) -> bool {
         const ORDERED_DATAGRAM_ID_ACCEPTABLE_DIFF: i32 = 625; // 10 datagrams / tick * tickFrequency (62.5) * 1 second latency
         let diff = self.diff(after);
         diff > 0 && diff <= ORDERED_DATAGRAM_ID_ACCEPTABLE_DIFF
