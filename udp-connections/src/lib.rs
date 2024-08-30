@@ -8,7 +8,6 @@ use std::{fmt, io};
 use flood_rs::{InOctetStream, OutOctetStream, ReadOctetStream, WriteOctetStream};
 use log::info;
 
-use datagram::DatagramProcessor;
 use secure_random::SecureRandom;
 
 use crate::ClientPhase::{Challenge, Connected, Connecting};
@@ -577,6 +576,10 @@ impl Client {
         }
     }
 }
+pub trait DatagramProcessor {
+    fn send_datagram(&mut self, data: &[u8]) -> io::Result<Vec<u8>>;
+    fn receive_datagram(&mut self, buffer: &[u8]) -> io::Result<Vec<u8>>;
+}
 
 impl DatagramProcessor for Client {
     fn send_datagram(&mut self, data: &[u8]) -> io::Result<Vec<u8>> {
@@ -611,10 +614,9 @@ impl DatagramProcessor for Client {
 
 #[cfg(test)]
 mod tests {
-    use datagram::DatagramProcessor;
     use secure_random::SecureRandom;
 
-    use crate::Client;
+    use crate::{Client, DatagramProcessor};
 
     pub struct FakeRandom {
         pub counter: u64,

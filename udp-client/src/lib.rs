@@ -44,16 +44,7 @@ impl DatagramReceiver for UdpClient {
     }
 }
 
-impl DatagramCommunicator for UdpClient {
-    fn send_datagram(&mut self, data: &[u8]) -> Result<()> {
-        self.socket.send(data)?;
-        Ok(())
-    }
-
-    fn receive_datagram(&mut self, buffer: &mut [u8]) -> Result<usize> {
-        self.socket.recv(buffer)
-    }
-}
+impl DatagramCommunicator for UdpClient {}
 
 #[cfg(test)]
 mod tests {

@@ -1,4 +1,8 @@
-use datagram::{DatagramCommunicator, DatagramProcessor};
+/*
+ * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
+ * Licensed under the MIT License. See LICENSE in the project root for license information.
+ */
+use datagram::DatagramCommunicator;
 use log::{error, info, warn};
 use nimble_assent::AssentCallback;
 use nimble_client::Client;
@@ -7,6 +11,7 @@ use nimble_seer::SeerCallback;
 use secure_random::GetRandom;
 use std::io;
 use udp_client::UdpClient;
+use udp_connections::DatagramProcessor;
 
 pub struct ExampleClient<Game: SeerCallback<StepData> + AssentCallback<StepData>, StepData: Clone> {
     pub client: Client<Game, StepData>,

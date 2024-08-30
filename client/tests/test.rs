@@ -1,7 +1,12 @@
+/*
+ * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
+ * Licensed under the MIT License. See LICENSE in the project root for license information.
+ */
 use std::thread;
 use std::time::Duration;
+use udp_connections::DatagramProcessor;
 
-use datagram::{DatagramCommunicator, DatagramProcessor};
+use datagram::DatagramCommunicator;
 use log::{error, info, warn};
 use nimble_assent::AssentCallback;
 use nimble_client::Client;
@@ -11,7 +16,7 @@ use nimble_protocol::client_to_host::{
 use nimble_protocol::{hex_output, Nonce};
 use nimble_seer::SeerCallback;
 use secure_random::GetRandom;
-use test_log::test;
+//use test_log::test;
 use udp_client::UdpClient;
 
 type ExampleStep = i32;
@@ -51,6 +56,7 @@ impl AssentCallback<ExampleStep> for ExampleGame {
 }
 
 //#[test]
+#[allow(dead_code)]
 fn send_to_host() {
     let random = GetRandom {};
     let random_box = Box::new(random);
