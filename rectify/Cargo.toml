@@ -11,3 +11,7 @@ repository = "https://github.com/nimble-rust/rectify"
 nimble-assent = { path = "../assent" }
 nimble-seer = { path = "../seer" }
 nimble-steps = { path = "../steps" }
+nimble-participant-steps = { path = "../participant-steps" }
+nimble-participant = { path = "../participant" }
+
+log = "0.4.22"
