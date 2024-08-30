@@ -207,8 +207,16 @@ impl<
         Ok(())
     }
 
-    fn on_game_step(&mut self, cmd: GameStepResponse) -> io::Result<()> {
+    fn on_game_step(
+        &mut self,
+        cmd: GameStepResponse,
+        stream: &mut dyn ReadOctetStream,
+    ) -> io::Result<()> {
         info!("game step response: {:?}", cmd);
+        let mut octets: [u8; 4] = [10, 10, 20, 20];
+        stream.read(&mut octets)?;
+        let data = StepT::deserialize(&octets);
+        self.rectify.push_authoritative(data);
         Ok(())
     }
 
@@ -307,7 +315,7 @@ impl<
                                     self.on_join_game(join_game_response)?;
                                 }
                                 HostToClientCommands::GameStep(game_step_response) => {
-                                    self.on_game_step(game_step_response)?;
+                                    self.on_game_step(game_step_response, &mut in_stream)?;
                                 }
                                 _ => return Err(Error::new(
                                     ErrorKind::InvalidData,
