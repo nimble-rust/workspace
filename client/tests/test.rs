@@ -2,6 +2,7 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
+use flood_rs::{InOctetStream, ReadOctetStream};
 use std::thread;
 use std::time::Duration;
 use udp_connections::DatagramProcessor;
@@ -14,12 +15,25 @@ use nimble_protocol::client_to_host::{
     JoinGameRequest, JoinGameType, JoinPlayerRequest, JoinPlayerRequests,
 };
 use nimble_protocol::{hex_output, Nonce};
+use nimble_rectify::RectifyCallback;
 use nimble_seer::SeerCallback;
+use nimble_steps::Deserialize;
 use secure_random::GetRandom;
 //use test_log::test;
 use udp_client::UdpClient;
 
-type ExampleStep = i32;
+#[derive(Clone)]
+struct ExampleStep(i32);
+
+impl Deserialize for ExampleStep {
+    fn deserialize(bytes: &[u8]) -> Self
+    where
+        Self: Sized,
+    {
+        let mut stream = InOctetStream::new(bytes.to_vec());
+        Self(stream.read_i32().unwrap())
+    }
+}
 
 #[derive(Clone)]
 pub struct SimulationState {
@@ -28,7 +42,7 @@ pub struct SimulationState {
 
 impl SimulationState {
     pub fn update(&mut self, step: &ExampleStep) {
-        self.x += step;
+        self.x += step.0;
     }
 }
 
@@ -55,12 +69,18 @@ impl AssentCallback<ExampleStep> for ExampleGame {
     }
 }
 
+impl RectifyCallback for ExampleGame {
+    fn on_copy_from_authoritative(&mut self) {
+        self.current = self.saved.clone();
+    }
+}
+
 //#[test]
 #[allow(dead_code)]
 fn send_to_host() {
     let random = GetRandom {};
     let random_box = Box::new(random);
-    let mut client = Client::<ExampleGame, i32>::new(random_box);
+    let mut client = Client::<ExampleGame, ExampleStep>::new(random_box);
     let mut udp_client = UdpClient::new("127.0.0.1:23000").unwrap();
     let communicator: &mut dyn DatagramCommunicator = &mut udp_client;
     let random2 = GetRandom {};

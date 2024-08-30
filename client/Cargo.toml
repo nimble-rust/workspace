@@ -18,6 +18,7 @@ datagram-pinger = { path = "../datagram-pinger" }
 log = "0.4.21"
 connection-layer = { path = "../connection-layer" }
 nimble-participant-steps = { path = "../participant-steps" }
+nimble-rectify = { path = "../rectify" }
 nimble-assent = { path = "../assent" }
 nimble-seer = { path = "../seer" }
 
@@ -27,3 +28,4 @@ udp-connections = { path = "../udp-connections" }
 datagram = { path = "../datagram" }
 env_logger = "0.11.3"
 test-log = "0.2.16"
+flood-rs = "0.0.6"

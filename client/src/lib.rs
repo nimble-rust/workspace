@@ -13,7 +13,7 @@ use connection_layer::{
     ConnectionSecretSeed,
 };
 use datagram_pinger::{client_in_ping, client_out_ping, ClientTime};
-use nimble_assent::{Assent, AssentCallback, UpdateState};
+use nimble_assent::AssentCallback;
 
 use nimble_protocol::client_to_host::{
     ClientToHostCommands, ConnectRequest, JoinGameRequest, PredictedStepsForPlayer,
@@ -23,7 +23,8 @@ use nimble_protocol::host_to_client::{
     ConnectionAccepted, GameStepResponse, HostToClientCommands, JoinGameAccepted,
 };
 use nimble_protocol::{Nonce, Version};
-use nimble_seer::{Seer, SeerCallback};
+use nimble_rectify::{Rectify, RectifyCallback};
+use nimble_seer::SeerCallback;
 use ordered_datagram::{OrderedIn, OrderedOut};
 use secure_random::SecureRandom;
 
@@ -33,7 +34,10 @@ enum ClientPhase {
     Connected(ConnectionId, ConnectionSecretSeed),
 }
 
-pub struct Client<Game: SeerCallback<StepT> + AssentCallback<StepT>, StepT: Clone> {
+pub struct Client<
+    Game: SeerCallback<StepT> + AssentCallback<StepT> + RectifyCallback,
+    StepT: Clone + nimble_steps::Deserialize,
+> {
     phase: ClientPhase,
     joining_player: Option<JoinGameRequest>,
     #[allow(unused)]
@@ -42,11 +46,14 @@ pub struct Client<Game: SeerCallback<StepT> + AssentCallback<StepT>, StepT: Clon
     ordered_datagram_in: OrderedIn,
     tick_id: u32,
     debug_tick_id_to_send: u32,
-    seer: Seer<Game, StepT>,
-    assent: Assent<Game, StepT>,
+    rectify: Rectify<Game, StepT>,
 }
 
-impl<Game: SeerCallback<StepT> + AssentCallback<StepT>, StepT: Clone> Client<Game, StepT> {
+impl<
+        Game: SeerCallback<StepT> + AssentCallback<StepT> + RectifyCallback,
+        StepT: Clone + nimble_steps::Deserialize,
+    > Client<Game, StepT>
+{
     pub fn new(mut random: Box<dyn SecureRandom>) -> Client<Game, StepT> {
         let phase = ClientPhase::Connecting(Nonce(random.get_random_u64()));
         Self {
@@ -57,8 +64,7 @@ impl<Game: SeerCallback<StepT> + AssentCallback<StepT>, StepT: Clone> Client<Gam
             ordered_datagram_in: OrderedIn::default(),
             tick_id: 0,
             debug_tick_id_to_send: 0,
-            seer: Seer::new(),
-            assent: Assent::new(),
+            rectify: Rectify::new(),
         }
     }
 
@@ -128,12 +134,12 @@ impl<Game: SeerCallback<StepT> + AssentCallback<StepT>, StepT: Clone> Client<Gam
         commands
     }
 
-    pub fn update(&mut self, game: &mut Game) -> UpdateState {
-        self.assent.update(game)
+    pub fn update(&mut self, game: &mut Game) {
+        self.rectify.update(game)
     }
 
     pub fn add_predicted_step(&mut self, step: StepT) {
-        self.seer.push(step);
+        self.rectify.push_predicted(step);
     }
 
     fn write_header(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {

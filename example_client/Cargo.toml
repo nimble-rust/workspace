@@ -18,6 +18,7 @@ udp-connections = { path = "../udp-connections" }
 datagram = { path = "../datagram" }
 nimble-seer = { path = "../seer"}
 nimble-assent = { path = "../assent"}
+nimble-rectify = { path = "../rectify"}
 
 [dev-dependencies]
 env_logger = "0.11.3"

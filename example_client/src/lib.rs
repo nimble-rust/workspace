@@ -8,12 +8,16 @@ use nimble_assent::AssentCallback;
 use nimble_client::Client;
 use nimble_protocol::hex_output;
 use nimble_seer::SeerCallback;
+use nimble_steps::Deserialize;
 use secure_random::GetRandom;
 use std::io;
 use udp_client::UdpClient;
 use udp_connections::DatagramProcessor;
 
-pub struct ExampleClient<Game: SeerCallback<StepData> + AssentCallback<StepData>, StepData: Clone> {
+pub struct ExampleClient<
+    Game: SeerCallback<StepData> + AssentCallback<StepData> + nimble_rectify::RectifyCallback,
+    StepData: Clone + Deserialize,
+> {
     pub client: Client<Game, StepData>,
     pub communicator: Box<dyn DatagramCommunicator>,
     pub processor: Box<dyn DatagramProcessor>,
@@ -21,8 +25,10 @@ pub struct ExampleClient<Game: SeerCallback<StepData> + AssentCallback<StepData>
 
 //"127.0.0.1:23000"
 
-impl<Game: SeerCallback<StepData> + AssentCallback<StepData>, StepData: Clone>
-    ExampleClient<Game, StepData>
+impl<
+        Game: SeerCallback<StepData> + AssentCallback<StepData> + nimble_rectify::RectifyCallback,
+        StepData: Clone + Deserialize,
+    > ExampleClient<Game, StepData>
 {
     pub fn new(url: &str) -> Self {
         let random = GetRandom {};
