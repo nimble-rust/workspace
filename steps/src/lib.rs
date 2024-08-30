@@ -3,7 +3,7 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 use std::collections::VecDeque;
-
+use std::io;
 use tick_id::TickId;
 
 pub mod pending_steps;
@@ -24,7 +24,7 @@ pub enum Step<T> {
 }
 
 pub trait Deserialize {
-    fn deserialize(bytes: &[u8]) -> Self
+    fn deserialize(bytes: &[u8]) -> io::Result<Self>
     where
         Self: Sized;
 }

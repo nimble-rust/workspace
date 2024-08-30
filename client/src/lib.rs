@@ -215,7 +215,7 @@ impl<
         info!("game step response: {:?}", cmd);
         let mut octets: [u8; 4] = [10, 10, 20, 20];
         stream.read(&mut octets)?;
-        let data = StepT::deserialize(&octets);
+        let data = StepT::deserialize(&octets)?;
         self.rectify.push_authoritative(data);
         Ok(())
     }

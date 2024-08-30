@@ -3,8 +3,8 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 use flood_rs::{InOctetStream, ReadOctetStream};
-use std::thread;
 use std::time::Duration;
+use std::{io, thread};
 use udp_connections::DatagramProcessor;
 
 use datagram::DatagramCommunicator;
@@ -26,12 +26,12 @@ use udp_client::UdpClient;
 struct ExampleStep(i32);
 
 impl Deserialize for ExampleStep {
-    fn deserialize(bytes: &[u8]) -> Self
+    fn deserialize(bytes: &[u8]) -> io::Result<Self>
     where
         Self: Sized,
     {
         let mut stream = InOctetStream::new(bytes.to_vec());
-        Self(stream.read_i32().unwrap())
+        Ok(Self(stream.read_i32()?))
     }
 }
 

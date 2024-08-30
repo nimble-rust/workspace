@@ -2,10 +2,10 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-use std::collections::HashMap;
-
 use nimble_participant::ParticipantId;
 use nimble_steps::{Deserialize, Step};
+use std::collections::HashMap;
+use std::io;
 
 /// `ParticipantSteps` stores the steps for all participants for a single tick of a simulation.
 ///
@@ -69,7 +69,7 @@ impl<T> ParticipantSteps<T> {
 }
 
 impl<T: Clone> Deserialize for ParticipantSteps<T> {
-    fn deserialize(_bytes: &[u8]) -> Self
+    fn deserialize(_bytes: &[u8]) -> io::Result<Self>
     where
         Self: Sized,
     {

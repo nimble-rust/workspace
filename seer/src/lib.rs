@@ -68,6 +68,7 @@ where
 #[cfg(test)]
 mod tests {
     use nimble_steps::Deserialize;
+    use std::io;
 
     use super::*;
 
@@ -81,10 +82,10 @@ mod tests {
     }
 
     impl Deserialize for TestGameStep {
-        fn deserialize(bytes: &[u8]) -> Self {
+        fn deserialize(bytes: &[u8]) -> io::Result<Self> {
             match bytes[0] {
-                0 => TestGameStep::MoveRight,
-                _ => TestGameStep::MoveLeft,
+                0 => Ok(TestGameStep::MoveRight),
+                _ => Ok(TestGameStep::MoveLeft),
             }
         }
     }

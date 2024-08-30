@@ -4,6 +4,7 @@ use nimble_participant_steps::ParticipantSteps;
 use nimble_rectify::{Rectify, RectifyCallback};
 use nimble_seer::SeerCallback;
 use nimble_steps::{Deserialize, Step};
+use std::io;
 
 #[derive(Clone)]
 pub struct TestGame {
@@ -32,10 +33,10 @@ pub enum TestGameStep {
 }
 
 impl Deserialize for TestGameStep {
-    fn deserialize(bytes: &[u8]) -> Self {
+    fn deserialize(bytes: &[u8]) -> io::Result<Self> {
         match bytes[0] {
-            0 => TestGameStep::MoveRight,
-            _ => TestGameStep::MoveLeft,
+            0 => Ok(TestGameStep::MoveRight),
+            _ => Ok(TestGameStep::MoveLeft),
         }
     }
 }
