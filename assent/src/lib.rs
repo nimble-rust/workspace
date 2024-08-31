@@ -114,6 +114,6 @@ mod tests {
         assent.push(step);
         assent.push(step);
         assent.update(&mut game);
-        assert_eq!(game.position_x, -43);
+        assert_eq!(game.position_x, -42);
     }
 }

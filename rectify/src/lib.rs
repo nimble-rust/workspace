@@ -54,6 +54,9 @@ impl<
     ///
     /// * `step` - The predicted step to be pushed.
     pub fn push_predicted(&mut self, step: StepT) {
+        if let Some(end_tick_id) = self.assent.end_tick_id() {
+            self.seer.received_authoritative(end_tick_id);
+        }
         self.seer.push(step)
     }
 

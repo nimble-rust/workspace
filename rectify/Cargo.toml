@@ -15,3 +15,4 @@ nimble-participant-steps = { path = "../participant-steps" }
 nimble-participant = { path = "../participant" }
 
 log = "0.4.22"
+test-log = "0.2.16"

@@ -2,6 +2,7 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
+use log::info;
 use std::marker::PhantomData;
 
 use nimble_steps::Steps;
@@ -49,6 +50,7 @@ where
     pub fn update(&mut self, callback: &mut Callback) {
         callback.on_pre_ticks();
 
+        info!("combined steps len:{}", self.combined_steps.len());
         for combined_step_info in self.combined_steps.iter() {
             callback.on_tick(&combined_step_info.step);
         }
@@ -58,7 +60,7 @@ where
     }
 
     pub fn received_authoritative(&mut self, tick: TickId) {
-        self.combined_steps.pop_up_to(tick);
+        self.combined_steps.pop_up_to(tick + 1);
     }
 
     pub fn authoritative_has_changed(&mut self) {

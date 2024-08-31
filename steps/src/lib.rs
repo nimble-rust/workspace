@@ -43,9 +43,7 @@ pub struct Steps<T> {
 
 impl<T> Steps<T> {
     pub fn iter(&self) -> impl Iterator<Item = &StepInfo<T>> {
-        self.steps
-            .iter()
-            .filter(move |step_info| step_info.tick_id == self.expected_read_id)
+        self.steps.iter()
     }
 }
 

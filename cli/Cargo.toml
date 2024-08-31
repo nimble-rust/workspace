@@ -7,3 +7,7 @@ edition = "2021"
 easy-repl = "0.2.1"
 anyhow = "1.0.86"
 example_client = { path = "../example_client" }
+nimble-assent = { path = "../assent" }
+nimble-seer = { path = "../seer" }
+nimble-rectify = { path = "../rectify" }
+nimble-steps = { path = "../steps" }

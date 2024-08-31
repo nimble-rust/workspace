@@ -15,6 +15,7 @@ pub struct TestGame {
 
 impl TestGame {
     pub fn on_tick(&mut self, steps: &ParticipantSteps<TestGameStep>) {
+        info!("sim tick!");
         for (_, step) in steps.steps.iter() {
             match step {
                 Custom(TestGameStep::MoveLeft) => self.position_x -= 1,
@@ -57,12 +58,15 @@ impl RectifyCallback for CombinedGame {
 
 impl SeerCallback<ParticipantSteps<TestGameStep>> for CombinedGame {
     fn on_tick(&mut self, combined_step: &ParticipantSteps<TestGameStep>) {
+        info!("predict tick!");
+
         self.predicted_game.on_tick(combined_step);
     }
 }
 
 impl AssentCallback<ParticipantSteps<TestGameStep>> for CombinedGame {
     fn on_tick(&mut self, combined_step: &ParticipantSteps<TestGameStep>) {
+        info!("authoritative tick!");
         self.authoritative_game.on_tick(combined_step);
     }
 }
@@ -89,7 +93,7 @@ fn one_prediction() {
     assert_eq!(callbacks.predicted_game.position_x, -45);
 }
 
-#[test]
+#[test_log::test]
 fn one_authoritative_and_one_prediction() {
     let authoritative_game = TestGame { position_x: -44 };
     let predicted_game = TestGame { position_x: -44 };
@@ -113,4 +117,32 @@ fn one_authoritative_and_one_prediction() {
 
     assert_eq!(callbacks.authoritative_game.position_x, -43);
     assert_eq!(callbacks.predicted_game.position_x, -44);
+}
+
+#[test_log::test]
+fn one_authoritative_and_x_predictions() {
+    let authoritative_game = TestGame { position_x: -44 };
+    let predicted_game = TestGame { position_x: -44 };
+
+    let mut callbacks = CombinedGame {
+        authoritative_game,
+        predicted_game,
+    };
+
+    let mut rectify = Rectify::<CombinedGame, ParticipantSteps<TestGameStep>>::new();
+
+    let mut authoritative_step_combined = ParticipantSteps::<TestGameStep>::new();
+    authoritative_step_combined.insert(ParticipantId(0), Custom(TestGameStep::MoveRight));
+    rectify.push_authoritative(authoritative_step_combined);
+
+    let mut predicted_step_combined = ParticipantSteps::<TestGameStep>::new();
+    predicted_step_combined.insert(ParticipantId(0), Custom(TestGameStep::MoveLeft));
+
+    rectify.push_predicted(predicted_step_combined.clone());
+    rectify.push_predicted(predicted_step_combined.clone());
+    rectify.push_predicted(predicted_step_combined.clone());
+    rectify.update(&mut callbacks);
+
+    assert_eq!(callbacks.authoritative_game.position_x, -43);
+    assert_eq!(callbacks.predicted_game.position_x, -45);
 }
