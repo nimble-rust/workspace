@@ -5,6 +5,7 @@
 use std::marker::PhantomData;
 
 use nimble_steps::Steps;
+use tick_id::TickId;
 
 pub trait AssentCallback<CombinedStepT: Clone> {
     fn on_pre_ticks(&mut self) {}
@@ -54,6 +55,10 @@ where
 
     pub fn push(&mut self, steps: CombinedStepT) {
         self.steps.push(steps);
+    }
+
+    pub fn end_tick_id(&self) -> Option<TickId> {
+        self.steps.back_tick_id()
     }
 
     pub fn update(&mut self, callback: &mut C) -> UpdateState {

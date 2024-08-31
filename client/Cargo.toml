@@ -15,7 +15,7 @@ flood-rs = "0.0.6"
 secure-random = { path = "../secure-random" }
 ordered-datagram = { path = "../ordered-datagram" }
 datagram-pinger = { path = "../datagram-pinger" }
-log = "0.4.21"
+log = "0.4.22"
 connection-layer = { path = "../connection-layer" }
 nimble-participant-steps = { path = "../participant-steps" }
 nimble-rectify = { path = "../rectify" }

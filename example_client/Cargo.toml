@@ -10,15 +10,15 @@ flood-rs = "0.0.6"
 secure-random = { path = "../secure-random" }
 ordered-datagram = { path = "../ordered-datagram" }
 datagram-pinger = { path = "../datagram-pinger" }
-log = "0.4.21"
+log = "0.4.22"
 nimble-client = { path = "../client" }
 connection-layer = { path = "../connection-layer" }
 udp-client = { path = "../udp-client" }
 udp-connections = { path = "../udp-connections" }
 datagram = { path = "../datagram" }
-nimble-seer = { path = "../seer"}
-nimble-assent = { path = "../assent"}
-nimble-rectify = { path = "../rectify"}
+nimble-seer = { path = "../seer" }
+nimble-assent = { path = "../assent" }
+nimble-rectify = { path = "../rectify" }
 
 [dev-dependencies]
 env_logger = "0.11.3"

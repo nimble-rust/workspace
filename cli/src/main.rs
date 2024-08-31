@@ -4,17 +4,25 @@
  */
 use anyhow::{self, Context};
 use easy_repl::{command, CommandStatus, Repl};
+use example_client::ExampleClient;
+
+struct ExampleGame;
+struct ExampleStep;
 
 fn main() -> anyhow::Result<()> {
-    #[rustfmt::skip]
+    let client = ExampleClient::<ExampleGame, ExampleStep>::new("localhost:27000");
+
     let mut repl = Repl::builder()
-        .add("join", command! {
-            "Join with a participant",
-            (name: String, local_index: i32) => |name, local_index| {
-                println!("{} : {}", name, local_index);
-                Ok(CommandStatus::Done)
-            }
-        })
+        .add(
+            "join",
+            command! {
+                "Join with a participant",
+                (name: String, local_index: i32) => |name, local_index| {
+                    println!("{} : {}", name, local_index);
+                    Ok(CommandStatus::Done)
+                }
+            },
+        )
         .build()
         .context("Failed to create repl")?;
 

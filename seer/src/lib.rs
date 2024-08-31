@@ -5,6 +5,7 @@
 use std::marker::PhantomData;
 
 use nimble_steps::Steps;
+use tick_id::TickId;
 
 pub trait SeerCallback<CombinedStepT> {
     fn on_pre_ticks(&mut self) {}
@@ -54,6 +55,10 @@ where
 
         callback.on_post_ticks();
         self.authoritative_has_changed = false;
+    }
+
+    pub fn received_authoritative(&mut self, tick: TickId) {
+        self.combined_steps.pop_up_to(tick);
     }
 
     pub fn authoritative_has_changed(&mut self) {

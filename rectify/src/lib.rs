@@ -65,6 +65,8 @@ impl<
     /// * `step` - The authoritative step to be pushed.
     pub fn push_authoritative(&mut self, step: StepT) {
         self.assent.push(step);
+        self.seer
+            .received_authoritative(self.assent.end_tick_id().unwrap());
     }
 
     /// Updates the authoritative state. If all the authoritative state has been calculated

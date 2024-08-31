@@ -10,3 +10,4 @@ repository = "https://github.com/nimble-rust/assent"
 
 [dependencies]
 nimble-steps = { path = "../steps" }
+tick-id = "0.0.7"

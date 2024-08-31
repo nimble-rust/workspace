@@ -67,9 +67,8 @@ impl AssentCallback<ParticipantSteps<TestGameStep>> for CombinedGame {
     }
 }
 
-
 #[test]
-fn verify_rectify() {
+fn one_prediction() {
     let authoritative_game = TestGame { position_x: -44 };
     let predicted_game = TestGame { position_x: -44 };
 
@@ -88,4 +87,30 @@ fn verify_rectify() {
 
     assert_eq!(callbacks.authoritative_game.position_x, -44);
     assert_eq!(callbacks.predicted_game.position_x, -45);
+}
+
+#[test]
+fn one_authoritative_and_one_prediction() {
+    let authoritative_game = TestGame { position_x: -44 };
+    let predicted_game = TestGame { position_x: -44 };
+
+    let mut callbacks = CombinedGame {
+        authoritative_game,
+        predicted_game,
+    };
+
+    let mut rectify = Rectify::<CombinedGame, ParticipantSteps<TestGameStep>>::new();
+
+    let mut authoritative_step_combined = ParticipantSteps::<TestGameStep>::new();
+    authoritative_step_combined.insert(ParticipantId(0), Custom(TestGameStep::MoveRight));
+    rectify.push_authoritative(authoritative_step_combined);
+
+    let mut predicted_step_combined = ParticipantSteps::<TestGameStep>::new();
+    predicted_step_combined.insert(ParticipantId(0), Custom(TestGameStep::MoveLeft));
+
+    rectify.push_predicted(predicted_step_combined);
+    rectify.update(&mut callbacks);
+
+    assert_eq!(callbacks.authoritative_game.position_x, -43);
+    assert_eq!(callbacks.predicted_game.position_x, -44);
 }
