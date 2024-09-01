@@ -26,3 +26,9 @@ fn test_valid_wraparound() {
 fn test_wrong_order() {
     assert!(!DatagramId::new(0).is_valid_successor(DatagramId::new(u16::MAX)));
 }
+
+#[test]
+fn test_invalid_order() {
+    assert!(!DatagramId::new(u16::MAX).is_valid_successor(DatagramId::new(u16::MAX - 31000)));
+    assert!(!DatagramId::new(5).is_valid_successor(DatagramId::new(4)));
+}

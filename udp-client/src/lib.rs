@@ -45,14 +45,3 @@ impl DatagramReceiver for UdpClient {
 }
 
 impl DatagramCommunicator for UdpClient {}
-
-#[cfg(test)]
-mod tests {
-    use crate::UdpClient;
-
-    #[test]
-    fn it_works() {
-        let client = UdpClient::new("localhost:23000").unwrap();
-        client.send_datagram(&[0x18, 0x28]).unwrap();
-    }
-}

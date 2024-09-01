@@ -16,7 +16,7 @@ struct ExampleGame;
 struct ExampleStep;
 
 impl Deserialize for ExampleStep {
-    fn deserialize(bytes: &[u8]) -> std::io::Result<Self>
+    fn deserialize(_: &[u8]) -> std::io::Result<Self>
     where
         Self: Sized,
     {
@@ -25,15 +25,11 @@ impl Deserialize for ExampleStep {
 }
 
 impl SeerCallback<ExampleStep> for ExampleGame {
-    fn on_tick(&mut self, step: &ExampleStep) {}
+    fn on_tick(&mut self, _: &ExampleStep) {}
 }
 
 impl AssentCallback<ExampleStep> for ExampleGame {
-    fn on_tick(&mut self, step: &ExampleStep) {}
-
-    fn on_pre_ticks(&mut self) {}
-
-    fn on_post_ticks(&mut self) {}
+    fn on_tick(&mut self, _: &ExampleStep) {}
 }
 
 impl RectifyCallback for ExampleGame {
@@ -41,7 +37,7 @@ impl RectifyCallback for ExampleGame {
 }
 
 fn main() -> anyhow::Result<()> {
-    let client = ExampleClient::<ExampleGame, ExampleStep>::new("localhost:27000");
+    let _ = ExampleClient::<ExampleGame, ExampleStep>::new("localhost:27000");
 
     let mut repl = Repl::builder()
         .add(
