@@ -22,6 +22,7 @@ pub enum HostToClientCommand {
     GameStep = 0x08,
     JoinGame = 0x09,
     Connect = 0x0D,
+    DownloadGameState = 0x0B,
 }
 
 impl TryFrom<u8> for HostToClientCommand {
@@ -32,6 +33,7 @@ impl TryFrom<u8> for HostToClientCommand {
             0x0D => Ok(HostToClientCommand::Connect),
             0x09 => Ok(HostToClientCommand::JoinGame),
             0x08 => Ok(HostToClientCommand::GameStep),
+            0x0B => Ok(HostToClientCommand::DownloadGameState),
             _ => Err(io::Error::new(
                 ErrorKind::InvalidData,
                 format!("Unknown host to client command {}", value),
@@ -40,11 +42,45 @@ impl TryFrom<u8> for HostToClientCommand {
     }
 }
 
+#[derive(Debug, Eq, PartialEq)]
+pub struct TickId(pub u32);
+
+impl TickId {
+    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
+        stream.write_u32(self.0)
+    }
+
+    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> io::Result<Self> {
+        Ok(Self(stream.read_u32()?))
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub struct DownloadGameStateResponse {
+    pub client_request: u8,
+    pub tick_id: TickId,
+}
+
+impl DownloadGameStateResponse {
+    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
+        stream.write_u8(self.client_request)?;
+        self.tick_id.to_stream(stream)
+    }
+
+    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> io::Result<Self> {
+        Ok(Self {
+            client_request: stream.read_u8()?,
+            tick_id: TickId::from_stream(stream)?,
+        })
+    }
+}
+
 #[derive(Debug)]
 pub enum HostToClientCommands {
     ConnectType(ConnectionAccepted),
     JoinGame(JoinGameAccepted),
     GameStep(GameStepResponse),
+    DownloadGameState(DownloadGameStateResponse),
 }
 
 impl HostToClientCommands {
@@ -53,6 +89,9 @@ impl HostToClientCommands {
             HostToClientCommands::ConnectType(_) => HostToClientCommand::Connect as u8,
             HostToClientCommands::JoinGame(_) => HostToClientCommand::JoinGame as u8,
             HostToClientCommands::GameStep(_) => HostToClientCommand::GameStep as u8,
+            HostToClientCommands::DownloadGameState(_) => {
+                HostToClientCommand::DownloadGameState as u8
+            }
         }
     }
 
@@ -65,6 +104,9 @@ impl HostToClientCommands {
             }
             HostToClientCommands::GameStep(game_step_response) => {
                 game_step_response.to_stream(stream)
+            }
+            HostToClientCommands::DownloadGameState(download_game_state_response) => {
+                download_game_state_response.to_stream(stream)
             }
         }
     }
@@ -82,14 +124,17 @@ impl HostToClientCommands {
             HostToClientCommand::GameStep => {
                 HostToClientCommands::GameStep(GameStepResponse::from_stream(stream)?)
             } /*
-               => {
-                  return Err(io::Error::new(
-                      ErrorKind::InvalidData,
-                      format!("unknown command {}", command_value),
-                  ));
-              }
+            => {
+            return Err(io::Error::new(
+            ErrorKind::InvalidData,
+            format!("unknown command {}", command_value),
+            ));
+            }
 
-               */
+            */
+            HostToClientCommand::DownloadGameState => HostToClientCommands::DownloadGameState(
+                DownloadGameStateResponse::from_stream(stream)?,
+            ),
         };
         Ok(x)
     }

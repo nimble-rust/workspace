@@ -14,6 +14,7 @@ enum ClientToHostCommand {
     Connect = 0x05,
     JoinGame = 0x01,
     Steps = 0x02,
+    DownloadGameState = 0x03,
 }
 
 impl TryFrom<u8> for ClientToHostCommand {
@@ -31,11 +32,29 @@ impl TryFrom<u8> for ClientToHostCommand {
     }
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct DownloadGameStateRequest {
+    pub request_id: u8,
+}
+
+impl DownloadGameStateRequest {
+    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> std::io::Result<()> {
+        stream.write_u8(self.request_id)
+    }
+
+    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> std::io::Result<Self> {
+        Ok(Self {
+            request_id: stream.read_u8()?,
+        })
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum ClientToHostCommands {
     ConnectType(ConnectRequest),
     JoinGameType(JoinGameRequest),
     Steps(StepsRequest),
+    DownloadGameState(DownloadGameStateRequest),
 }
 
 impl ClientToHostCommands {
@@ -44,6 +63,9 @@ impl ClientToHostCommands {
             ClientToHostCommands::ConnectType(_) => ClientToHostCommand::Connect as u8,
             ClientToHostCommands::Steps(_) => ClientToHostCommand::Steps as u8,
             ClientToHostCommands::JoinGameType(_) => ClientToHostCommand::JoinGame as u8,
+            ClientToHostCommands::DownloadGameState(_) => {
+                ClientToHostCommand::DownloadGameState as u8
+            }
         }
     }
 
@@ -56,6 +78,9 @@ impl ClientToHostCommands {
             }
             ClientToHostCommands::JoinGameType(join_game_request) => {
                 join_game_request.to_stream(stream)
+            }
+            ClientToHostCommands::DownloadGameState(download_game_state) => {
+                download_game_state.to_stream(stream)
             }
         }
     }
@@ -85,6 +110,9 @@ impl fmt::Display for ClientToHostCommands {
             ClientToHostCommands::JoinGameType(join) => write!(f, "join {:?}", join),
             ClientToHostCommands::Steps(predicted_steps_and_ack) => {
                 write!(f, "steps {:?}", predicted_steps_and_ack)
+            }
+            ClientToHostCommands::DownloadGameState(download_game_state) => {
+                write!(f, "download game state {:?}", download_game_state)
             }
         }
     }
