@@ -3,8 +3,9 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 use nimble_seer::prelude::*;
-use nimble_steps::Deserialize;
+use nimble_steps::{Deserialize, Serialize};
 use std::io;
+use flood_rs::{ReadOctetStream, WriteOctetStream};
 
 pub struct TestGame {
     pub position_x: i32,
@@ -16,13 +17,25 @@ pub enum TestGameStep {
 }
 
 impl Deserialize for TestGameStep {
-    fn deserialize(bytes: &[u8]) -> io::Result<Self> {
-        match bytes[0] {
+    fn deserialize(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
+        let x = stream.read_u8()?;
+        match x {
             0 => Ok(TestGameStep::MoveRight),
             _ => Ok(TestGameStep::MoveLeft),
         }
     }
 }
+
+impl Serialize for TestGameStep {
+    fn serialize(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
+        let v = match self {
+            TestGameStep::MoveRight => 0,
+            TestGameStep::MoveLeft => 1,
+        };
+        stream.write_u8(v)
+    }
+}
+
 
 impl SeerCallback<TestGameStep> for TestGame {
     fn on_pre_ticks(&mut self) {}

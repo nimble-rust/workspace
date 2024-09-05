@@ -2,6 +2,7 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
+use flood_rs::{ReadOctetStream, WriteOctetStream};
 use log::info;
 use nimble_assent::AssentCallback;
 use nimble_participant::ParticipantId;
@@ -9,7 +10,8 @@ use nimble_participant_steps::ParticipantSteps;
 use nimble_rectify::{Rectify, RectifyCallback};
 use nimble_seer::SeerCallback;
 use nimble_steps::Step::Custom;
-use nimble_steps::{Deserialize, Step};
+use nimble_steps::{Deserialize, Serialize, Step};
+use std::hash::Hasher;
 use std::io;
 
 #[derive(Clone)]
@@ -40,13 +42,25 @@ pub enum TestGameStep {
 }
 
 impl Deserialize for TestGameStep {
-    fn deserialize(bytes: &[u8]) -> io::Result<Self> {
-        match bytes[0] {
+    fn deserialize(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
+        let x = stream.read_u8()?;
+        match x {
             0 => Ok(TestGameStep::MoveRight),
             _ => Ok(TestGameStep::MoveLeft),
         }
     }
 }
+
+impl Serialize for TestGameStep {
+    fn serialize(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
+        let v = match self {
+            TestGameStep::MoveRight => 0,
+            TestGameStep::MoveLeft => 1,
+        };
+        stream.write_u8(v)
+    }
+}
+
 
 pub struct CombinedGame {
     pub authoritative_game: TestGame,

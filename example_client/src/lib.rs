@@ -8,7 +8,7 @@ use nimble_assent::prelude::*;
 use nimble_client::Client;
 use nimble_protocol::hex_output;
 use nimble_seer::prelude::*;
-use nimble_steps::Deserialize;
+use nimble_steps::{Serialize, Deserialize};
 use secure_random::GetRandom;
 use std::io;
 use udp_client::UdpClient;
@@ -16,7 +16,7 @@ use udp_connections::DatagramProcessor;
 
 pub struct ExampleClient<
     Game: SeerCallback<StepData> + AssentCallback<StepData> + nimble_rectify::RectifyCallback,
-    StepData: Clone + Deserialize,
+    StepData: Clone + Deserialize + Serialize,
 > {
     pub client: Client<Game, StepData>,
     pub communicator: Box<dyn DatagramCommunicator>,
@@ -27,7 +27,7 @@ pub struct ExampleClient<
 
 impl<
         Game: SeerCallback<StepData> + AssentCallback<StepData> + nimble_rectify::RectifyCallback,
-        StepData: Clone + Deserialize,
+        StepData: Clone + Deserialize + Serialize,
     > ExampleClient<Game, StepData>
 {
     pub fn new(url: &str) -> Self {

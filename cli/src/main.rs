@@ -4,19 +4,29 @@
  */
 use anyhow::{self, Context};
 use easy_repl::{command, CommandStatus, Repl};
+use flood_rs::{ReadOctetStream, WriteOctetStream};
 use example_client::ExampleClient;
 use nimble_assent::AssentCallback;
 use nimble_rectify::RectifyCallback;
 use nimble_seer::SeerCallback;
-use nimble_steps::Deserialize;
+use nimble_steps::{Deserialize, Serialize};
 
 struct ExampleGame;
 
 #[derive(Clone)]
 struct ExampleStep;
 
+impl Serialize for ExampleStep {
+    fn serialize(&self, stream: &mut impl WriteOctetStream) -> std::io::Result<()>
+    where
+        Self: Sized,
+    {
+        todo!()
+    }
+}
+
 impl Deserialize for ExampleStep {
-    fn deserialize(_: &[u8]) -> std::io::Result<Self>
+    fn deserialize(stream: &mut impl ReadOctetStream) -> std::io::Result<Self>
     where
         Self: Sized,
     {
