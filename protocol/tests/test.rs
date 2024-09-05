@@ -4,7 +4,7 @@
  */
 use flood_rs::{InOctetStream, OutOctetStream};
 
-use nimble_protocol::client_to_host::ConnectRequest;
+use nimble_protocol::client_to_host_oob::ConnectRequest;
 use nimble_protocol::{Nonce, Version};
 
 #[test]

@@ -2,31 +2,31 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-use std::io;
-use std::io::{Error, ErrorKind};
+extern crate core;
 
-use flood_rs::{InOctetStream, OutOctetStream, ReadOctetStream, WriteOctetStream};
-use log::info;
+pub mod logic;
 
+use crate::logic::ClientLogic;
 use connection_layer::{
     prepare_out_stream, verify_hash, write_to_stream, ConnectionId, ConnectionLayerMode,
     ConnectionSecretSeed,
 };
 use datagram_pinger::{client_in_ping, client_out_ping, ClientTime};
+use flood_rs::{InOctetStream, OutOctetStream, ReadOctetStream, WriteOctetStream};
+use log::info;
 use nimble_assent::AssentCallback;
-
-use nimble_protocol::client_to_host::{
-    ClientToHostCommands, ConnectRequest, JoinGameRequest, PredictedStepsForPlayer,
-    PredictedStepsForPlayers, StepsAck, StepsRequest,
-};
-use nimble_protocol::host_to_client::{
-    ConnectionAccepted, GameStepResponse, HostToClientCommands, JoinGameAccepted,
-};
+use nimble_protocol::client_to_host::JoinGameRequest;
+use nimble_protocol::client_to_host_oob::ClientToHostOobCommands;
+use nimble_protocol::host_to_client::HostToClientCommands;
+use nimble_protocol::host_to_client_oob::HostToClientOobCommands;
+use nimble_protocol::prelude::{ConnectRequest, ConnectionAccepted};
 use nimble_protocol::{Nonce, Version};
-use nimble_rectify::{Rectify, RectifyCallback};
+use nimble_rectify::RectifyCallback;
 use nimble_seer::SeerCallback;
 use ordered_datagram::{OrderedIn, OrderedOut};
 use secure_random::SecureRandom;
+use std::io;
+use std::io::{Error, ErrorKind};
 
 #[derive(PartialEq, Debug)]
 enum ClientPhase {
@@ -39,37 +39,39 @@ pub struct Client<
     StepT: Clone + nimble_steps::Deserialize,
 > {
     phase: ClientPhase,
-    joining_player: Option<JoinGameRequest>,
-    #[allow(unused)]
-    random: Box<dyn SecureRandom>,
+    logic: Option<ClientLogic<Game, StepT>>,
     ordered_datagram_out: OrderedOut,
     ordered_datagram_in: OrderedIn,
     tick_id: u32,
     debug_tick_id_to_send: u32,
-    rectify: Rectify<Game, StepT>,
+
 }
 
 impl<
-        Game: SeerCallback<StepT> + AssentCallback<StepT> + RectifyCallback,
-        StepT: Clone + nimble_steps::Deserialize,
-    > Client<Game, StepT>
+    Game: SeerCallback<StepT> + AssentCallback<StepT> + RectifyCallback,
+    StepT: Clone + nimble_steps::Deserialize,
+> Client<Game, StepT>
 {
     pub fn new(mut random: Box<dyn SecureRandom>) -> Client<Game, StepT> {
-        let phase = ClientPhase::Connecting(Nonce(random.get_random_u64()));
+        let nonce = Nonce(random.get_random_u64());
+        let phase = ClientPhase::Connecting(nonce);
         Self {
             phase,
-            random,
-            joining_player: None,
+            //random,
+            logic: None,
             ordered_datagram_out: OrderedOut::default(),
             ordered_datagram_in: OrderedIn::default(),
             tick_id: 0,
             debug_tick_id_to_send: 0,
-            rectify: Rectify::new(),
         }
     }
 
-    pub fn set_joining_player(&mut self, join_game_request: JoinGameRequest) {
-        self.joining_player = Some(join_game_request);
+
+    pub fn set_joining_player(&mut self, join_game_request: JoinGameRequest) -> Result<(), String> {
+        self.logic
+            .as_mut()
+            .ok_or("Logic is not initialized".to_string())
+            .map(|logic| logic.set_joining_player(join_game_request))
     }
 
     pub fn debug_set_tick_id(&mut self, tick_id: u32) {
@@ -77,69 +79,18 @@ impl<
         self.debug_tick_id_to_send = self.tick_id;
     }
 
-    fn send_to_command(&self) -> Vec<ClientToHostCommands> {
-        let mut commands: Vec<ClientToHostCommands> = vec![];
-
-        match self.phase {
-            ClientPhase::Connecting(nonce) => {
-                let connect_cmd = ConnectRequest {
-                    nimble_version: Version {
-                        major: 0,
-                        minor: 0,
-                        patch: 5,
-                    },
-                    use_debug_stream: false,
-                    application_version: Version {
-                        major: 1,
-                        minor: 0,
-                        patch: 0,
-                    },
-                    nonce,
-                };
-
-                commands.push(ClientToHostCommands::ConnectType(connect_cmd))
-            }
-            ClientPhase::Connected(connection_id, _) => {
-                if let Some(joining_game) = &self.joining_player {
-                    info!("connected. send join_game_request {:?}", connection_id);
-                    commands.push(ClientToHostCommands::JoinGameType(joining_game.clone()));
-                }
-
-                let payload = vec![0xfau8, 64];
-
-                let predicted_steps_for_one_player = PredictedStepsForPlayer {
-                    participant_party_index: 0,
-                    first_step_id: self.debug_tick_id_to_send,
-                    serialized_predicted_steps: vec![payload],
-                };
-
-                //self.debug_tick_id_to_send += 1;
-
-                let steps_request = StepsRequest {
-                    ack: StepsAck {
-                        latest_received_step_tick_id: self.tick_id,
-                        lost_steps_mask_after_last_received: 0,
-                    },
-                    combined_predicted_steps: PredictedStepsForPlayers {
-                        predicted_steps_for_players: vec![predicted_steps_for_one_player],
-                    },
-                };
-
-                let steps_command = ClientToHostCommands::Steps(steps_request);
-
-                commands.push(steps_command);
-            }
-        };
-
-        commands
+    pub fn update(&mut self, game: &mut Game) -> Result<(), String> {
+        self.logic
+            .as_mut()
+            .ok_or("Logic is not initialized".to_string())
+            .map(|logic| logic.update(game))
     }
 
-    pub fn update(&mut self, game: &mut Game) {
-        self.rectify.update(game)
-    }
-
-    pub fn add_predicted_step(&mut self, step: StepT) {
-        self.rectify.push_predicted(step);
+    pub fn add_predicted_step(&mut self, step: StepT) -> Result<(), String> {
+        self.logic
+            .as_mut()
+            .ok_or("Logic is not initialized".to_string())
+            .map(|logic| logic.add_predicted_step(step))
     }
 
     fn write_header(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
@@ -187,51 +138,43 @@ impl<
         let mut out_stream = OutOctetStream::new();
         self.write_header(&mut out_stream)?;
 
-        let client_commands_to_send = self.send_to_command();
-        for command_to_send in client_commands_to_send.iter() {
-            info!("sending command {}", command_to_send);
-            command_to_send.to_stream(&mut out_stream)?;
-        }
+        match self.phase {
+            ClientPhase::Connecting(nonce) => {
+                let connect_cmd = ConnectRequest {
+                    nimble_version: Version {
+                        major: 0,
+                        minor: 0,
+                        patch: 5,
+                    },
+                    use_debug_stream: false,
+                    application_version: Version {
+                        major: 1,
+                        minor: 0,
+                        patch: 0,
+                    },
+                    nonce,
+                };
 
-        if let ClientPhase::Connected(connection_id, seed) = self.phase {
-            info!("writing connected header");
-            self.write_to_start_of_header(connection_id, seed, &mut out_stream)?
+                ClientToHostOobCommands::ConnectType(connect_cmd).to_stream(&mut out_stream)?;
+            }
+            ClientPhase::Connected(connection_id, seed) => {
+                let client_commands_to_send = self.logic.as_mut().expect("reason").send();
+                for command_to_send in client_commands_to_send.iter() {
+                    info!("sending command {}", command_to_send);
+                    command_to_send.to_stream(&mut out_stream)?;
+                }
+                info!("writing connected header");
+                self.write_to_start_of_header(connection_id, seed, &mut out_stream)?
+            }
         }
 
         let datagrams = vec![out_stream.data];
         Ok(datagrams)
     }
 
-    fn on_join_game(&mut self, cmd: JoinGameAccepted) -> io::Result<()> {
-        info!("join game accepted: {:?}", cmd);
-        Ok(())
-    }
-
-    fn on_game_step(
-        &mut self,
-        cmd: GameStepResponse,
-        stream: &mut dyn ReadOctetStream,
-    ) -> io::Result<()> {
-        info!("game step response: {:?}", cmd);
-        let mut octets: [u8; 4] = [10, 10, 20, 20];
-        stream.read(&mut octets)?;
-        let data = StepT::deserialize(&octets)?;
-        self.rectify.push_authoritative(data);
-        Ok(())
-    }
-
     fn on_connect(&mut self, cmd: ConnectionAccepted) -> io::Result<()> {
         match self.phase {
-            ClientPhase::Connecting(nonce) => {
-                if cmd.response_to_nonce != nonce {
-                    return Err(Error::new(
-                        ErrorKind::InvalidData,
-                        format!(
-                            "Wrong nonce when connecting {} vs {}",
-                            cmd.response_to_nonce, nonce
-                        ),
-                    ));
-                }
+            ClientPhase::Connecting(_) => {
                 let half_secret = cmd.host_assigned_connection_secret.value as u32;
                 info!("half_secret: {:X}", half_secret);
                 self.phase = ClientPhase::Connected(
@@ -267,13 +210,12 @@ impl<
         let connection_mode = ConnectionLayerMode::from_stream(&mut in_stream)?;
         match connection_mode {
             ConnectionLayerMode::OOB => {
-                let command = HostToClientCommands::from_stream(&mut in_stream)?;
+                let command = HostToClientOobCommands::from_stream(&mut in_stream)?;
                 match command {
-                    HostToClientCommands::ConnectType(connect_command) => {
+                    HostToClientOobCommands::ConnectType(connect_command) => {
                         self.on_connect(connect_command)?;
                         Ok(())
                     }
-                    _ => Err(Error::new(ErrorKind::InvalidData, "unknown OOB command")),
                 }
             }
             ConnectionLayerMode::Connection(connection_layer) => {
@@ -304,25 +246,18 @@ impl<
 
                         // TODO: Add latency calculations
 
+                        let mut commands = vec![];
                         for _ in 0..8 {
                             // only allowed to have at maximum eight commands in one datagram
                             if in_stream.has_reached_end() {
                                 break;
                             }
                             let command = HostToClientCommands::from_stream(&mut in_stream)?;
-                            match command {
-                                HostToClientCommands::JoinGame(join_game_response) => {
-                                    self.on_join_game(join_game_response)?;
-                                }
-                                HostToClientCommands::GameStep(game_step_response) => {
-                                    self.on_game_step(game_step_response, &mut in_stream)?;
-                                }
-                                _ => return Err(Error::new(
-                                    ErrorKind::InvalidData,
-                                    "unknown command for host to layer connected client command",
-                                )),
-                            }
+                            commands.push(command);
                         }
+
+                        self.logic.as_mut().expect("reason").receive(commands.as_slice())
+                            .map_err(|err| Error::new(ErrorKind::InvalidData, format!("problem in client: {:?}", err)))?;
 
                         Ok(())
                     }

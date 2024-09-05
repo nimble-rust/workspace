@@ -2,14 +2,12 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-use std::io;
-use std::io::ErrorKind;
-
+use blob_stream::prelude::SenderToReceiverFrontCommands;
 use flood_rs::{ReadOctetStream, WriteOctetStream};
+use io::ErrorKind;
+use std::io;
 
-use connection_layer::ConnectionId;
-
-use crate::{Nonce, ParticipantId, SessionConnectionSecret};
+use crate::{ParticipantId, SessionConnectionSecret};
 // #define NimbleSerializeCmdGameStepResponse (0x08)
 // #define NimbleSerializeCmdJoinGameResponse (0x09)
 // #define NimbleSerializeCmdGameStatePart (0x0a)
@@ -21,19 +19,19 @@ use crate::{Nonce, ParticipantId, SessionConnectionSecret};
 pub enum HostToClientCommand {
     GameStep = 0x08,
     JoinGame = 0x09,
-    Connect = 0x0D,
     DownloadGameState = 0x0B,
+    BlobStreamChannel = 0x0c,
 }
 
 impl TryFrom<u8> for HostToClientCommand {
     type Error = io::Error;
 
-    fn try_from(value: u8) -> std::io::Result<Self> {
+    fn try_from(value: u8) -> io::Result<Self> {
         match value {
-            0x0D => Ok(HostToClientCommand::Connect),
             0x09 => Ok(HostToClientCommand::JoinGame),
             0x08 => Ok(HostToClientCommand::GameStep),
             0x0B => Ok(HostToClientCommand::DownloadGameState),
+            0x0C => Ok(HostToClientCommand::BlobStreamChannel),
             _ => Err(io::Error::new(
                 ErrorKind::InvalidData,
                 format!("Unknown host to client command {}", value),
@@ -75,30 +73,34 @@ impl DownloadGameStateResponse {
     }
 }
 
+#[derive(Debug, PartialEq)]
+pub struct GameStatePart {
+    pub blob_stream_command: SenderToReceiverFrontCommands,
+}
+
 #[derive(Debug)]
 pub enum HostToClientCommands {
-    ConnectType(ConnectionAccepted),
     JoinGame(JoinGameAccepted),
     GameStep(GameStepResponse),
     DownloadGameState(DownloadGameStateResponse),
+    BlobStreamChannel(SenderToReceiverFrontCommands),
 }
 
 impl HostToClientCommands {
     pub fn to_octet(&self) -> u8 {
         match self {
-            HostToClientCommands::ConnectType(_) => HostToClientCommand::Connect as u8,
             HostToClientCommands::JoinGame(_) => HostToClientCommand::JoinGame as u8,
             HostToClientCommands::GameStep(_) => HostToClientCommand::GameStep as u8,
             HostToClientCommands::DownloadGameState(_) => {
                 HostToClientCommand::DownloadGameState as u8
             }
+            HostToClientCommands::BlobStreamChannel(_) => HostToClientCommand::BlobStreamChannel as u8
         }
     }
 
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> std::io::Result<()> {
+    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.to_octet())?;
         match self {
-            HostToClientCommands::ConnectType(connect_command) => connect_command.to_stream(stream),
             HostToClientCommands::JoinGame(join_game_response) => {
                 join_game_response.to_stream(stream)
             }
@@ -108,16 +110,16 @@ impl HostToClientCommands {
             HostToClientCommands::DownloadGameState(download_game_state_response) => {
                 download_game_state_response.to_stream(stream)
             }
+            HostToClientCommands::BlobStreamChannel(blob_stream_command) => {
+                blob_stream_command.to_stream(stream)
+            }
         }
     }
 
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> std::io::Result<Self> {
+    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> io::Result<Self> {
         let command_value = stream.read_u8()?;
         let command = HostToClientCommand::try_from(command_value)?;
         let x = match command {
-            HostToClientCommand::Connect => {
-                HostToClientCommands::ConnectType(ConnectionAccepted::from_stream(stream)?)
-            }
             HostToClientCommand::JoinGame => {
                 HostToClientCommands::JoinGame(JoinGameAccepted::from_stream(stream)?)
             }
@@ -135,37 +137,14 @@ impl HostToClientCommands {
             HostToClientCommand::DownloadGameState => HostToClientCommands::DownloadGameState(
                 DownloadGameStateResponse::from_stream(stream)?,
             ),
+            HostToClientCommand::BlobStreamChannel => HostToClientCommands::BlobStreamChannel(
+                SenderToReceiverFrontCommands::from_stream(stream)?,
+            ),
         };
         Ok(x)
     }
 }
 
-#[derive(Debug, PartialEq)]
-pub struct ConnectionAccepted {
-    pub flags: u8,
-    pub response_to_nonce: Nonce,
-    pub host_assigned_connection_id: ConnectionId,
-    pub host_assigned_connection_secret: SessionConnectionSecret,
-}
-
-impl ConnectionAccepted {
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> std::io::Result<()> {
-        stream.write_u8(self.flags)?;
-        self.response_to_nonce.to_stream(stream)?;
-        self.host_assigned_connection_id.to_stream(stream)?;
-        self.host_assigned_connection_secret.to_stream(stream)?;
-        Ok(())
-    }
-
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> std::io::Result<Self> {
-        Ok(Self {
-            flags: stream.read_u8()?,
-            response_to_nonce: Nonce::from_stream(stream)?,
-            host_assigned_connection_id: ConnectionId::from_stream(stream)?,
-            host_assigned_connection_secret: SessionConnectionSecret::from_stream(stream)?,
-        })
-    }
-}
 
 #[derive(Debug, PartialEq)]
 pub struct PartyAndSessionSecret {
@@ -174,11 +153,11 @@ pub struct PartyAndSessionSecret {
 }
 
 impl PartyAndSessionSecret {
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> std::io::Result<()> {
+    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
         self.session_secret.to_stream(stream)?;
         stream.write_u8(self.party_id)
     }
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> std::io::Result<Self> {
+    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> io::Result<Self> {
         Ok(Self {
             session_secret: SessionConnectionSecret::from_stream(stream)?,
             party_id: stream.read_u8()?,
@@ -193,13 +172,13 @@ pub struct JoinGameParticipant {
 }
 
 impl JoinGameParticipant {
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> std::io::Result<()> {
+    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.local_index)?;
         self.participant_id.to_stream(stream)?;
         Ok(())
     }
 
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> std::io::Result<Self> {
+    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> io::Result<Self> {
         Ok(Self {
             local_index: stream.read_u8()?,
             participant_id: ParticipantId::from_stream(stream)?,
@@ -211,7 +190,7 @@ impl JoinGameParticipant {
 pub struct JoinGameParticipants(pub Vec<JoinGameParticipant>);
 
 impl JoinGameParticipants {
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> std::io::Result<()> {
+    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.0.len() as u8)?;
         for join_game_participant in &self.0 {
             join_game_participant.to_stream(stream)?
@@ -219,7 +198,7 @@ impl JoinGameParticipants {
         Ok(())
     }
 
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> std::io::Result<Self> {
+    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> io::Result<Self> {
         let count = stream.read_u8()?;
         let mut vec = Vec::<JoinGameParticipant>::with_capacity(count as usize);
         for _ in 0..count {
@@ -237,12 +216,12 @@ pub struct JoinGameAccepted {
 }
 
 impl JoinGameAccepted {
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> std::io::Result<()> {
+    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
         self.party_and_session_secret.to_stream(stream)?;
         self.participants.to_stream(stream)
     }
 
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> std::io::Result<Self> {
+    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> io::Result<Self> {
         Ok(Self {
             party_and_session_secret: PartyAndSessionSecret::from_stream(stream)?,
             participants: JoinGameParticipants::from_stream(stream)?,
@@ -258,13 +237,13 @@ pub struct GameStepResponseHeader {
 }
 
 impl GameStepResponseHeader {
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> std::io::Result<()> {
+    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.connection_buffer_count)?;
         stream.write_i8(self.delta_buffer)?;
         stream.write_u32(self.last_step_received_from_client)
     }
 
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> std::io::Result<Self> {
+    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> io::Result<Self> {
         Ok(Self {
             connection_buffer_count: stream.read_u8()?,
             delta_buffer: stream.read_i8()?,
@@ -280,7 +259,7 @@ pub struct AuthoritativeStepRange {
 }
 
 impl AuthoritativeStepRange {
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> std::io::Result<()> {
+    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.delta_steps_from_previous)?;
         stream.write_u8(self.authoritative_steps.len() as u8)?;
         for authoritative_step_payload in &self.authoritative_steps {
@@ -290,7 +269,7 @@ impl AuthoritativeStepRange {
         Ok(())
     }
 
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> std::io::Result<Self> {
+    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> io::Result<Self> {
         let delta_steps = stream.read_u8()?;
         let count = stream.read_u8()?;
 
@@ -310,12 +289,12 @@ impl AuthoritativeStepRange {
 
 #[derive(Debug, PartialEq)]
 pub struct AuthoritativeStepRanges {
-    start_step_id: u32,
-    ranges: Vec<AuthoritativeStepRange>,
+    pub start_step_id: u32,
+    pub ranges: Vec<AuthoritativeStepRange>,
 }
 
 impl AuthoritativeStepRanges {
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> std::io::Result<()> {
+    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
         stream.write_u32(self.start_step_id)?;
         stream.write_u8(self.ranges.len() as u8)?;
         for range in &self.ranges {
@@ -324,7 +303,7 @@ impl AuthoritativeStepRanges {
         Ok(())
     }
 
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> std::io::Result<Self> {
+    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> io::Result<Self> {
         let start_step_id = stream.read_u32()?;
         let range_count = stream.read_u8()?;
 
@@ -346,19 +325,33 @@ impl AuthoritativeStepRanges {
 pub struct GameStepResponse {
     pub response_header: GameStepResponseHeader,
     pub authoritative_ranges: AuthoritativeStepRanges,
+    pub payload: Vec<u8>,
+}
+
+fn read_octets(stream: &mut dyn ReadOctetStream) -> io::Result<Vec<u8>> {
+    let len = stream.read_u16()?;
+    let mut data: Vec<u8> = vec![0u8; len as usize];
+    stream.read(data.as_mut_slice())?;
+    Ok(data)
+}
+
+fn write_octets(stream: &mut dyn WriteOctetStream, payload: &[u8]) -> io::Result<()> {
+    stream.write_u16(payload.len() as u16)?;
+    stream.write(payload)
 }
 
 impl GameStepResponse {
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> std::io::Result<()> {
+    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
         self.response_header.to_stream(stream)?;
         self.authoritative_ranges.to_stream(stream)?;
-        Ok(())
+        write_octets(stream, self.payload.as_slice())
     }
 
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> std::io::Result<Self> {
+    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> io::Result<Self> {
         Ok(Self {
             response_header: GameStepResponseHeader::from_stream(stream)?,
             authoritative_ranges: AuthoritativeStepRanges::from_stream(stream)?,
+            payload: read_octets(stream)?,
         })
     }
 }
