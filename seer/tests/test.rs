@@ -2,10 +2,10 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
+use flood_rs::{ReadOctetStream, WriteOctetStream};
 use nimble_seer::prelude::*;
 use nimble_steps::{Deserialize, Serialize};
 use std::io;
-use flood_rs::{ReadOctetStream, WriteOctetStream};
 
 pub struct TestGame {
     pub position_x: i32,
@@ -35,7 +35,6 @@ impl Serialize for TestGameStep {
         stream.write_u8(v)
     }
 }
-
 
 impl SeerCallback<TestGameStep> for TestGame {
     fn on_pre_ticks(&mut self) {}

@@ -4,8 +4,8 @@
  */
 use anyhow::{self, Context};
 use easy_repl::{command, CommandStatus, Repl};
-use flood_rs::{ReadOctetStream, WriteOctetStream};
 use example_client::ExampleClient;
+use flood_rs::{ReadOctetStream, WriteOctetStream};
 use nimble_assent::AssentCallback;
 use nimble_rectify::RectifyCallback;
 use nimble_seer::SeerCallback;

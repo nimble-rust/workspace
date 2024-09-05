@@ -13,3 +13,4 @@ nimble-steps = { path = "../steps" }
 nimble-participant-steps = { path = "../participant-steps" }
 nimble-participant = { path = "../participant" }
 tick-id = "0.0.7"
+nimble-protocol = { path = "../protocol" }

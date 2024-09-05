@@ -8,7 +8,7 @@ use nimble_assent::prelude::*;
 use nimble_client::Client;
 use nimble_protocol::hex_output;
 use nimble_seer::prelude::*;
-use nimble_steps::{Serialize, Deserialize};
+use nimble_steps::{Deserialize, Serialize};
 use secure_random::GetRandom;
 use std::io;
 use udp_client::UdpClient;

@@ -40,7 +40,7 @@ impl TryFrom<u8> for HostToClientCommand {
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub struct TickId(pub u32);
 
 impl TickId {
@@ -57,18 +57,21 @@ impl TickId {
 pub struct DownloadGameStateResponse {
     pub client_request: u8,
     pub tick_id: TickId,
+    pub blob_stream_channel: u16,
 }
 
 impl DownloadGameStateResponse {
     pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.client_request)?;
-        self.tick_id.to_stream(stream)
+        self.tick_id.to_stream(stream)?;
+        stream.write_u16(self.blob_stream_channel)
     }
 
     pub fn from_stream(stream: &mut dyn ReadOctetStream) -> io::Result<Self> {
         Ok(Self {
             client_request: stream.read_u8()?,
             tick_id: TickId::from_stream(stream)?,
+            blob_stream_channel: stream.read_u16()?,
         })
     }
 }

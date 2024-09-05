@@ -61,7 +61,6 @@ impl Serialize for TestGameStep {
     }
 }
 
-
 pub struct CombinedGame {
     pub authoritative_game: TestGame,
     pub predicted_game: TestGame,
