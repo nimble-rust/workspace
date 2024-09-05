@@ -94,7 +94,9 @@ impl HostToClientCommands {
             HostToClientCommands::DownloadGameState(_) => {
                 HostToClientCommand::DownloadGameState as u8
             }
-            HostToClientCommands::BlobStreamChannel(_) => HostToClientCommand::BlobStreamChannel as u8
+            HostToClientCommands::BlobStreamChannel(_) => {
+                HostToClientCommand::BlobStreamChannel as u8
+            }
         }
     }
 
@@ -144,7 +146,6 @@ impl HostToClientCommands {
         Ok(x)
     }
 }
-
 
 #[derive(Debug, PartialEq)]
 pub struct PartyAndSessionSecret {

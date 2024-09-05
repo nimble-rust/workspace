@@ -49,6 +49,10 @@ where
         }
     }
 
+    pub fn predicted_steps(&self) -> &Steps<CombinedStepT> {
+        &self.combined_steps
+    }
+
     pub fn update(&mut self, callback: &mut Callback) {
         callback.on_pre_ticks();
 

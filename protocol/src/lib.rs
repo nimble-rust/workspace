@@ -9,10 +9,10 @@ use std::io::Result;
 use flood_rs::{ReadOctetStream, WriteOctetStream};
 
 pub mod client_to_host;
-pub mod host_to_client;
-pub mod prelude;
-pub mod host_to_client_oob;
 pub mod client_to_host_oob;
+pub mod host_to_client;
+pub mod host_to_client_oob;
+pub mod prelude;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Nonce(pub u64);

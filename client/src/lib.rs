@@ -36,7 +36,7 @@ enum ClientPhase {
 
 pub struct Client<
     Game: SeerCallback<StepT> + AssentCallback<StepT> + RectifyCallback,
-    StepT: Clone + nimble_steps::Deserialize,
+    StepT: Clone + nimble_steps::Deserialize + nimble_steps::Serialize,
 > {
     phase: ClientPhase,
     logic: Option<ClientLogic<Game, StepT>>,
@@ -44,13 +44,12 @@ pub struct Client<
     ordered_datagram_in: OrderedIn,
     tick_id: u32,
     debug_tick_id_to_send: u32,
-
 }
 
 impl<
-    Game: SeerCallback<StepT> + AssentCallback<StepT> + RectifyCallback,
-    StepT: Clone + nimble_steps::Deserialize,
-> Client<Game, StepT>
+        Game: SeerCallback<StepT> + AssentCallback<StepT> + RectifyCallback,
+        StepT: Clone + nimble_steps::Deserialize + nimble_steps::Serialize,
+    > Client<Game, StepT>
 {
     pub fn new(mut random: Box<dyn SecureRandom>) -> Client<Game, StepT> {
         let nonce = Nonce(random.get_random_u64());
@@ -65,7 +64,6 @@ impl<
             debug_tick_id_to_send: 0,
         }
     }
-
 
     pub fn set_joining_player(&mut self, join_game_request: JoinGameRequest) -> Result<(), String> {
         self.logic
@@ -256,8 +254,16 @@ impl<
                             commands.push(command);
                         }
 
-                        self.logic.as_mut().expect("reason").receive(commands.as_slice())
-                            .map_err(|err| Error::new(ErrorKind::InvalidData, format!("problem in client: {:?}", err)))?;
+                        self.logic
+                            .as_mut()
+                            .expect("reason")
+                            .receive(commands.as_slice())
+                            .map_err(|err| {
+                                Error::new(
+                                    ErrorKind::InvalidData,
+                                    format!("problem in client: {:?}", err),
+                                )
+                            })?;
 
                         Ok(())
                     }

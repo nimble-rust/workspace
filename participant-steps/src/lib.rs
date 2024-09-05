@@ -2,6 +2,7 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
+use flood_rs::ReadOctetStream;
 use nimble_participant::ParticipantId;
 use nimble_steps::{Deserialize, Step};
 use std::collections::HashMap;
@@ -69,7 +70,7 @@ impl<T> ParticipantSteps<T> {
 }
 
 impl<T: Clone> Deserialize for ParticipantSteps<T> {
-    fn deserialize(_bytes: &[u8]) -> io::Result<Self>
+    fn deserialize(_: &mut impl ReadOctetStream) -> io::Result<Self>
     where
         Self: Sized,
     {

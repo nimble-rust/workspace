@@ -2,12 +2,14 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
+use flood_rs::{InOctetStream, OutOctetStream};
 use log::info;
 use nimble_assent::prelude::*;
 use nimble_protocol::prelude::*;
 use nimble_protocol::Nonce;
 use nimble_rectify::prelude::*;
 use nimble_seer::prelude::*;
+use nimble_steps::Serialize;
 use secure_random::SecureRandom;
 use std::{fmt, io};
 
@@ -36,7 +38,6 @@ impl fmt::Display for ClientError {
 
 impl std::error::Error for ClientError {} // it implements Debug and Display
 
-
 #[derive(PartialEq, Debug)]
 enum Phase {
     InGame,
@@ -56,9 +57,9 @@ pub struct ClientLogic<
 }
 
 impl<
-    Game: SeerCallback<StepT> + AssentCallback<StepT> + RectifyCallback,
-    StepT: Clone + nimble_steps::Deserialize,
-> ClientLogic<Game, StepT>
+        Game: SeerCallback<StepT> + AssentCallback<StepT> + RectifyCallback,
+        StepT: Clone + nimble_steps::Deserialize + Serialize,
+    > ClientLogic<Game, StepT>
 {
     pub fn new(random: Box<dyn SecureRandom>) -> ClientLogic<Game, StepT> {
         let phase = Phase::InGame;
@@ -91,12 +92,22 @@ impl<
                     commands.push(ClientToHostCommands::JoinGameType(joining_game.clone()));
                 }
 
-                let payload = vec![0xfau8, 64];
+                let mut serialized_combined_predicted_steps: Vec<Vec<u8>> = vec![];
+                let mut write_stream = OutOctetStream::new();
+
+                let predicted_steps = self.rectify.seer().predicted_steps();
+                for predicted_step_info in predicted_steps.iter() {
+                    predicted_step_info
+                        .step
+                        .serialize(&mut write_stream)
+                        .expect("should always be possible to serialize");
+                    serialized_combined_predicted_steps.push(write_stream.data.clone());
+                }
 
                 let predicted_steps_for_one_player = PredictedStepsForPlayer {
                     participant_party_index: 0,
                     first_step_id: self.debug_tick_id_to_send,
-                    serialized_predicted_steps: vec![payload],
+                    serialized_predicted_steps: serialized_combined_predicted_steps,
                 };
 
                 //self.debug_tick_id_to_send += 1;
@@ -133,14 +144,13 @@ impl<
         Ok(())
     }
 
-    fn on_game_step(
-        &mut self,
-        cmd: &GameStepResponse,
-    ) -> Result<(), ClientError> {
+    fn on_game_step(&mut self, cmd: &GameStepResponse) -> Result<(), ClientError> {
         info!("game step response: {:?}", cmd);
         for authoritative_step_range in &cmd.authoritative_ranges.ranges {
             for authoritative_step in &authoritative_step_range.authoritative_steps {
-                let auth_step = StepT::deserialize(authoritative_step.as_slice()).map_err(|err| ClientError::IoErr(err))?;
+                let mut stream = InOctetStream::new(authoritative_step.clone());
+                let auth_step =
+                    StepT::deserialize(&mut stream).map_err(|err| ClientError::IoErr(err))?;
                 self.rectify.push_authoritative(auth_step);
             }
         }

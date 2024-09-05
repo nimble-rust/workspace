@@ -26,7 +26,6 @@ impl TryFrom<u8> for ClientToHostOobCommand {
     }
 }
 
-
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct ConnectRequest {
     pub nimble_version: Version,
@@ -54,7 +53,6 @@ impl ConnectRequest {
     }
 }
 
-
 #[derive(Debug, Clone)]
 pub enum ClientToHostOobCommands {
     ConnectType(ConnectRequest),
@@ -70,7 +68,9 @@ impl ClientToHostOobCommands {
     pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.to_octet())?;
         match self {
-            ClientToHostOobCommands::ConnectType(connect_command) => connect_command.to_stream(stream),
+            ClientToHostOobCommands::ConnectType(connect_command) => {
+                connect_command.to_stream(stream)
+            }
         }
     }
 

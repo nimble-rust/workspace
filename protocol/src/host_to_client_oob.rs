@@ -8,7 +8,6 @@ use flood_rs::{ReadOctetStream, WriteOctetStream};
 use std::io;
 use std::io::ErrorKind;
 
-
 #[repr(u8)]
 pub enum HostToClientOobCommand {
     Connect = 0x0D,
@@ -59,7 +58,6 @@ impl ConnectionAccepted {
     }
 }
 
-
 impl HostToClientOobCommands {
     pub fn to_octet(&self) -> u8 {
         match self {
@@ -70,7 +68,9 @@ impl HostToClientOobCommands {
     pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.to_octet())?;
         match self {
-            HostToClientOobCommands::ConnectType(connect_command) => connect_command.to_stream(stream),
+            HostToClientOobCommands::ConnectType(connect_command) => {
+                connect_command.to_stream(stream)
+            }
         }
     }
 

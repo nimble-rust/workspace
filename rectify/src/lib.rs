@@ -50,6 +50,14 @@ impl<
         Self { assent, seer }
     }
 
+    pub fn seer(&self) -> &Seer<Game, StepT> {
+        &self.seer
+    }
+
+    pub fn assent(&self) -> &Assent<Game, StepT> {
+        &self.assent
+    }
+
     /// Pushes a predicted step into the [`Seer`] component.
     ///
     /// # Arguments

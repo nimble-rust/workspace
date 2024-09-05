@@ -82,9 +82,15 @@ impl ClientToHostCommands {
         let command_value = stream.read_u8()?;
         let command = ClientToHostCommand::try_from(command_value)?;
         let x = match command {
-            ClientToHostCommand::JoinGame => ClientToHostCommands::JoinGameType(JoinGameRequest::from_stream(stream)?),
-            ClientToHostCommand::Steps => ClientToHostCommands::Steps(StepsRequest::from_stream(stream)?),
-            ClientToHostCommand::DownloadGameState => ClientToHostCommands::DownloadGameState(DownloadGameStateRequest::from_stream(stream)?),
+            ClientToHostCommand::JoinGame => {
+                ClientToHostCommands::JoinGameType(JoinGameRequest::from_stream(stream)?)
+            }
+            ClientToHostCommand::Steps => {
+                ClientToHostCommands::Steps(StepsRequest::from_stream(stream)?)
+            }
+            ClientToHostCommand::DownloadGameState => ClientToHostCommands::DownloadGameState(
+                DownloadGameStateRequest::from_stream(stream)?,
+            ),
         };
         Ok(x)
     }
@@ -105,7 +111,6 @@ impl fmt::Display for ClientToHostCommands {
 }
 
 // --- Individual commands ---
-
 
 #[repr(u8)]
 pub enum JoinGameTypeValue {

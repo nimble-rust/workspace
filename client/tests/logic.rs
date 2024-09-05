@@ -4,21 +4,42 @@
  */
 mod types;
 
+use crate::types::ExampleStep;
 use nimble_client::logic::ClientLogic;
+use nimble_protocol::client_to_host::{PredictedStepsForPlayers, StepsAck, StepsRequest};
 use nimble_protocol::prelude::ClientToHostCommands;
 use secure_random::GetRandom;
 use types::ExampleGame;
-use crate::types::ExampleStep;
 
 #[test]
 fn basic_logic() {
     let random = GetRandom {};
     let random_box = Box::new(random);
-    let logic = ClientLogic::<ExampleGame, ExampleStep>::new(random_box);
+    let mut game = ExampleGame::default();
+    let mut logic = ClientLogic::<ExampleGame, ExampleStep>::new(random_box);
 
     {
         let commands = logic.send();
         assert_eq!(commands.len(), 1);
-        assert!(matches!(commands[0], ClientToHostCommands::Steps(_)))
+        if let ClientToHostCommands::Steps(StepsRequest {
+            ack:
+                StepsAck {
+                    latest_received_step_tick_id: 0,
+                    lost_steps_mask_after_last_received: 0b0,
+                },
+            combined_predicted_steps:
+                PredictedStepsForPlayers {
+                    predicted_steps_for_players,
+                },
+        }) = &commands[0]
+        {
+            assert_eq!(predicted_steps_for_players.len(), 1);
+        } else {
+            panic!("Command did not match expected structure or pattern");
+        }
+
+        logic.update(&mut game);
+
+        assert_eq!(game.predicted.x, 0);
     }
 }

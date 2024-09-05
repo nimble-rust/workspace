@@ -2,6 +2,7 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
+use flood_rs::{ReadOctetStream, WriteOctetStream};
 use std::collections::VecDeque;
 use std::io;
 use tick_id::TickId;
@@ -24,7 +25,13 @@ pub enum Step<T> {
 }
 
 pub trait Deserialize {
-    fn deserialize(bytes: &[u8]) -> io::Result<Self>
+    fn deserialize(stream: &mut impl ReadOctetStream) -> io::Result<Self>
+    where
+        Self: Sized;
+}
+
+pub trait Serialize {
+    fn serialize(&self, stream: &mut impl WriteOctetStream) -> io::Result<()>
     where
         Self: Sized;
 }
