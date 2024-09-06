@@ -6,7 +6,7 @@ use blob_stream::out_stream::BlobStreamOut;
 use std::time::{Duration, Instant};
 
 #[test]
-fn check_update_timer() {
+fn check_last_sent_time() {
     let mut stream = BlobStreamOut::new(
         4,
         Duration::from_millis(250),
@@ -22,8 +22,8 @@ fn check_update_timer() {
         let entries = stream.send(now, 2);
 
         assert_eq!(entries.len(), 2);
-        assert_eq!(entries[0].index, 0);
-        assert_eq!(entries[1].index, 1);
+        assert_eq!(entries[0], 0);
+        assert_eq!(entries[1], 1);
     }
 
     now += Duration::from_millis(100);
@@ -31,9 +31,9 @@ fn check_update_timer() {
         let entries = stream.send(now, 3);
 
         assert_eq!(entries.len(), 3);
-        assert_eq!(entries[0].index, 2);
-        assert_eq!(entries[1].index, 0);
-        assert_eq!(entries[2].index, 1);
+        assert_eq!(entries[0], 2);
+        assert_eq!(entries[1], 0);
+        assert_eq!(entries[2], 1);
     }
 
     now += Duration::from_millis(100);
@@ -41,9 +41,9 @@ fn check_update_timer() {
         let entries = stream.send(now, 3);
 
         assert_eq!(entries.len(), 3);
-        assert_eq!(entries[0].index, 2);
-        assert_eq!(entries[1].index, 3);
-        assert_eq!(entries[2].index, 4);
+        assert_eq!(entries[0], 2);
+        assert_eq!(entries[1], 3);
+        assert_eq!(entries[2], 4);
     }
 
     now += Duration::from_millis(150);
@@ -51,9 +51,9 @@ fn check_update_timer() {
         let entries = stream.send(now, 3);
 
         assert_eq!(entries.len(), 3);
-        assert_eq!(entries[0].index, 0);
-        assert_eq!(entries[1].index, 1);
-        assert_eq!(entries[2].index, 5);
+        assert_eq!(entries[0], 0);
+        assert_eq!(entries[1], 1);
+        assert_eq!(entries[2], 5);
     }
 
     stream.set_waiting_for_chunk_index(3);
@@ -62,8 +62,8 @@ fn check_update_timer() {
         let entries = stream.send(now, 3);
 
         assert_eq!(entries.len(), 3);
-        assert_eq!(entries[0].index, 4);
-        assert_eq!(entries[1].index, 5);
-        assert_eq!(entries[2].index, 6);
+        assert_eq!(entries[0], 4);
+        assert_eq!(entries[1], 5);
+        assert_eq!(entries[2], 6);
     }
 }

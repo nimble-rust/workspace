@@ -2,7 +2,6 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-use std::cmp::Ordering;
 use std::time::{Duration, Instant};
 
 /// Represents an individual chunk of the blob data being streamed out.
@@ -12,10 +11,8 @@ use std::time::{Duration, Instant};
 /// - `start` and `end`: Byte ranges representing the chunk's position within the full blob.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct BlobStreamOutEntry {
-    pub timer: Option<Instant>,
+    pub last_sent_at: Option<Instant>,
     pub index: usize,
-    pub start: usize,
-    pub end: usize,
 }
 
 impl BlobStreamOutEntry {
@@ -24,19 +21,15 @@ impl BlobStreamOutEntry {
     /// # Arguments
     ///
     /// * `index` - The index of the chunk.
-    /// * `start` - The start position of the chunk in the blob.
-    /// * `end` - The end position of the chunk in the blob.
     ///
     /// # Returns
     ///
     /// A new `BlobStreamOutEntry` with a `None` timer.
     #[must_use]
-    pub fn new(index: usize, start: usize, end: usize) -> Self {
+    pub fn new(index: usize) -> Self {
         Self {
-            timer: None,
+            last_sent_at: None,
             index,
-            start,
-            end,
         }
     }
 
@@ -46,25 +39,7 @@ impl BlobStreamOutEntry {
     ///
     /// * `time` - The `Instant` at which the entry is being sent.
     pub fn sent_at_time(&mut self, time: Instant) {
-        self.timer = Some(time);
-    }
-}
-
-impl Ord for BlobStreamOutEntry {
-    /// Compares two `BlobStreamOutEntry` instances.
-    ///
-    /// The comparison is done first by the `timer` field. If the timers are equal or
-    /// `None`, the `index` field is used as a secondary criterion.
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.timer
-            .cmp(&other.timer) // Compare by timer first
-            .then(self.index.cmp(&other.index)) // If timer is the same, compare by index
-    }
-}
-
-impl PartialOrd for BlobStreamOutEntry {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
+        self.last_sent_at = Some(time);
     }
 }
 
@@ -106,11 +81,7 @@ impl BlobStreamOut {
 
         // Initialize the entries vector by chunking the blob data
         let entries: Vec<BlobStreamOutEntry> = (0..chunk_count)
-            .map(|i| {
-                let start = i * fixed_chunk_size;
-                let end = std::cmp::min(start + fixed_chunk_size, blob.len());
-                BlobStreamOutEntry::new(i, start, end)
-            })
+            .map(|i| BlobStreamOutEntry::new(i))
             .collect();
 
         Self {
@@ -144,9 +115,9 @@ impl BlobStreamOut {
     /// # Returns
     ///
     /// A vector containing up to `max_count` `BlobStreamOutEntry` items, representing the chunks to be sent.
-    pub fn send(&mut self, now: Instant, max_count: usize) -> Vec<BlobStreamOutEntry> {
+    pub fn send(&mut self, now: Instant, max_count: usize) -> Vec<usize> {
         // Filter by index range, timer expiration, and limit the number of results
-        let mut filtered_out: Vec<BlobStreamOutEntry> = self
+        let mut filtered_out_indices: Vec<usize> = self
             .entries
             .iter()
             .skip(self.start_index_to_send)
@@ -154,34 +125,34 @@ impl BlobStreamOut {
             .filter(|entry| {
                 // Check if enough time has passed since the timer was set
                 entry
-                    .timer
+                    .last_sent_at
                     .map_or(true, |t| now.duration_since(t) >= self.resend_duration)
             })
-            .cloned() // Clone to return owned entries
+            .map(|entry| entry.index)
             .collect(); // Collect into a Vec
 
-        if filtered_out.len() < max_count {
-            let remaining = max_count - filtered_out.len();
+        if filtered_out_indices.len() < max_count {
+            let remaining = max_count - filtered_out_indices.len();
 
             if self.index_to_start_from_if_not_filled_up + remaining >= self.entries.len() {
                 self.index_to_start_from_if_not_filled_up = self.entries.len() - 1 - remaining;
             }
 
             // Get additional entries starting from `index_to_start_from_if_not_filled_up`
-            let additional_entries: Vec<BlobStreamOutEntry> = self
+            let additional_indicies: Vec<usize> = self
                 .entries
                 .iter()
                 .skip(self.index_to_start_from_if_not_filled_up) // Start from the alternate index
                 .filter(|entry| {
                     // Ensure that we are not duplicating any already selected entries
-                    !filtered_out.iter().any(|e| e.index == entry.index)
+                    !filtered_out_indices.iter().any(|e| *e == entry.index)
                 })
-                .cloned()
+                .map(|entry| entry.index)
                 .take(remaining) // Take only the number of remaining entries
                 .collect();
 
-            if !additional_entries.is_empty() {
-                let last_additional_index = additional_entries[additional_entries.len() - 1].index;
+            if !additional_indicies.is_empty() {
+                let last_additional_index = additional_indicies[additional_indicies.len() - 1];
                 if last_additional_index + 1 >= self.entries.len() {
                     self.index_to_start_from_if_not_filled_up = 0;
                 } else {
@@ -189,17 +160,17 @@ impl BlobStreamOut {
                 }
             }
             // Append additional entries to fill up to `max_count`
-            filtered_out.extend(additional_entries);
+            filtered_out_indices.extend(additional_indicies);
         }
 
-        for entry in filtered_out.iter() {
+        for entry_index in filtered_out_indices.iter() {
             let ent = self
                 .entries
-                .get_mut(entry.index)
+                .get_mut(*entry_index)
                 .expect("should always be there");
             ent.sent_at_time(now);
         }
 
-        filtered_out
+        filtered_out_indices
     }
 }
