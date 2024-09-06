@@ -125,7 +125,7 @@ impl BlobStreamIn {
                 &self.blob[octet_offset..octet_offset + expected_size] == payload;
 
             let err = if is_same_contents {
-                BlobError::RedundantSameContents(chunk_index)
+                return Ok(());
             } else {
                 BlobError::RedundantContentDiffers(chunk_index)
             };

@@ -7,7 +7,6 @@ pub enum BlobError {
     InvalidChunkIndex(usize, usize),
     UnexpectedChunkSize(usize, usize, usize),
     OutOfBounds,
-    RedundantSameContents(ChunkIndex),
     RedundantContentDiffers(ChunkIndex),
 }
 
@@ -22,7 +21,6 @@ impl fmt::Display for BlobError {
                 "unexpected chunk size. expected {expected} but encountered {found} for chunk {id}"
             ),
             Self::OutOfBounds => write!(f, "calculated slice range is out of bounds"),
-            Self::RedundantSameContents(chunk_index) => write!(f, "chunk {chunk_index} has already been received"),
             Self::RedundantContentDiffers(chunk_index) => write!(f, "chunk {chunk_index} has already been received, but now received different content for that chunk. this is serious"),
         }
     }
@@ -43,9 +41,6 @@ impl From<BlobError> for io::Error {
                 Self::new(io::ErrorKind::InvalidInput, err.to_string())
             }
             BlobError::OutOfBounds => Self::new(io::ErrorKind::UnexpectedEof, err.to_string()),
-            BlobError::RedundantSameContents(_) => {
-                Self::new(io::ErrorKind::AlreadyExists, err.to_string())
-            }
             BlobError::RedundantContentDiffers(_) | BlobError::UnexpectedChunkSize(_, _, _) => {
                 Self::new(io::ErrorKind::InvalidData, err.to_string())
             }

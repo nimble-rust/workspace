@@ -7,14 +7,7 @@ use std::time::{Duration, Instant};
 
 #[test]
 fn check_last_sent_time() {
-    let mut stream = BlobStreamOut::new(
-        4,
-        Duration::from_millis(250),
-        &[
-            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 17, 18, 19, 20,
-            17, 18, 19, 20, 21,
-        ],
-    );
+    let mut stream = BlobStreamOut::new(4, Duration::from_millis(250));
 
     let mut now = Instant::now();
 
@@ -41,9 +34,9 @@ fn check_last_sent_time() {
         let entries = stream.send(now, 3);
 
         assert_eq!(entries.len(), 3);
-        assert_eq!(entries[0], 2);
-        assert_eq!(entries[1], 3);
-        assert_eq!(entries[2], 4);
+        assert_eq!(entries[0], 0);
+        assert_eq!(entries[1], 1);
+        assert_eq!(entries[2], 2);
     }
 
     now += Duration::from_millis(150);
@@ -53,7 +46,7 @@ fn check_last_sent_time() {
         assert_eq!(entries.len(), 3);
         assert_eq!(entries[0], 0);
         assert_eq!(entries[1], 1);
-        assert_eq!(entries[2], 5);
+        assert_eq!(entries[2], 2);
     }
 
     stream.set_waiting_for_chunk_index(3);
@@ -62,8 +55,8 @@ fn check_last_sent_time() {
         let entries = stream.send(now, 3);
 
         assert_eq!(entries.len(), 3);
-        assert_eq!(entries[0], 4);
-        assert_eq!(entries[1], 5);
-        assert_eq!(entries[2], 6);
+        assert_eq!(entries[0], 3);
+        assert_eq!(entries[1], 1);
+        assert_eq!(entries[2], 2);
     }
 }

@@ -50,11 +50,9 @@ impl BlobStreamOutEntry {
 #[derive(Debug)]
 pub struct BlobStreamOut {
     pub(crate) entries: Vec<BlobStreamOutEntry>,
-    pub(crate) fixed_chunk_size: usize,
     start_index_to_send: usize,
     index_to_start_from_if_not_filled_up: usize,
     resend_duration: Duration,
-    blob: Vec<u8>,
 }
 
 impl BlobStreamOut {
@@ -62,7 +60,7 @@ impl BlobStreamOut {
     ///
     /// # Arguments
     ///
-    /// * `fixed_chunk_size` - The size of each chunk.
+    /// * `chunk_count` - The total number of chunks.
     /// * `resend_duration` - The minimum time that must elapse before resending a chunk.
     /// * `blob` - The complete binary data to be streamed out.
     ///
@@ -74,10 +72,8 @@ impl BlobStreamOut {
     ///
     /// This function will panic if `fixed_chunk_size` is zero.
     #[must_use]
-    pub fn new(fixed_chunk_size: usize, resend_duration: Duration, blob: &[u8]) -> Self {
-        assert_ne!(fixed_chunk_size, 0, "fixed chunk size cannot be zero");
-
-        let chunk_count = blob.len().div_ceil(fixed_chunk_size);
+    pub fn new(chunk_count: usize, resend_duration: Duration) -> Self {
+        assert_ne!(chunk_count, 0, "chunk_count cannot be zero");
 
         // Initialize the entries vector by chunking the blob data
         let entries: Vec<BlobStreamOutEntry> = (0..chunk_count)
@@ -86,12 +82,14 @@ impl BlobStreamOut {
 
         Self {
             entries,
-            fixed_chunk_size,
             resend_duration,
             index_to_start_from_if_not_filled_up: 0,
             start_index_to_send: 0,
-            blob: blob.to_vec(),
         }
+    }
+
+    pub fn chunk_count(&self) -> usize {
+        self.entries.len()
     }
 
     /// Sets the starting index from which to send the next chunk.
@@ -132,7 +130,10 @@ impl BlobStreamOut {
             .collect(); // Collect into a Vec
 
         if filtered_out_indices.len() < max_count {
-            let remaining = max_count - filtered_out_indices.len();
+            let mut remaining = max_count - filtered_out_indices.len();
+            if remaining >= self.entries.len() {
+                remaining = self.entries.len() - 1
+            }
 
             if self.index_to_start_from_if_not_filled_up + remaining >= self.entries.len() {
                 self.index_to_start_from_if_not_filled_up = self.entries.len() - 1 - remaining;
