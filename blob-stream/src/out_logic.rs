@@ -82,4 +82,12 @@ impl Logic {
     pub fn is_received_by_remote(&self) -> bool {
         self.out_stream.is_received_by_remote()
     }
+
+    pub fn octet_size(&self) -> usize {
+        self.blob.len()
+    }
+
+    pub fn chunk_size(&self) -> usize {
+        self.fixed_chunk_size
+    }
 }

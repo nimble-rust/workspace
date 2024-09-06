@@ -8,6 +8,7 @@ pub mod in_logic;
 pub mod in_logic_front;
 pub mod in_stream;
 pub mod out_logic;
+pub mod out_logic_front;
 pub mod out_stream;
 pub mod prelude;
 pub mod protocol;

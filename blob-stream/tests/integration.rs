@@ -6,14 +6,10 @@ use blob_stream::out_logic::Logic;
 use blob_stream::prelude::TransferId;
 use blob_stream::protocol::AckChunkData;
 use log::info;
-use rand::prelude::StdRng;
-use rand::{Rng, SeedableRng};
-use std::time::{Duration, Instant};
 
-fn generate_deterministic_blob_array(length: usize, seed: u64) -> Vec<u8> {
-    let mut rng = StdRng::seed_from_u64(seed);
-    (0..length).map(|_| rng.gen()).collect()
-}
+use crate::helper::generate_deterministic_blob_array;
+use std::time::{Duration, Instant};
+pub mod helper;
 
 #[test_log::test]
 fn test_blob_stream() {
@@ -40,6 +36,7 @@ fn test_blob_stream() {
         assert!(set_chunks.len() <= MAX_CHUNK_COUNT_EACH_SEND);
 
         if (i % 3) == 0 {
+            // Intentionally drop a few chunks every third iteration
             info!("dropped those chunks");
             continue;
         }
@@ -47,7 +44,6 @@ fn test_blob_stream() {
         let mut ack: Option<AckChunkData> = None;
 
         for set_chunk in set_chunks {
-            // Intentionally drop a few chunks every other iteration
             ack = Some(
                 in_logic
                     .update(&set_chunk.data)
