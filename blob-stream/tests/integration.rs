@@ -4,6 +4,8 @@
  */
 use blob_stream::out_logic::Logic;
 use blob_stream::prelude::TransferId;
+use blob_stream::protocol::AckChunkData;
+use log::info;
 use rand::prelude::StdRng;
 use rand::{Rng, SeedableRng};
 use std::time::{Duration, Instant};
@@ -20,27 +22,41 @@ fn test_blob_stream() {
     const CHUNK_SIZE: usize = 4;
     const CHUNK_COUNT: usize = 30;
     const OCTET_COUNT: usize = (CHUNK_SIZE * (CHUNK_COUNT - 1)) + 1;
-    const ITERATION_COUNT: usize = 3;
+    const ITERATION_COUNT: usize = 9;
     const MAX_CHUNK_COUNT_EACH_SEND: usize = 10;
 
     let mut in_logic = blob_stream::in_logic::Logic::new(blob_to_transfer.len(), CHUNK_SIZE);
     let mut out_logic = Logic::new(
         TransferId(0),
         CHUNK_SIZE,
-        Duration::from_millis(32 * 4),
+        Duration::from_millis(31 * 3),
         blob_to_transfer.clone(),
     );
 
     let mut now = Instant::now();
 
-    for _ in 0..ITERATION_COUNT {
+    for i in 0..ITERATION_COUNT {
         let set_chunks = out_logic.send(now, MAX_CHUNK_COUNT_EACH_SEND);
         assert!(set_chunks.len() <= MAX_CHUNK_COUNT_EACH_SEND);
 
+        if (i % 3) == 0 {
+            info!("dropped those chunks");
+            continue;
+        }
+
+        let mut ack: Option<AckChunkData> = None;
+
         for set_chunk in set_chunks {
-            let ack = in_logic
-                .update(&set_chunk.data)
-                .expect("should always be valid in test");
+            // Intentionally drop a few chunks every other iteration
+            ack = Some(
+                in_logic
+                    .update(&set_chunk.data)
+                    .expect("should always be valid in test"),
+            );
+        }
+
+        if let Some(ack) = ack {
+            info!("ack: {:?}", ack);
             out_logic
                 .set_waiting_for_chunk_index(
                     ack.waiting_for_chunk_index as usize,
@@ -48,6 +64,7 @@ fn test_blob_stream() {
                 )
                 .expect("ack chunk index and receive mask should work in the test");
         }
+
         now += Duration::from_millis(32);
     }
 
@@ -55,4 +72,6 @@ fn test_blob_stream() {
         in_logic.blob().expect("blob should be ready"),
         blob_to_transfer
     );
+
+    assert!(out_logic.is_received_by_remote());
 }

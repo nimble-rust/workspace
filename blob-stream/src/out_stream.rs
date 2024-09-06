@@ -8,6 +8,7 @@ use std::time::{Duration, Instant};
 #[derive(Debug)]
 pub enum OutStreamError {
     ChunkPreviouslyReceivedMarkedAsNotReceived,
+    IndexOutOfBounds,
 }
 
 /// Represents an individual chunk of the blob data being streamed out.
@@ -61,6 +62,7 @@ pub struct BlobStreamOut {
     start_index_to_send: usize,
     index_to_start_from_if_not_filled_up: usize,
     resend_duration: Duration,
+    chunk_count_received_by_remote: usize,
 }
 
 impl BlobStreamOut {
@@ -92,6 +94,7 @@ impl BlobStreamOut {
             resend_duration,
             index_to_start_from_if_not_filled_up: 0,
             start_index_to_send: 0,
+            chunk_count_received_by_remote: 0,
         }
     }
 
@@ -111,8 +114,30 @@ impl BlobStreamOut {
     ) -> Result<(), OutStreamError> {
         self.start_index_to_send = index;
 
+        if index > self.start_index_to_send {
+            return Err(OutStreamError::IndexOutOfBounds);
+        }
         let start = index + 1;
         let end = min(self.entries.len(), start + 64);
+
+        for previously_received_entry in self.entries[0..index].iter_mut() {
+            if !previously_received_entry.is_received_by_remote {
+                previously_received_entry.is_received_by_remote = true;
+                self.chunk_count_received_by_remote += 1;
+            }
+        }
+
+        if index < self.entries.len() {
+            let waiting_for_entry = self
+                .entries
+                .get_mut(index)
+                .expect("entry index should been validated earlier");
+            // it is not allowed to go from being received by remote to suddenly not be received anymore.
+            if waiting_for_entry.is_received_by_remote {
+                return Err(OutStreamError::ChunkPreviouslyReceivedMarkedAsNotReceived);
+            }
+            waiting_for_entry.last_sent_at = None;
+        }
 
         let mut mask = receive_mask;
         for i in index + 1..end {
@@ -121,12 +146,16 @@ impl BlobStreamOut {
                 .get_mut(i)
                 .expect("entry index should been validated earlier");
             if mask & 0b1 != 0 {
-                entry.is_received_by_remote = true;
+                if !entry.is_received_by_remote {
+                    entry.is_received_by_remote = true;
+                    self.chunk_count_received_by_remote += 1;
+                }
             } else {
                 // it is not allowed to go from being received by remote to suddenly not be received anymore.
                 if entry.is_received_by_remote {
                     return Err(OutStreamError::ChunkPreviouslyReceivedMarkedAsNotReceived);
                 }
+                entry.last_sent_at = None;
             }
             mask >>= 1;
         }
@@ -167,9 +196,11 @@ impl BlobStreamOut {
             let lower_index = self.start_index_to_send + max_count;
             let expected_remaining = max_count - filtered_out_indices.len();
 
-            if self.index_to_start_from_if_not_filled_up + expected_remaining > self.entries.len()
-                || self.index_to_start_from_if_not_filled_up < lower_index
-            {
+            if self.index_to_start_from_if_not_filled_up + expected_remaining > self.entries.len() {
+                self.index_to_start_from_if_not_filled_up = lower_index;
+            }
+
+            if self.index_to_start_from_if_not_filled_up < lower_index {
                 self.index_to_start_from_if_not_filled_up = lower_index;
             }
 
@@ -201,5 +232,9 @@ impl BlobStreamOut {
         }
 
         filtered_out_indices
+    }
+
+    pub fn is_received_by_remote(&self) -> bool {
+        self.chunk_count_received_by_remote == self.entries.len()
     }
 }

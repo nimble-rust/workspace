@@ -78,4 +78,8 @@ impl Logic {
         self.out_stream
             .set_waiting_for_chunk_index(waiting_for_index, receive_mask)
     }
+
+    pub fn is_received_by_remote(&self) -> bool {
+        self.out_stream.is_received_by_remote()
+    }
 }

@@ -53,6 +53,7 @@ fn check_last_sent_time() {
     {
         let entries = stream.send(now, 3);
 
-        assert_eq!(entries.len(), 0);
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0], 3);
     }
 }
