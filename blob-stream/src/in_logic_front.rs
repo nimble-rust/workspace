@@ -8,6 +8,7 @@ use crate::protocol_front::{
     AckChunkFrontData, ReceiverToSenderFrontCommands, SenderToReceiverFrontCommands,
 };
 use crate::ChunkIndex;
+use log::{debug, trace};
 use std::io;
 use std::io::ErrorKind;
 
@@ -108,6 +109,10 @@ impl FrontLogic {
                     .as_ref()
                     .map_or(true, |s| s.transfer_id.0 != start_transfer_data.transfer_id)
                 {
+                    debug!(
+                        "received a start transfer for {}. sending ack.",
+                        start_transfer_data.transfer_id
+                    );
                     // Either logic is not set or the transfer_id is different, so we start with a fresh InLogic.
                     self.state = Some(State {
                         transfer_id: TransferId(start_transfer_data.transfer_id),
@@ -123,6 +128,11 @@ impl FrontLogic {
             }
             SenderToReceiverFrontCommands::SetChunk(chunk_data) => {
                 if let Some(ref mut state) = self.state {
+                    trace!(
+                        "received chunk {}  (transfer:{})",
+                        chunk_data.data.chunk_index,
+                        chunk_data.transfer_id.0
+                    );
                     let ack = state.logic.update(&chunk_data.data)?;
                     Ok(ReceiverToSenderFrontCommands::AckChunk(AckChunkFrontData {
                         transfer_id: chunk_data.transfer_id,

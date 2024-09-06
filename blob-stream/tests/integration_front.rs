@@ -19,7 +19,7 @@ fn test_blob_stream_front() {
 
     let mut in_logic = blob_stream::in_logic_front::FrontLogic::new();
     let mut out_logic = OutLogicFront::new(
-        TransferId(0),
+        TransferId(42),
         CHUNK_SIZE,
         Duration::from_millis(31 * 3),
         blob_to_transfer.clone(),

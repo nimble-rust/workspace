@@ -7,7 +7,7 @@ use crate::out_stream::OutStreamError;
 use crate::prelude::{
     ReceiverToSenderFrontCommands, SenderToReceiverFrontCommands, StartTransferData, TransferId,
 };
-use log::debug;
+use log::{debug, trace};
 use std::time::{Duration, Instant};
 
 #[derive(Debug)]
@@ -44,12 +44,18 @@ impl OutLogicFront {
         command: ReceiverToSenderFrontCommands,
     ) -> Result<(), OutStreamError> {
         match self.phase {
-            Phase::StartTransfer => if let ReceiverToSenderFrontCommands::AckStart(ack_transfer_id) = command {
-                if self.transfer_id.0 == ack_transfer_id {
-                    debug!("received ack, start transfer");
-                    self.phase = Phase::Transfer;
+            Phase::StartTransfer => {
+                if let ReceiverToSenderFrontCommands::AckStart(ack_transfer_id) = command {
+                    if self.transfer_id.0 == ack_transfer_id {
+                        debug!("received ack for correct transfer id {ack_transfer_id}, start transfer");
+                        self.phase = Phase::Transfer;
+                    } else {
+                        debug!(
+                            "received ack for wrong transfer id {ack_transfer_id}, start transfer"
+                        );
+                    }
                 }
-            },
+            }
             Phase::Transfer => match command {
                 ReceiverToSenderFrontCommands::AckChunk(ack_chunk_front) => {
                     self.out_stream.set_waiting_for_chunk_index(
@@ -69,23 +75,38 @@ impl OutLogicFront {
         now: Instant,
     ) -> Result<Vec<SenderToReceiverFrontCommands>, OutStreamError> {
         match self.phase {
-            Phase::StartTransfer => Ok(vec![SenderToReceiverFrontCommands::StartTransfer(
-                StartTransferData {
-                    transfer_id: self.transfer_id.0,
-                    total_octet_size: self.out_stream.octet_size() as u32,
-                    chunk_size: self.out_stream.chunk_size() as u16,
-                },
-            )]),
+            Phase::StartTransfer => {
+                debug!("send start transfer {}", self.transfer_id.0);
+                Ok(vec![SenderToReceiverFrontCommands::StartTransfer(
+                    StartTransferData {
+                        transfer_id: self.transfer_id.0,
+                        total_octet_size: self.out_stream.octet_size() as u32,
+                        chunk_size: self.out_stream.chunk_size() as u16,
+                    },
+                )])
+            }
 
             Phase::Transfer => {
                 const MAX_CHUNK_COUNT_EACH_SEND: usize = 10;
-
-                Ok(self
+                let set_chunks: Vec<_> = self
                     .out_stream
                     .send(now, MAX_CHUNK_COUNT_EACH_SEND)
                     .iter()
                     .map(|front_data| SenderToReceiverFrontCommands::SetChunk(front_data.clone()))
-                    .collect())
+                    .collect();
+                for set_chunk in &set_chunks {
+                    match set_chunk {
+                        SenderToReceiverFrontCommands::SetChunk(front_data) => {
+                            trace!(
+                                "sending chunk {}  (transfer:{})",
+                                front_data.data.chunk_index,
+                                front_data.transfer_id.0
+                            );
+                        }
+                        _ => panic!("Unexpected enum variant: {:?}", set_chunk),
+                    }
+                }
+                Ok(set_chunks)
             }
         }
     }
