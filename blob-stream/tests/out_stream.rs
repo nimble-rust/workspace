@@ -46,7 +46,9 @@ fn check_last_sent_time() {
         assert_eq!(entries[2], 2);
     }
 
-    stream.set_waiting_for_chunk_index(3);
+    stream
+        .set_waiting_for_chunk_index(3, 0)
+        .expect("set_waiting_for_chunk_index must not fail");
 
     {
         let entries = stream.send(now, 3);

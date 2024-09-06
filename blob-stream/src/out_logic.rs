@@ -2,7 +2,7 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-use crate::out_stream::BlobStreamOut;
+use crate::out_stream::{BlobStreamOut, OutStreamError};
 use crate::prelude::{SetChunkData, SetChunkFrontData, TransferId};
 use log::info;
 use std::time::{Duration, Instant};
@@ -68,5 +68,14 @@ impl Logic {
             set_chunks.push(set_chunk);
         }
         set_chunks
+    }
+
+    pub fn set_waiting_for_chunk_index(
+        &mut self,
+        waiting_for_index: usize,
+        receive_mask: u64,
+    ) -> Result<(), OutStreamError> {
+        self.out_stream
+            .set_waiting_for_chunk_index(waiting_for_index, receive_mask)
     }
 }

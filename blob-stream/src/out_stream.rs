@@ -2,7 +2,13 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
+use std::cmp::min;
 use std::time::{Duration, Instant};
+
+#[derive(Debug)]
+pub enum OutStreamError {
+    ChunkPreviouslyReceivedMarkedAsNotReceived,
+}
 
 /// Represents an individual chunk of the blob data being streamed out.
 /// Each `BlobStreamOutEntry` holds metadata about a chunk, including:
@@ -13,6 +19,7 @@ use std::time::{Duration, Instant};
 pub struct BlobStreamOutEntry {
     pub last_sent_at: Option<Instant>,
     pub index: usize,
+    pub is_received_by_remote: bool,
 }
 
 impl BlobStreamOutEntry {
@@ -30,6 +37,7 @@ impl BlobStreamOutEntry {
         Self {
             last_sent_at: None,
             index,
+            is_received_by_remote: false,
         }
     }
 
@@ -97,8 +105,34 @@ impl BlobStreamOut {
     /// # Arguments
     ///
     /// * `index` - The starting index of the next chunk to be sent.
-    pub fn set_waiting_for_chunk_index(&mut self, index: usize) {
+    pub fn set_waiting_for_chunk_index(
+        &mut self,
+        index: usize,
+        receive_mask: u64,
+    ) -> Result<(), OutStreamError> {
         self.start_index_to_send = index;
+
+        let start = index + 1;
+        let end = min(self.entries.len(), start + 64);
+
+        let mut mask = receive_mask;
+        for i in index + 1..end {
+            let entry = self
+                .entries
+                .get_mut(i)
+                .expect("entry index should been validated earlier");
+            if mask & 0b1 != 0 {
+                entry.is_received_by_remote = true;
+            } else {
+                // it is not allowed to go from being received by remote to suddenly not be received anymore.
+                if entry.is_received_by_remote {
+                    return Err(OutStreamError::ChunkPreviouslyReceivedMarkedAsNotReceived);
+                }
+            }
+            mask >>= 1;
+        }
+
+        Ok(())
     }
 
     /// Sends up to `max_count` chunks, starting from the configured `start_index_to_send`.
@@ -122,9 +156,10 @@ impl BlobStreamOut {
             .take(max_count) // Limit to MAX_COUNT entries
             .filter(|entry| {
                 // Check if enough time has passed since the timer was set
-                entry
-                    .last_sent_at
-                    .map_or(true, |t| now.duration_since(t) >= self.resend_duration)
+                !entry.is_received_by_remote
+                    && entry
+                        .last_sent_at
+                        .map_or(true, |t| now.duration_since(t) >= self.resend_duration)
             })
             .map(|entry| entry.index)
             .collect(); // Collect into a Vec
@@ -146,7 +181,8 @@ impl BlobStreamOut {
                 .skip(self.index_to_start_from_if_not_filled_up) // Start from the alternate index
                 .filter(|entry| {
                     // Ensure that we are not duplicating any already selected entries
-                    !filtered_out_indices.iter().any(|e| *e == entry.index)
+                    !entry.is_received_by_remote
+                        && !filtered_out_indices.iter().any(|e| *e == entry.index)
                 })
                 .map(|entry| entry.index)
                 .take(expected_remaining) // Take only the number of remaining entries

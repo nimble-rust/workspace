@@ -38,9 +38,15 @@ fn test_blob_stream() {
         assert!(set_chunks.len() <= MAX_CHUNK_COUNT_EACH_SEND);
 
         for set_chunk in set_chunks {
-            in_logic
+            let ack = in_logic
                 .update(&set_chunk.data)
                 .expect("should always be valid in test");
+            out_logic
+                .set_waiting_for_chunk_index(
+                    ack.waiting_for_chunk_index as usize,
+                    ack.receive_mask_after_last,
+                )
+                .expect("ack chunk index and receive mask should work in the test");
         }
         now += Duration::from_millis(32);
     }
