@@ -84,9 +84,8 @@ impl BlobStreamOut {
         assert_ne!(chunk_count, 0, "chunk_count cannot be zero");
 
         // Initialize the entries vector by chunking the blob data
-        let entries: Vec<BlobStreamOutEntry> = (0..chunk_count)
-            .map(|i| BlobStreamOutEntry::new(i))
-            .collect();
+        let entries: Vec<BlobStreamOutEntry> =
+            (0..chunk_count).map(BlobStreamOutEntry::new).collect();
 
         Self {
             entries,
@@ -168,9 +167,9 @@ impl BlobStreamOut {
             let lower_index = self.start_index_to_send + max_count;
             let expected_remaining = max_count - filtered_out_indices.len();
 
-            if self.index_to_start_from_if_not_filled_up + expected_remaining > self.entries.len() {
-                self.index_to_start_from_if_not_filled_up = lower_index;
-            } else if self.index_to_start_from_if_not_filled_up < lower_index {
+            if self.index_to_start_from_if_not_filled_up + expected_remaining > self.entries.len()
+                || self.index_to_start_from_if_not_filled_up < lower_index
+            {
                 self.index_to_start_from_if_not_filled_up = lower_index;
             }
 

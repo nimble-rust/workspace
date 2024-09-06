@@ -149,8 +149,7 @@ impl<
         for authoritative_step_range in &cmd.authoritative_ranges.ranges {
             for authoritative_step in &authoritative_step_range.authoritative_steps {
                 let mut stream = InOctetStream::new(authoritative_step.clone());
-                let auth_step =
-                    StepT::deserialize(&mut stream).map_err(|err| ClientError::IoErr(err))?;
+                let auth_step = StepT::deserialize(&mut stream).map_err(ClientError::IoErr)?;
                 self.rectify.push_authoritative(auth_step);
             }
         }

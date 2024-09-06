@@ -8,12 +8,14 @@ use nimble_participant_steps::ParticipantSteps;
 use nimble_steps::Steps;
 use tick_id::TickId;
 
+#[allow(unused)]
 #[derive(Default)]
 pub struct HostCombinator<T> {
     combinator: Combinator<T>,
     authoritative_steps: Steps<ParticipantSteps<T>>,
 }
 
+#[allow(unused)]
 impl<T> HostCombinator<T> {
     pub fn new() -> Self {
         Self {

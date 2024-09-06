@@ -17,7 +17,7 @@ struct ExampleGame;
 struct ExampleStep;
 
 impl Serialize for ExampleStep {
-    fn serialize(&self, stream: &mut impl WriteOctetStream) -> std::io::Result<()>
+    fn serialize(&self, _: &mut impl WriteOctetStream) -> std::io::Result<()>
     where
         Self: Sized,
     {
@@ -26,7 +26,7 @@ impl Serialize for ExampleStep {
 }
 
 impl Deserialize for ExampleStep {
-    fn deserialize(stream: &mut impl ReadOctetStream) -> std::io::Result<Self>
+    fn deserialize(_: &mut impl ReadOctetStream) -> std::io::Result<Self>
     where
         Self: Sized,
     {
