@@ -13,25 +13,27 @@ fn generate_deterministic_blob_array(length: usize, seed: u64) -> Vec<u8> {
     (0..length).map(|_| rng.gen()).collect()
 }
 
-#[test]
+#[test_log::test]
 fn test_blob_stream() {
     let seed = 12345678;
-    let blob_to_transfer = generate_deterministic_blob_array(32, seed);
+    let blob_to_transfer = generate_deterministic_blob_array(OCTET_COUNT, seed);
     const CHUNK_SIZE: usize = 4;
+    const CHUNK_COUNT: usize = 30;
+    const OCTET_COUNT: usize = (CHUNK_SIZE * (CHUNK_COUNT - 1)) + 1;
+    const ITERATION_COUNT: usize = 3;
+    const MAX_CHUNK_COUNT_EACH_SEND: usize = 10;
 
     let mut in_logic = blob_stream::in_logic::Logic::new(blob_to_transfer.len(), CHUNK_SIZE);
     let mut out_logic = Logic::new(
         TransferId(0),
         CHUNK_SIZE,
-        Duration::from_millis(30),
+        Duration::from_millis(32 * 4),
         blob_to_transfer.clone(),
     );
 
-    let now = Instant::now();
+    let mut now = Instant::now();
 
-    for _ in 0..20 {
-        const MAX_CHUNK_COUNT_EACH_SEND: usize = 10;
-
+    for _ in 0..ITERATION_COUNT {
         let set_chunks = out_logic.send(now, MAX_CHUNK_COUNT_EACH_SEND);
         assert!(set_chunks.len() <= MAX_CHUNK_COUNT_EACH_SEND);
 
@@ -40,6 +42,7 @@ fn test_blob_stream() {
                 .update(&set_chunk.data)
                 .expect("should always be valid in test");
         }
+        now += Duration::from_millis(32);
     }
 
     assert_eq!(

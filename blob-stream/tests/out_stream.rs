@@ -5,7 +5,7 @@
 use blob_stream::out_stream::BlobStreamOut;
 use std::time::{Duration, Instant};
 
-#[test]
+#[test_log::test]
 fn check_last_sent_time() {
     let mut stream = BlobStreamOut::new(4, Duration::from_millis(250));
 
@@ -23,20 +23,17 @@ fn check_last_sent_time() {
     {
         let entries = stream.send(now, 3);
 
-        assert_eq!(entries.len(), 3);
+        assert_eq!(entries.len(), 2);
         assert_eq!(entries[0], 2);
-        assert_eq!(entries[1], 0);
-        assert_eq!(entries[2], 1);
+        assert_eq!(entries[1], 3);
     }
 
     now += Duration::from_millis(100);
     {
         let entries = stream.send(now, 3);
 
-        assert_eq!(entries.len(), 3);
-        assert_eq!(entries[0], 0);
-        assert_eq!(entries[1], 1);
-        assert_eq!(entries[2], 2);
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0], 3);
     }
 
     now += Duration::from_millis(150);
@@ -54,9 +51,6 @@ fn check_last_sent_time() {
     {
         let entries = stream.send(now, 3);
 
-        assert_eq!(entries.len(), 3);
-        assert_eq!(entries[0], 3);
-        assert_eq!(entries[1], 1);
-        assert_eq!(entries[2], 2);
+        assert_eq!(entries.len(), 0);
     }
 }

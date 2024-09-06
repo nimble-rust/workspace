@@ -130,13 +130,13 @@ impl BlobStreamOut {
             .collect(); // Collect into a Vec
 
         if filtered_out_indices.len() < max_count {
-            let mut remaining = max_count - filtered_out_indices.len();
-            if remaining >= self.entries.len() {
-                remaining = self.entries.len() - 1
-            }
+            let lower_index = self.start_index_to_send + max_count;
+            let expected_remaining = max_count - filtered_out_indices.len();
 
-            if self.index_to_start_from_if_not_filled_up + remaining >= self.entries.len() {
-                self.index_to_start_from_if_not_filled_up = self.entries.len() - 1 - remaining;
+            if self.index_to_start_from_if_not_filled_up + expected_remaining > self.entries.len() {
+                self.index_to_start_from_if_not_filled_up = lower_index;
+            } else if self.index_to_start_from_if_not_filled_up < lower_index {
+                self.index_to_start_from_if_not_filled_up = lower_index;
             }
 
             // Get additional entries starting from `index_to_start_from_if_not_filled_up`
@@ -149,17 +149,10 @@ impl BlobStreamOut {
                     !filtered_out_indices.iter().any(|e| *e == entry.index)
                 })
                 .map(|entry| entry.index)
-                .take(remaining) // Take only the number of remaining entries
+                .take(expected_remaining) // Take only the number of remaining entries
                 .collect();
 
-            if !additional_indicies.is_empty() {
-                let last_additional_index = additional_indicies[additional_indicies.len() - 1];
-                if last_additional_index + 1 >= self.entries.len() {
-                    self.index_to_start_from_if_not_filled_up = 0;
-                } else {
-                    self.index_to_start_from_if_not_filled_up = last_additional_index + 1;
-                }
-            }
+            self.index_to_start_from_if_not_filled_up += additional_indicies.len();
             // Append additional entries to fill up to `max_count`
             filtered_out_indices.extend(additional_indicies);
         }
