@@ -62,6 +62,9 @@ impl OutLogicFront {
                         ack_chunk_front.data.waiting_for_chunk_index as usize,
                         ack_chunk_front.data.receive_mask_after_last,
                     )?;
+                    if self.out_stream.is_received_by_remote() {
+                        trace!("blob stream is received by remote! {}", self.transfer_id.0);
+                    }
                 }
                 ReceiverToSenderFrontCommands::AckStart(_) => {}
             },

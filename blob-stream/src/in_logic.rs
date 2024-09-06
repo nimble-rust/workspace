@@ -105,6 +105,7 @@ impl Logic {
             .in_stream
             .bit_array
             .atom_from_index(waiting_for_chunk_index + 1);
+
         Ok(AckChunkData {
             waiting_for_chunk_index: waiting_for_chunk_index as u32,
             receive_mask_after_last: receive_mask,
@@ -130,5 +131,10 @@ impl Logic {
     #[must_use]
     pub fn blob(&self) -> Option<&[u8]> {
         self.in_stream.blob()
+    }
+
+    #[must_use]
+    pub fn is_complete(&self) -> bool {
+        self.in_stream.is_complete()
     }
 }

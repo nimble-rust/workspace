@@ -134,6 +134,9 @@ impl FrontLogic {
                         chunk_data.transfer_id.0
                     );
                     let ack = state.logic.update(&chunk_data.data)?;
+                    if state.logic.is_complete() {
+                        trace!("received all chunks!")
+                    }
                     Ok(ReceiverToSenderFrontCommands::AckChunk(AckChunkFrontData {
                         transfer_id: chunk_data.transfer_id,
                         data: ack,
