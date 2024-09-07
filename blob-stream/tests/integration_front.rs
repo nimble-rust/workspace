@@ -32,7 +32,7 @@ fn test_blob_stream_front() {
 
     let mut now = Instant::now();
 
-    for i in 0..ITERATION_COUNT {
+    for _ in 0..ITERATION_COUNT {
         let send_commands = out_logic.send(now).expect("should work");
         for send_command in send_commands {
             // Intentionally drop commands (datagrams)

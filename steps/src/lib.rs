@@ -9,6 +9,33 @@ use tick_id::TickId;
 
 pub mod pending_steps;
 
+#[derive(Debug)]
+pub struct GenericOctetStep {
+    pub payload: Vec<u8>,
+}
+
+impl Serialize for GenericOctetStep {
+    fn serialize(&self, stream: &mut impl flood_rs::WriteOctetStream) -> io::Result<()>
+    where
+        Self: Sized,
+    {
+        stream.write_u8(self.payload.len() as u8)?;
+        stream.write(self.payload.as_slice())
+    }
+}
+
+impl Deserialize for GenericOctetStep {
+    fn deserialize(stream: &mut impl flood_rs::ReadOctetStream) -> io::Result<Self>
+    where
+        Self: Sized,
+    {
+        let len = stream.read_u8()? as usize;
+        let mut payload = vec![0u8; len];
+        stream.read(&mut payload)?;
+        Ok(Self { payload })
+    }
+}
+
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub struct JoinedData {
     pub participant_id: u8,

@@ -14,3 +14,7 @@ nimble-participant-steps = { path = "../participant-steps" }
 nimble-participant = { path = "../participant" }
 tick-id = "0.0.7"
 nimble-protocol = { path = "../protocol" }
+log = "0.4.22"
+
+[dev-dependencies]
+test-log = "0.2.16"

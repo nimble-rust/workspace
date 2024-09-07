@@ -85,9 +85,11 @@ impl ClientToHostCommands {
             ClientToHostCommand::JoinGame => {
                 ClientToHostCommands::JoinGameType(JoinGameRequest::from_stream(stream)?)
             }
+
             ClientToHostCommand::Steps => {
                 ClientToHostCommands::Steps(StepsRequest::from_stream(stream)?)
             }
+
             ClientToHostCommand::DownloadGameState => ClientToHostCommands::DownloadGameState(
                 DownloadGameStateRequest::from_stream(stream)?,
             ),

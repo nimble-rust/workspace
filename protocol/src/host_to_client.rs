@@ -7,7 +7,7 @@ use flood_rs::{ReadOctetStream, WriteOctetStream};
 use io::ErrorKind;
 use std::io;
 
-use crate::{ParticipantId, SessionConnectionSecret};
+use crate::{Nonce, ParticipantId, SessionConnectionSecret};
 // #define NimbleSerializeCmdGameStepResponse (0x08)
 // #define NimbleSerializeCmdJoinGameResponse (0x09)
 // #define NimbleSerializeCmdGameStatePart (0x0a)
@@ -215,18 +215,21 @@ impl JoinGameParticipants {
 
 #[derive(Debug, PartialEq)]
 pub struct JoinGameAccepted {
+    pub nonce: Nonce,
     pub party_and_session_secret: PartyAndSessionSecret,
     pub participants: JoinGameParticipants,
 }
 
 impl JoinGameAccepted {
     pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
+        self.nonce.to_stream(stream)?;
         self.party_and_session_secret.to_stream(stream)?;
         self.participants.to_stream(stream)
     }
 
     pub fn from_stream(stream: &mut dyn ReadOctetStream) -> io::Result<Self> {
         Ok(Self {
+            nonce: Nonce::from_stream(stream)?,
             party_and_session_secret: PartyAndSessionSecret::from_stream(stream)?,
             participants: JoinGameParticipants::from_stream(stream)?,
         })
