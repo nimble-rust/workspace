@@ -14,7 +14,7 @@ pub mod host_to_client;
 pub mod host_to_client_oob;
 pub mod prelude;
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Nonce(pub u64);
 
 impl fmt::Display for Nonce {
@@ -87,7 +87,7 @@ impl ParticipantId {
     }
 }
 
-#[derive(PartialEq, Copy, Clone)]
+#[derive(PartialEq, Copy, Clone, Eq)]
 pub struct SessionConnectionSecret {
     pub value: u64,
 }

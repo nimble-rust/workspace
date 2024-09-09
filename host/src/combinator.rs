@@ -44,6 +44,10 @@ impl<T> Combinator<T> {
         }
     }
 
+    pub fn get_mut(&mut self, id: &ParticipantId) -> Option<&mut Steps<T>> {
+        self.in_buffers.get_mut(id)
+    }
+
     pub fn participants_that_can_provide(&self) -> (usize, usize) {
         let mut participant_count_that_can_not_give_step = 0;
         let mut participant_count_that_can_provide_step = 0;
@@ -79,12 +83,9 @@ impl<T> Combinator<T> {
         for (participant_id, steps) in self.in_buffers.iter_mut() {
             if let Some(first_tick) = steps.front_tick_id() {
                 if first_tick == self.tick_id_to_produce {
-                    combined_step.insert(
-                        participant_id.clone(),
-                        Step::Custom(steps.pop().unwrap().step),
-                    )
+                    combined_step.insert(*participant_id, Step::Custom(steps.pop().unwrap().step))
                 } else {
-                    combined_step.insert(participant_id.clone(), Step::Forced);
+                    combined_step.insert(*participant_id, Step::Forced);
                     steps.pop_up_to(self.tick_id_to_produce);
                 }
             }

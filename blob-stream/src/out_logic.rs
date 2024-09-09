@@ -20,12 +20,12 @@ impl Logic {
         transfer_id: TransferId,
         fixed_chunk_size: usize,
         resend_duration: Duration,
-        blob: Vec<u8>,
+        blob: &[u8],
     ) -> Self {
         let chunk_count = blob.len().div_ceil(fixed_chunk_size);
         Self {
             out_stream: BlobStreamOut::new(chunk_count, resend_duration),
-            blob,
+            blob: blob.to_vec(),
             transfer_id,
             fixed_chunk_size,
         }

@@ -26,7 +26,7 @@ fn test_blob_stream() {
         TransferId(0),
         CHUNK_SIZE,
         Duration::from_millis(31 * 3),
-        blob_to_transfer.clone(),
+        blob_to_transfer.as_slice(),
     );
 
     let mut now = Instant::now();

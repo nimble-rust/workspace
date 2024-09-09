@@ -2,13 +2,13 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-struct FreeList {
+pub struct FreeList {
     free_numbers: Vec<u8>,
 }
 
 #[allow(unused)]
 impl FreeList {
-    fn new(count: u8) -> Self {
+    pub fn new(count: u8) -> Self {
         let mut free_numbers = Vec::with_capacity(count as usize);
         for i in (0..count).rev() {
             free_numbers.push(i);
@@ -16,11 +16,11 @@ impl FreeList {
         Self { free_numbers }
     }
 
-    fn allocate(&mut self) -> Option<u8> {
+    pub fn allocate(&mut self) -> Option<u8> {
         self.free_numbers.pop()
     }
 
-    fn free(&mut self, id: u8) -> Result<(), String> {
+    pub fn free(&mut self, id: u8) -> Result<(), String> {
         if self.free_numbers.contains(&id) {
             Err(format!("ID {} is already freed", id))
         } else {

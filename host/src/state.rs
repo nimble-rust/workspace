@@ -3,7 +3,8 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 use nimble_protocol::client_to_host::DownloadGameStateRequest;
-use nimble_protocol::host_to_client::{DownloadGameStateResponse, TickId};
+use nimble_protocol::host_to_client::DownloadGameStateResponse;
+use tick_id::TickId;
 
 #[derive(Debug, Clone)]
 #[allow(unused)]
@@ -63,7 +64,7 @@ impl HostState {
             client_request: connection
                 .client_request
                 .expect("client_request should always be set at this point"),
-            tick_id: self.state.tick_id,
+            tick_id: nimble_protocol::host_to_client::TickId(self.state.tick_id.0),
             blob_stream_channel: connection
                 .assigned_blob_stream_channel
                 .expect("assigned_blob_stream_channel should always be set at this point"),

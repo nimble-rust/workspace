@@ -30,7 +30,7 @@ impl OutLogicFront {
         transfer_id: TransferId,
         fixed_chunk_size: usize,
         resend_duration: Duration,
-        blob: Vec<u8>,
+        blob: &[u8],
     ) -> Self {
         Self {
             out_stream: Logic::new(transfer_id, fixed_chunk_size, resend_duration, blob),

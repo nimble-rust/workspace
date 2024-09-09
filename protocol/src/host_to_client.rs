@@ -53,7 +53,7 @@ impl TickId {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct DownloadGameStateResponse {
     pub client_request: u8,
     pub tick_id: TickId,
@@ -150,7 +150,7 @@ impl HostToClientCommands {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct PartyAndSessionSecret {
     pub session_secret: SessionConnectionSecret,
     pub party_id: u8,
@@ -190,7 +190,7 @@ impl JoinGameParticipant {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub struct JoinGameParticipants(pub Vec<JoinGameParticipant>);
 
 impl JoinGameParticipants {
@@ -213,7 +213,7 @@ impl JoinGameParticipants {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub struct JoinGameAccepted {
     pub nonce: Nonce,
     pub party_and_session_secret: PartyAndSessionSecret,
@@ -328,7 +328,7 @@ impl AuthoritativeStepRanges {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub struct GameStepResponse {
     pub response_header: GameStepResponseHeader,
     pub authoritative_ranges: AuthoritativeStepRanges,
