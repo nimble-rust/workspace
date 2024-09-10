@@ -40,7 +40,7 @@ fn test_blob_stream_front() {
                 let commands_from_receiver = in_logic.update(&send_command).expect("should work");
                 if !drop_rng.gen_bool(0.2) {
                     out_logic
-                        .receive(commands_from_receiver)
+                        .receive(&commands_from_receiver)
                         .expect("should work");
                 } else {
                     trace!("dropped from receiver to sender: {:?}", send_command);
