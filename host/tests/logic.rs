@@ -25,6 +25,8 @@ fn game_state_download() {
     assert_eq!(connection_id.0, 0);
     let now = Instant::now();
 
+    // Send a Download Game State request to the host.
+    // This is usually done by the client, but we do it manually here.
     let download_request = DownloadGameStateRequest { request_id: 99 };
     let answers = logic
         .update(
@@ -42,6 +44,8 @@ fn game_state_download() {
         "first answer (should be DownloadGameState response): {:?}",
         answers[0]
     );
+
+    // Validate the DownloadGameState response
     let download_game_state_response = match &answers[0] {
         HostToClientCommands::DownloadGameState(response) => response,
         _ => panic!("Unexpected answer: expected DownloadGameState"),
@@ -53,10 +57,12 @@ fn game_state_download() {
     );
     assert_eq!(download_game_state_response.blob_stream_channel, 1);
 
+    // Validate the StartTransfer response
     debug!(
         "second answer (should be StartTransfer response): {:?}",
         answers[1]
     );
+
     let start_transfer_data = match &answers[1] {
         HostToClientCommands::BlobStreamChannel(response) => match response {
             SenderToReceiverFrontCommands::StartTransfer(start_transfer_data) => {
@@ -71,12 +77,16 @@ fn game_state_download() {
 
     let mut in_stream = FrontLogic::new();
 
+    // The client receives the Start Transfer from the host
+    // and returns a ReceiverToSenderFrontCommands::AckStart.
     let probably_start_acks = in_stream
         .update(&SenderToReceiverFrontCommands::StartTransfer(
             start_transfer_data.clone(),
         ))
         .expect("Should start transfer");
 
+    // The host receives the AckStart
+    // and returns a number of BlobStreamChannel(SetChunk).
     let probably_set_chunks = logic
         .update(
             connection_id,
@@ -85,6 +95,7 @@ fn game_state_download() {
         )
         .expect("Should download game state");
 
+    // Extract SetChunk from BlobStreamChannel.
     let first_set_converted_chunks = probably_set_chunks
         .iter()
         .map(|x| match x {
@@ -100,6 +111,7 @@ fn game_state_download() {
         })
         .collect::<Vec<_>>();
 
+    // Process SetChunks
     let last_ack = {
         let mut ack: Option<ReceiverToSenderFrontCommands> = None;
 
@@ -112,12 +124,28 @@ fn game_state_download() {
         }
         ack
     };
-
     assert!(last_ack.is_some());
+
+    // Ensure the in_stream ("client") has fully received the blob.
+    // Verify that the host is aware the client has received the entire blob.
     assert_eq!(
         in_stream.blob().expect("blob should be ready here"),
         EXPECTED_PAYLOAD
     );
+
+    logic
+        .update(
+            connection_id,
+            now,
+            ClientToHostCommands::BlobStreamChannel(last_ack.unwrap()),
+        )
+        .expect("Should download game state");
+
+    assert!(logic
+        .get(connection_id)
+        .as_ref()
+        .expect("connection should exist")
+        .is_state_received_by_remote());
 
     logic
         .destroy_connection(connection_id)

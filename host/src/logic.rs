@@ -95,6 +95,12 @@ impl Connection {
             debug_counter: 0,
         }
     }
+
+    pub fn is_state_received_by_remote(&self) -> bool {
+        self.out_blob_stream
+            .as_ref()
+            .map_or(false, |stream| stream.is_received_by_remote())
+    }
 }
 
 #[derive(Debug)]
@@ -135,6 +141,10 @@ impl<StepT> HostLogic<StepT> {
         } else {
             None
         }
+    }
+
+    pub fn get(&self, connection_id: ConnectionId) -> Option<&Connection> {
+        self.connections.get(&connection_id.0)
     }
 
     pub fn destroy_connection(
