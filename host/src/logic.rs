@@ -350,16 +350,16 @@ impl<StepT> HostLogic<StepT> {
     ) -> Result<Vec<HostToClientCommands>, HostLogicError> {
         match request {
             ClientToHostCommands::JoinGameType(join_game_request) => {
-                Ok(vec![self.on_join(connection_id, &join_game_request)?])
+                Ok(vec![self.on_join(connection_id, join_game_request)?])
             }
             ClientToHostCommands::Steps(add_steps_request) => {
-                Ok(vec![self.on_steps(connection_id, &add_steps_request)?])
+                Ok(vec![self.on_steps(connection_id, add_steps_request)?])
             }
             ClientToHostCommands::DownloadGameState(download_game_state_request) => {
-                Ok(self.on_download(connection_id, now, &download_game_state_request)?)
+                Ok(self.on_download(connection_id, now, download_game_state_request)?)
             }
             ClientToHostCommands::BlobStreamChannel(blob_stream_command) => {
-                Ok(self.on_blob_stream(connection_id, now, &blob_stream_command)?)
+                Ok(self.on_blob_stream(connection_id, now, blob_stream_command)?)
             }
         }
     }
