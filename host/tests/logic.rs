@@ -32,7 +32,7 @@ fn game_state_download() {
         .update(
             connection_id,
             now,
-            ClientToHostCommands::DownloadGameState(download_request.clone()),
+            &ClientToHostCommands::DownloadGameState(download_request.clone()),
         )
         .expect("Should download game state");
 
@@ -91,7 +91,7 @@ fn game_state_download() {
         .update(
             connection_id,
             now,
-            ClientToHostCommands::BlobStreamChannel(probably_start_acks),
+            &ClientToHostCommands::BlobStreamChannel(probably_start_acks),
         )
         .expect("Should download game state");
 
@@ -116,7 +116,7 @@ fn game_state_download() {
         let mut ack: Option<ReceiverToSenderFrontCommands> = None;
 
         for x in first_set_converted_chunks {
-            debug!("should be setchunkfront {:?}", x);
+            debug!("should be SetChunkFrontData: {:?}", x);
             let resp = in_stream
                 .update(&SenderToReceiverFrontCommands::SetChunk(x.clone()))
                 .expect("should handle start transfer");
@@ -137,7 +137,7 @@ fn game_state_download() {
         .update(
             connection_id,
             now,
-            ClientToHostCommands::BlobStreamChannel(last_ack.unwrap()),
+            &ClientToHostCommands::BlobStreamChannel(last_ack.unwrap()),
         )
         .expect("Should download game state");
 

@@ -105,7 +105,7 @@ impl<
                 }
 
                 let predicted_steps_for_one_player = PredictedStepsForPlayer {
-                    participant_party_index: 0,
+                    participant_party_index: 32, // TODO: Hardcoded
                     first_step_id: self.debug_tick_id_to_send,
                     serialized_predicted_steps: serialized_combined_predicted_steps,
                 };

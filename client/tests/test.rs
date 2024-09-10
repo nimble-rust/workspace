@@ -47,7 +47,9 @@ fn send_to_host() {
             players: vec![joining_player],
         },
     };
-    client.set_joining_player(join_game_request);
+    client
+        .set_joining_player(join_game_request)
+        .expect("set joining player");
     client.debug_set_tick_id(0x8BADF00D);
 
     let mut buf = [1u8; 1200];

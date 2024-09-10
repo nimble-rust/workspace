@@ -120,7 +120,7 @@ pub struct HostLogic<StepT> {
     combinator: Combinator<StepT>,
     connections: HashMap<u8, Connection>,
     session: GameSession,
-    free_list: freelist::FreeList,
+    free_list: FreeList,
 }
 
 impl<StepT> HostLogic<StepT> {
@@ -346,7 +346,7 @@ impl<StepT> HostLogic<StepT> {
         &mut self,
         connection_id: ConnectionId,
         now: Instant,
-        request: ClientToHostCommands,
+        request: &ClientToHostCommands,
     ) -> Result<Vec<HostToClientCommands>, HostLogicError> {
         match request {
             ClientToHostCommands::JoinGameType(join_game_request) => {

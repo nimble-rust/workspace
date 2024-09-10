@@ -11,7 +11,6 @@ repository = "https://github.com/nimble-rust/client"
 [dependencies]
 flood-rs = "0.0.6"
 log = "0.4.22"
-
 nimble-steps = { path = "../steps" }
 nimble-protocol = { path = "../protocol" }
 secure-random = { path = "../secure-random" }
@@ -27,6 +26,5 @@ nimble-seer = { path = "../seer" }
 udp-client = { path = "../udp-client" }
 udp-connections = { path = "../udp-connections" }
 datagram = { path = "../datagram" }
-env_logger = "0.11.3"
 test-log = "0.2.16"
 flood-rs = "0.0.6"
