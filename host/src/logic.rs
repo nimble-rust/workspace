@@ -2,8 +2,14 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
+use crate::combinator::Combinator;
 use crate::state::State;
+use blob_stream::out_logic_front::OutLogicFront;
+use blob_stream::out_stream::OutStreamError;
+use blob_stream::prelude::{ReceiverToSenderFrontCommands, TransferId};
+use freelist::FreeList;
 use log::{debug, info, trace};
+use nimble_participant::ParticipantId;
 use nimble_protocol::client_to_host::{
     ClientToHostCommands, DownloadGameStateRequest, StepsRequest,
 };
@@ -12,18 +18,12 @@ use nimble_protocol::host_to_client::{
     HostToClientCommands, JoinGameAccepted, JoinGameParticipants, PartyAndSessionSecret,
 };
 use nimble_protocol::prelude::{GameStepResponse, JoinGameRequest};
-
-use crate::combinator::Combinator;
-use blob_stream::out_logic_front::OutLogicFront;
-use blob_stream::prelude::TransferId;
-use freelist::FreeList;
-use nimble_participant::ParticipantId;
 use nimble_protocol::SessionConnectionSecret;
 use nimble_steps::GenericOctetStep;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 #[derive(Copy, Clone, Debug)]
 pub struct ConnectionId(pub u8);
@@ -79,6 +79,7 @@ impl GameSession {
 pub struct Connection {
     pub participant_lookup: HashMap<u8, Rc<RefCell<Participant>>>,
     pub out_blob_stream: Option<OutLogicFront>,
+    pub blob_stream_for_client_request: Option<u8>,
     last_transfer_id: u16,
     debug_counter: u16,
 }
@@ -89,6 +90,7 @@ impl Connection {
         Self {
             participant_lookup: Default::default(),
             out_blob_stream: None,
+            blob_stream_for_client_request: None,
             last_transfer_id: 0,
             debug_counter: 0,
         }
@@ -104,6 +106,7 @@ pub enum HostLogicError {
     },
     UnknownPartyMemberIndex(u8),
     NoFreeParticipantIds,
+    BlobStreamErr(OutStreamError),
 }
 
 pub struct HostLogic<StepT> {
@@ -244,8 +247,9 @@ impl<StepT> HostLogic<StepT> {
     fn on_download(
         &mut self,
         connection_id: ConnectionId,
+        now: Instant,
         request: &DownloadGameStateRequest,
-    ) -> Result<HostToClientCommands, HostLogicError> {
+    ) -> Result<Vec<HostToClientCommands>, HostLogicError> {
         debug!("client requested download {:?}", request);
         let state = self.session.state();
         let connection = self
@@ -256,26 +260,82 @@ impl<StepT> HostLogic<StepT> {
         const FIXED_CHUNK_SIZE: usize = 1024;
         const RESEND_DURATION: Duration = Duration::from_millis(32 * 3);
 
-        connection.last_transfer_id += 1;
-        let transfer_id = TransferId(connection.last_transfer_id);
-        connection.out_blob_stream = Some(OutLogicFront::new(
-            transfer_id,
-            FIXED_CHUNK_SIZE,
-            RESEND_DURATION,
-            self.session.state().data.as_slice(),
-        ));
+        let is_new_request = if let Some(x) = connection.blob_stream_for_client_request {
+            x == request.request_id
+        } else {
+            true
+        };
+        if is_new_request {
+            connection.last_transfer_id += 1;
+            let transfer_id = TransferId(connection.last_transfer_id);
+            connection.out_blob_stream = Some(OutLogicFront::new(
+                transfer_id,
+                FIXED_CHUNK_SIZE,
+                RESEND_DURATION,
+                self.session.state().data.as_slice(),
+            ));
+        }
 
         let response = DownloadGameStateResponse {
             client_request: request.request_id,
             tick_id: nimble_protocol::host_to_client::TickId(state.tick_id.0),
-            blob_stream_channel: transfer_id.0,
+            blob_stream_channel: connection.out_blob_stream.as_ref().unwrap().transfer_id().0,
         };
-        Ok(HostToClientCommands::DownloadGameState(response))
+        let mut commands = vec![];
+        commands.push(HostToClientCommands::DownloadGameState(response));
+
+        // Since most datagram transports have a very low packet drop rate,
+        // this implementation is optimized for the high likelihood of datagram delivery.
+        // So we start including the first blob commands right away
+        let blob_commands = connection
+            .out_blob_stream
+            .as_mut()
+            .unwrap()
+            .send(now)
+            .map_err(HostLogicError::BlobStreamErr)?;
+        let converted_blob_commands: Vec<_> = blob_commands
+            .into_iter()
+            .map(HostToClientCommands::BlobStreamChannel)
+            .collect();
+        commands.extend(converted_blob_commands);
+
+        Ok(commands)
+    }
+
+    fn on_blob_stream(
+        &mut self,
+        connection_id: ConnectionId,
+        now: Instant,
+        blob_stream_command: &ReceiverToSenderFrontCommands,
+    ) -> Result<Vec<HostToClientCommands>, HostLogicError> {
+        let connection = self
+            .connections
+            .get_mut(&connection_id.0)
+            .ok_or(HostLogicError::UnknownConnectionId(connection_id))?;
+
+        let blob_stream = connection
+            .out_blob_stream
+            .as_mut()
+            .ok_or(HostLogicError::UnknownConnectionId(connection_id))?;
+        blob_stream
+            .receive(blob_stream_command)
+            .map_err(HostLogicError::BlobStreamErr)?;
+        let blob_commands = blob_stream
+            .send(now)
+            .map_err(HostLogicError::BlobStreamErr)?;
+
+        let converted_commands: Vec<_> = blob_commands
+            .into_iter()
+            .map(HostToClientCommands::BlobStreamChannel)
+            .collect();
+
+        Ok(converted_commands)
     }
 
     pub fn update(
         &mut self,
         connection_id: ConnectionId,
+        now: Instant,
         request: ClientToHostCommands,
     ) -> Result<Vec<HostToClientCommands>, HostLogicError> {
         match request {
@@ -286,10 +346,10 @@ impl<StepT> HostLogic<StepT> {
                 Ok(vec![self.on_steps(connection_id, &add_steps_request)?])
             }
             ClientToHostCommands::DownloadGameState(download_game_state_request) => {
-                Ok(vec![self.on_download(
-                    connection_id,
-                    &download_game_state_request,
-                )?])
+                Ok(self.on_download(connection_id, now, &download_game_state_request)?)
+            }
+            ClientToHostCommands::BlobStreamChannel(blob_stream_command) => {
+                Ok(self.on_blob_stream(connection_id, now, &blob_stream_command)?)
             }
         }
     }

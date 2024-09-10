@@ -3,6 +3,7 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 use crate::{Nonce, ParticipantId, SessionConnectionSecret};
+use blob_stream::prelude::ReceiverToSenderFrontCommands;
 use flood_rs::{ReadOctetStream, WriteOctetStream};
 use io::ErrorKind;
 use std::{fmt, io};
@@ -12,6 +13,7 @@ enum ClientToHostCommand {
     JoinGame = 0x01,
     Steps = 0x02,
     DownloadGameState = 0x03,
+    BlobStreamChannel = 0x04,
 }
 
 impl TryFrom<u8> for ClientToHostCommand {
@@ -20,6 +22,7 @@ impl TryFrom<u8> for ClientToHostCommand {
     fn try_from(value: u8) -> io::Result<Self> {
         match value {
             0x01 => Ok(ClientToHostCommand::JoinGame),
+            0x04 => Ok(ClientToHostCommand::BlobStreamChannel),
             _ => Err(io::Error::new(
                 ErrorKind::InvalidData,
                 format!("Unknown command {}", value),
@@ -50,6 +53,7 @@ pub enum ClientToHostCommands {
     JoinGameType(JoinGameRequest),
     Steps(StepsRequest),
     DownloadGameState(DownloadGameStateRequest),
+    BlobStreamChannel(ReceiverToSenderFrontCommands),
 }
 
 impl ClientToHostCommands {
@@ -59,6 +63,9 @@ impl ClientToHostCommands {
             ClientToHostCommands::JoinGameType(_) => ClientToHostCommand::JoinGame as u8,
             ClientToHostCommands::DownloadGameState(_) => {
                 ClientToHostCommand::DownloadGameState as u8
+            }
+            ClientToHostCommands::BlobStreamChannel(_) => {
+                ClientToHostCommand::BlobStreamChannel as u8
             }
         }
     }
@@ -75,6 +82,9 @@ impl ClientToHostCommands {
             ClientToHostCommands::DownloadGameState(download_game_state) => {
                 download_game_state.to_stream(stream)
             }
+            ClientToHostCommands::BlobStreamChannel(blob_stream_command) => {
+                blob_stream_command.to_stream(stream)
+            }
         }
     }
 
@@ -85,13 +95,14 @@ impl ClientToHostCommands {
             ClientToHostCommand::JoinGame => {
                 ClientToHostCommands::JoinGameType(JoinGameRequest::from_stream(stream)?)
             }
-
             ClientToHostCommand::Steps => {
                 ClientToHostCommands::Steps(StepsRequest::from_stream(stream)?)
             }
-
             ClientToHostCommand::DownloadGameState => ClientToHostCommands::DownloadGameState(
                 DownloadGameStateRequest::from_stream(stream)?,
+            ),
+            ClientToHostCommand::BlobStreamChannel => ClientToHostCommands::BlobStreamChannel(
+                ReceiverToSenderFrontCommands::from_stream(stream)?,
             ),
         };
         Ok(x)
@@ -107,6 +118,9 @@ impl fmt::Display for ClientToHostCommands {
             }
             ClientToHostCommands::DownloadGameState(download_game_state) => {
                 write!(f, "download game state {:?}", download_game_state)
+            }
+            ClientToHostCommands::BlobStreamChannel(blob_command) => {
+                write!(f, "blob stream channel {:?}", blob_command)
             }
         }
     }

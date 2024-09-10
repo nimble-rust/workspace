@@ -50,6 +50,7 @@ impl Logic {
         (start, start + count)
     }
 
+    #[must_use]
     pub fn send(&mut self, now: Instant, max_count: usize) -> Vec<SetChunkFrontData> {
         let indices = self.out_stream.send(now, max_count);
         let mut set_chunks = Vec::new();
@@ -77,15 +78,23 @@ impl Logic {
             .set_waiting_for_chunk_index(waiting_for_index, receive_mask)
     }
 
+    #[must_use]
     pub fn is_received_by_remote(&self) -> bool {
         self.out_stream.is_received_by_remote()
     }
 
+    #[must_use]
     pub fn octet_size(&self) -> usize {
         self.blob.len()
     }
 
+    #[must_use]
     pub fn chunk_size(&self) -> usize {
         self.fixed_chunk_size
+    }
+
+    #[must_use]
+    pub fn transfer_id(&self) -> TransferId {
+        self.transfer_id
     }
 }

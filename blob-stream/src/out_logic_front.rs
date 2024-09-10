@@ -41,12 +41,12 @@ impl OutLogicFront {
 
     pub fn receive(
         &mut self,
-        command: ReceiverToSenderFrontCommands,
+        command: &ReceiverToSenderFrontCommands,
     ) -> Result<(), OutStreamError> {
         match self.phase {
             Phase::StartTransfer => {
                 if let ReceiverToSenderFrontCommands::AckStart(ack_transfer_id) = command {
-                    if self.transfer_id.0 == ack_transfer_id {
+                    if self.transfer_id.0 == *ack_transfer_id {
                         debug!("received ack for correct transfer id {ack_transfer_id}, start transfer");
                         self.phase = Phase::Transfer;
                     } else {
@@ -117,5 +117,10 @@ impl OutLogicFront {
     #[must_use]
     pub fn is_received_by_remote(&self) -> bool {
         self.out_stream.is_received_by_remote()
+    }
+
+    #[must_use]
+    pub fn transfer_id(&self) -> TransferId {
+        self.out_stream.transfer_id()
     }
 }
