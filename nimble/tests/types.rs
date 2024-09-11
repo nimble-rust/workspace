@@ -73,6 +73,7 @@ impl SampleState {
         Ok(out.data)
     }
 
+    #[allow(unused)]
     pub fn from_octets(payload: &[u8]) -> io::Result<Self> {
         let mut in_stream = InOctetStream::new(payload.to_vec());
         Ok(Self {

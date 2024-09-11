@@ -2,9 +2,12 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
+use blob_stream::prelude::FrontLogic;
 use flood_rs::{InOctetStream, OutOctetStream};
 use log::info;
 use nimble_assent::prelude::*;
+use nimble_protocol::client_to_host::DownloadGameStateRequest;
+use nimble_protocol::host_to_client::TickId;
 use nimble_protocol::prelude::*;
 use nimble_protocol::Nonce;
 use nimble_rectify::prelude::*;
@@ -13,29 +16,80 @@ use nimble_steps::Serialize;
 use secure_random::SecureRandom;
 use std::{fmt, io};
 
+#[derive(Eq, Debug, PartialEq)]
+pub enum ErrorLevel {
+    Info,     // Informative, can be ignored
+    Warning,  // Should be logged, but recoverable
+    Critical, // Requires immediate attention, unrecoverable
+}
+
 #[derive(Debug)]
 pub enum ClientError {
-    Unexpected,
-    IoErr(io::Error),
-    WrongConnectResponseNonce(Nonce),
+    Single(ClientErrorKind),
+    Multiple(Vec<ClientErrorKind>),
 }
 
 impl fmt::Display for ClientError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Unexpected => {
-                write!(f, "Unexpected")
-            }
-            ClientError::IoErr(io_err) => {
-                write!(f, "io:err {:?}", io_err)
-            }
-            ClientError::WrongConnectResponseNonce(nonce) => {
-                write!(f, "wrong nonce in reply to connect {:?}", nonce)
+            Self::Single(error) => error.fmt(f),
+            Self::Multiple(errors) => {
+                writeln!(f, "Multiple errors occurred:")?;
+
+                for (index, error) in errors.iter().enumerate() {
+                    writeln!(f, "{}: {}", index + 1, error)?;
+                }
+
+                Ok(())
             }
         }
     }
 }
 
+#[derive(Debug)]
+pub enum ClientErrorKind {
+    Unexpected,
+    IoErr(io::Error),
+    WrongConnectResponseNonce(Nonce),
+    WrongDownloadRequestId,
+    DownloadResponseWasUnexpected,
+}
+
+impl ClientErrorKind {
+    pub fn error_level(&self) -> ErrorLevel {
+        match self {
+            Self::IoErr(_) => ErrorLevel::Critical,
+            Self::WrongConnectResponseNonce(_) => ErrorLevel::Info,
+            Self::WrongDownloadRequestId => ErrorLevel::Warning,
+            Self::DownloadResponseWasUnexpected => ErrorLevel::Info,
+            Self::Unexpected => ErrorLevel::Critical,
+        }
+    }
+}
+
+impl fmt::Display for ClientErrorKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Unexpected => {
+                write!(f, "Unexpected")
+            }
+            Self::IoErr(io_err) => {
+                write!(f, "io:err {:?}", io_err)
+            }
+            Self::WrongConnectResponseNonce(nonce) => {
+                write!(f, "wrong nonce in reply to connect {:?}", nonce)
+            }
+            Self::WrongDownloadRequestId => {
+                write!(f, "WrongDownloadRequestId")
+            }
+            Self::DownloadResponseWasUnexpected => {
+                write!(f, "DownloadResponseWasUnexpected")
+            }
+        }
+    }
+}
+
+impl std::error::Error for ClientErrorKind {} // it implements Debug and Display
 impl std::error::Error for ClientError {} // it implements Debug and Display
 
 #[derive(PartialEq, Debug)]
@@ -54,6 +108,12 @@ pub struct ClientLogic<
     tick_id: u32,
     debug_tick_id_to_send: u32,
     rectify: Rectify<Game, StepT>,
+    blob_stream_client: FrontLogic,
+    commands_to_send: Vec<ClientToHostCommands>,
+    downloading_game_state_tick_id: TickId,
+    download_state_request_id: Option<u8>,
+    #[allow(unused)]
+    last_download_state_request_id: u8,
 }
 
 impl<
@@ -70,6 +130,11 @@ impl<
             tick_id: 0,
             debug_tick_id_to_send: 0,
             rectify: Rectify::new(),
+            blob_stream_client: FrontLogic::new(),
+            commands_to_send: Vec::new(),
+            download_state_request_id: None,
+            last_download_state_request_id: 0,
+            downloading_game_state_tick_id: TickId(0),
         }
     }
 
@@ -82,8 +147,15 @@ impl<
         self.debug_tick_id_to_send = self.tick_id;
     }
 
-    pub fn send(&self) -> Vec<ClientToHostCommands> {
-        let mut commands: Vec<ClientToHostCommands> = vec![];
+    #[allow(unused)]
+    fn request_game_state(&mut self) {
+        self.last_download_state_request_id += 1;
+        self.download_state_request_id = Some(self.last_download_state_request_id);
+    }
+
+    pub fn send(&mut self) -> Vec<ClientToHostCommands> {
+        let mut commands: Vec<ClientToHostCommands> = self.commands_to_send.clone();
+        self.commands_to_send.clear();
 
         match self.phase {
             Phase::InGame => {
@@ -123,8 +195,13 @@ impl<
                 };
 
                 let steps_command = ClientToHostCommands::Steps(steps_request);
-
                 commands.push(steps_command);
+
+                if let Some(id) = self.download_state_request_id {
+                    let download_request = DownloadGameStateRequest { request_id: id };
+                    let cmd = ClientToHostCommands::DownloadGameState(download_request);
+                    commands.push(cmd);
+                }
             }
         };
 
@@ -139,36 +216,69 @@ impl<
         self.rectify.push_predicted(step);
     }
 
-    fn on_join_game(&mut self, cmd: &JoinGameAccepted) -> Result<(), ClientError> {
+    fn on_join_game(&mut self, cmd: &JoinGameAccepted) -> Result<(), ClientErrorKind> {
         info!("join game accepted: {:?}", cmd);
         Ok(())
     }
 
-    fn on_game_step(&mut self, cmd: &GameStepResponse) -> Result<(), ClientError> {
+    fn on_game_step(&mut self, cmd: &GameStepResponse) -> Result<(), ClientErrorKind> {
         info!("game step response: {:?}", cmd);
         for authoritative_step_range in &cmd.authoritative_ranges.ranges {
             for authoritative_step in &authoritative_step_range.authoritative_steps {
                 let mut stream = InOctetStream::new(authoritative_step.clone());
-                let auth_step = StepT::deserialize(&mut stream).map_err(ClientError::IoErr)?;
+                let auth_step = StepT::deserialize(&mut stream).map_err(ClientErrorKind::IoErr)?;
                 self.rectify.push_authoritative(auth_step);
             }
         }
         Ok(())
     }
 
-    pub fn receive(&mut self, commands: &[HostToClientCommands]) -> Result<(), ClientError> {
-        for command in commands {
-            match command {
-                HostToClientCommands::JoinGame(ref join_game_response) => {
-                    self.on_join_game(join_game_response)?
+    fn receive_cmd(&mut self, command: &HostToClientCommands) -> Result<(), ClientErrorKind> {
+        match command {
+            HostToClientCommands::JoinGame(ref join_game_response) => {
+                self.on_join_game(join_game_response)?
+            }
+            HostToClientCommands::GameStep(game_step_response) => {
+                self.on_game_step(game_step_response)?
+            }
+            HostToClientCommands::DownloadGameState(download_response) => {
+                if self.download_state_request_id.is_none() {
+                    return Err(ClientErrorKind::DownloadResponseWasUnexpected);
+                } else if download_response.client_request
+                    != self.download_state_request_id.unwrap()
+                {
+                    return Err(ClientErrorKind::WrongDownloadRequestId);
                 }
-                HostToClientCommands::GameStep(game_step_response) => {
-                    self.on_game_step(game_step_response)?
-                }
-                HostToClientCommands::DownloadGameState(_) => {}
-                HostToClientCommands::BlobStreamChannel(_) => {}
+                self.downloading_game_state_tick_id = download_response.tick_id;
+            }
+            HostToClientCommands::BlobStreamChannel(blob_stream_command) => {
+                let answer = self
+                    .blob_stream_client
+                    .update(blob_stream_command)
+                    .map_err(ClientErrorKind::IoErr)?;
+                self.commands_to_send
+                    .push(ClientToHostCommands::BlobStreamChannel(answer));
             }
         }
         Ok(())
+    }
+
+    pub fn receive(&mut self, commands: &[HostToClientCommands]) -> Result<(), ClientError> {
+        let mut client_errors: Vec<ClientErrorKind> = Vec::new();
+
+        for command in commands {
+            if let Err(err) = self.receive_cmd(command) {
+                if err.error_level() == ErrorLevel::Critical {
+                    return Err(ClientError::Single(err));
+                }
+                client_errors.push(err);
+            }
+        }
+
+        match client_errors.len() {
+            0 => Ok(()),
+            1 => Err(ClientError::Single(client_errors.pop().unwrap())),
+            _ => Err(ClientError::Multiple(client_errors)),
+        }
     }
 }

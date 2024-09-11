@@ -2,23 +2,18 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-use flood_rs::{InOctetStream, ReadOctetStream};
+use std::thread;
 use std::time::Duration;
-use std::{io, thread};
 use udp_connections::DatagramProcessor;
 
 use crate::types::{ExampleGame, ExampleStep};
 use datagram::DatagramCommunicator;
 use log::{error, info, warn};
-use nimble_assent::AssentCallback;
 use nimble_client::Client;
 use nimble_protocol::client_to_host::{
     JoinGameRequest, JoinGameType, JoinPlayerRequest, JoinPlayerRequests,
 };
 use nimble_protocol::{hex_output, Nonce};
-use nimble_rectify::RectifyCallback;
-use nimble_seer::SeerCallback;
-use nimble_steps::Deserialize;
 use secure_random::GetRandom;
 //use test_log::test;
 use udp_client::UdpClient;

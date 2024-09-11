@@ -21,6 +21,7 @@ nimble-participant-steps = { path = "../participant-steps" }
 nimble-rectify = { path = "../rectify" }
 nimble-assent = { path = "../assent" }
 nimble-seer = { path = "../seer" }
+blob-stream = { path = "../blob-stream" }
 
 [dev-dependencies]
 udp-client = { path = "../udp-client" }

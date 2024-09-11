@@ -11,7 +11,6 @@ use nimble_rectify::{Rectify, RectifyCallback};
 use nimble_seer::SeerCallback;
 use nimble_steps::Step::Custom;
 use nimble_steps::{Deserialize, Serialize, Step};
-use std::hash::Hasher;
 use std::io;
 
 #[derive(Clone)]
