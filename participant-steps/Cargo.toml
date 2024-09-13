@@ -10,4 +10,4 @@ repository = "https://github.com/nimble-rust/participant-steps"
 [dependencies]
 nimble-steps = { path = "../steps"}
 nimble-participant = { path = "../participant" }
-flood-rs = "0.0.6"
+flood-rs = "0.0.7"

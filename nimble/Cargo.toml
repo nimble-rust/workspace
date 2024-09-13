@@ -14,7 +14,7 @@ nimble-host = { path = "../host" }
 nimble-assent = { path = "../assent" }
 nimble-seer = { path = "../seer" }
 nimble-rectify = { path = "../rectify" }
-flood-rs = "0.0.6"
+flood-rs = "0.0.7"
 nimble-steps = { path = "../steps" }
 tick-id = "0.0.7"
 secure-random = { path = "../secure-random" }

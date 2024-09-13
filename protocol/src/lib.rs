@@ -27,12 +27,12 @@ impl Nonce {
     pub fn new(value: u64) -> Nonce {
         Self(value)
     }
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> Result<()> {
+    pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> Result<()> {
         stream.write_u64(self.0)?;
         Ok(())
     }
 
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> Result<Self> {
+    pub fn from_stream(stream: &mut impl ReadOctetStream) -> Result<Self> {
         let x = stream.read_u64()?;
         Ok(Self(x))
     }
@@ -54,7 +54,7 @@ pub struct Version {
 }
 
 impl Version {
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> Result<()> {
+    pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> Result<()> {
         stream.write_u16(self.major)?;
         stream.write_u16(self.minor)?;
         stream.write_u16(self.patch)?;
@@ -62,7 +62,7 @@ impl Version {
         Ok(())
     }
 
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> Result<Self> {
+    pub fn from_stream(stream: &mut impl ReadOctetStream) -> Result<Self> {
         Ok(Self {
             major: stream.read_u16()?,
             minor: stream.read_u16()?,
@@ -71,16 +71,16 @@ impl Version {
     }
 }
 
-#[derive(PartialEq, Copy, Clone, Debug)]
+#[derive(PartialEq, Eq, Copy, Hash, Clone, Debug)]
 pub struct ParticipantId {
     pub value: u8,
 }
 
 impl ParticipantId {
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> Result<()> {
+    pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> Result<()> {
         stream.write_u8(self.value)
     }
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> Result<Self> {
+    pub fn from_stream(stream: &mut impl ReadOctetStream) -> Result<Self> {
         Ok(Self {
             value: stream.read_u8()?,
         })
@@ -93,10 +93,10 @@ pub struct SessionConnectionSecret {
 }
 
 impl SessionConnectionSecret {
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> Result<()> {
+    pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> Result<()> {
         stream.write_u64(self.value)
     }
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> Result<Self> {
+    pub fn from_stream(stream: &mut impl ReadOctetStream) -> Result<Self> {
         Ok(Self {
             value: stream.read_u64()?,
         })

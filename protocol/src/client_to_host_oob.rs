@@ -35,7 +35,7 @@ pub struct ConnectRequest {
 }
 
 impl ConnectRequest {
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
+    pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         self.nimble_version.to_stream(stream)?;
         stream.write_u8(if self.use_debug_stream { 0x01 } else { 0x00 })?;
         self.application_version.to_stream(stream)?;
@@ -43,7 +43,7 @@ impl ConnectRequest {
         Ok(())
     }
 
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> io::Result<Self> {
+    pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         Ok(Self {
             nimble_version: Version::from_stream(stream)?,
             use_debug_stream: stream.read_u8()? != 0,
@@ -65,7 +65,7 @@ impl ClientToHostOobCommands {
         }
     }
 
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
+    pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.to_octet())?;
         match self {
             ClientToHostOobCommands::ConnectType(connect_command) => {
@@ -74,7 +74,7 @@ impl ClientToHostOobCommands {
         }
     }
 
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> io::Result<Self> {
+    pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         let command_value = stream.read_u8()?;
         let command = ClientToHostOobCommand::try_from(command_value)?;
         let x = match command {

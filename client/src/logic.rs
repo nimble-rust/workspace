@@ -3,17 +3,18 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 use blob_stream::prelude::FrontLogic;
-use flood_rs::{InOctetStream, OutOctetStream};
+use flood_rs::{Deserialize, InOctetStream, OutOctetStream, Serialize};
 use log::info;
 use nimble_assent::prelude::*;
-use nimble_protocol::client_to_host::DownloadGameStateRequest;
+use nimble_protocol::client_to_host::{AuthoritativeCombinedStepForAllParticipants, DownloadGameStateRequest, PredictedStepsForAllPlayers};
 use nimble_protocol::host_to_client::TickId;
 use nimble_protocol::prelude::*;
 use nimble_protocol::Nonce;
 use nimble_rectify::prelude::*;
 use nimble_seer::prelude::*;
-use nimble_steps::Serialize;
 use secure_random::SecureRandom;
+use std::collections::HashMap;
+use std::fmt::Debug;
 use std::{fmt, io};
 
 #[derive(Eq, Debug, PartialEq)]
@@ -99,7 +100,7 @@ enum Phase {
 
 pub struct ClientLogic<
     Game: SeerCallback<StepT> + AssentCallback<StepT> + RectifyCallback,
-    StepT: Clone + nimble_steps::Deserialize,
+    StepT: Clone + Deserialize + Serialize + Debug + Eq + PartialEq,
 > {
     phase: Phase,
     joining_player: Option<JoinGameRequest>,
@@ -107,9 +108,9 @@ pub struct ClientLogic<
     random: Box<dyn SecureRandom>,
     tick_id: u32,
     debug_tick_id_to_send: u32,
-    rectify: Rectify<Game, StepT>,
+    rectify: Rectify<Game, AuthoritativeCombinedStepForAllParticipants<StepT>>,
     blob_stream_client: FrontLogic,
-    commands_to_send: Vec<ClientToHostCommands>,
+    commands_to_send: Vec<ClientToHostCommands<StepT>>,
     downloading_game_state_tick_id: TickId,
     download_state_request_id: Option<u8>,
     #[allow(unused)]
@@ -117,9 +118,9 @@ pub struct ClientLogic<
 }
 
 impl<
-        Game: SeerCallback<StepT> + AssentCallback<StepT> + RectifyCallback,
-        StepT: Clone + nimble_steps::Deserialize + Serialize,
-    > ClientLogic<Game, StepT>
+    Game: SeerCallback<StepT> + AssentCallback<StepT> + RectifyCallback,
+    StepT: Clone + Deserialize + Serialize + Debug + Eq + PartialEq,
+> ClientLogic<Game, StepT>
 {
     pub fn new(random: Box<dyn SecureRandom>) -> ClientLogic<Game, StepT> {
         let phase = Phase::InGame;
@@ -153,8 +154,8 @@ impl<
         self.download_state_request_id = Some(self.last_download_state_request_id);
     }
 
-    pub fn send(&mut self) -> Vec<ClientToHostCommands> {
-        let mut commands: Vec<ClientToHostCommands> = self.commands_to_send.clone();
+    pub fn send(&mut self) -> Vec<ClientToHostCommands<StepT>> {
+        let mut commands: Vec<ClientToHostCommands<StepT>> = self.commands_to_send.clone();
         self.commands_to_send.clear();
 
         match self.phase {
@@ -164,33 +165,28 @@ impl<
                     commands.push(ClientToHostCommands::JoinGameType(joining_game.clone()));
                 }
 
-                let mut serialized_combined_predicted_steps: Vec<Vec<u8>> = vec![];
-                let mut write_stream = OutOctetStream::new();
 
                 let predicted_steps = self.rectify.seer().predicted_steps();
-                for predicted_step_info in predicted_steps.iter() {
-                    predicted_step_info
-                        .step
-                        .serialize(&mut write_stream)
-                        .expect("should always be possible to serialize");
-                    serialized_combined_predicted_steps.push(write_stream.data.clone());
-                }
 
-                let predicted_steps_for_one_player = PredictedStepsForPlayer {
-                    participant_party_index: 32, // TODO: Hardcoded
-                    first_step_id: self.debug_tick_id_to_send,
-                    serialized_predicted_steps: serialized_combined_predicted_steps,
+                let predicted_steps_for_one_player = PredictedStepsForOnePlayer {
+                    local_index: 0,
+                    first_tick_id: TickId(self.debug_tick_id_to_send),
+                    predicted_steps: vec![],
                 };
 
                 //self.debug_tick_id_to_send += 1;
+
+                let mut all = HashMap::new();
+
+                all.insert(0, predicted_steps_for_one_player);
 
                 let steps_request = StepsRequest {
                     ack: StepsAck {
                         latest_received_step_tick_id: self.tick_id,
                         lost_steps_mask_after_last_received: 0,
                     },
-                    combined_predicted_steps: PredictedStepsForPlayers {
-                        predicted_steps_for_players: vec![predicted_steps_for_one_player],
+                    combined_predicted_steps: PredictedStepsForAllPlayers {
+                        predicted_players: all,
                     },
                 };
 
@@ -221,19 +217,17 @@ impl<
         Ok(())
     }
 
-    fn on_game_step(&mut self, cmd: &GameStepResponse) -> Result<(), ClientErrorKind> {
+    fn on_game_step(&mut self, cmd: &GameStepResponse<StepT>) -> Result<(), ClientErrorKind> {
         info!("game step response: {:?}", cmd);
-        for authoritative_step_range in &cmd.authoritative_ranges.ranges {
+        for authoritative_step_range in &cmd.authoritative_steps.ranges {
             for authoritative_step in &authoritative_step_range.authoritative_steps {
-                let mut stream = InOctetStream::new(authoritative_step.clone());
-                let auth_step = StepT::deserialize(&mut stream).map_err(ClientErrorKind::IoErr)?;
-                self.rectify.push_authoritative(auth_step);
+                self.rectify.push_authoritative(authoritative_step);
             }
         }
         Ok(())
     }
 
-    fn receive_cmd(&mut self, command: &HostToClientCommands) -> Result<(), ClientErrorKind> {
+    fn receive_cmd(&mut self, command: &HostToClientCommands<StepT>) -> Result<(), ClientErrorKind> {
         match command {
             HostToClientCommands::JoinGame(ref join_game_response) => {
                 self.on_join_game(join_game_response)?

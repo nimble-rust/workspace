@@ -4,9 +4,9 @@
  */
 pub mod prelude;
 
+use flood_rs::Deserialize;
 use nimble_assent::{Assent, AssentCallback, UpdateState};
 use nimble_seer::{Seer, SeerCallback};
-use nimble_steps::Deserialize;
 
 /// A callback trait that allows a game to handle the event when the authoritative state
 pub trait RectifyCallback {

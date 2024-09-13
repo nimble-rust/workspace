@@ -6,7 +6,7 @@ mod types;
 
 use crate::types::{ExampleStep, SampleGame, SampleStep};
 use nimble_client::logic::ClientLogic;
-use nimble_protocol::client_to_host::{PredictedStepsForPlayers, StepsAck, StepsRequest};
+use nimble_protocol::client_to_host::{PredictedStepsForOnePlayer, StepsAck, StepsRequest};
 use nimble_protocol::prelude::ClientToHostCommands;
 use secure_random::GetRandom;
 use test_log::test;
@@ -29,8 +29,8 @@ fn basic_logic() {
                     lost_steps_mask_after_last_received: 0b0,
                 },
             combined_predicted_steps:
-                PredictedStepsForPlayers {
-                    predicted_steps_for_players,
+                PredictedStepsForOnePlayer {
+                    predicted_steps: predicted_steps_for_players,
                 },
         }) = &commands[0]
         {
@@ -64,8 +64,8 @@ fn send_steps() {
                     lost_steps_mask_after_last_received: 0b0,
                 },
             combined_predicted_steps:
-                PredictedStepsForPlayers {
-                    predicted_steps_for_players,
+                PredictedStepsForOnePlayer {
+                    predicted_steps: predicted_steps_for_players,
                 },
         }) = &commands[0]
         {

@@ -6,13 +6,14 @@ extern crate core;
 
 pub mod logic;
 
+use std::fmt::Debug;
 use crate::logic::ClientLogic;
 use connection_layer::{
     prepare_out_stream, verify_hash, write_to_stream, ConnectionId, ConnectionLayerMode,
     ConnectionSecretSeed,
 };
 use datagram_pinger::{client_in_ping, client_out_ping, ClientTime};
-use flood_rs::{InOctetStream, OutOctetStream, ReadOctetStream, WriteOctetStream};
+use flood_rs::{Deserialize, InOctetStream, OutOctetStream, ReadOctetStream, Serialize, WriteOctetStream};
 use log::info;
 use nimble_assent::AssentCallback;
 use nimble_protocol::client_to_host::JoinGameRequest;
@@ -36,7 +37,7 @@ enum ClientPhase {
 
 pub struct Client<
     Game: SeerCallback<StepT> + AssentCallback<StepT> + RectifyCallback,
-    StepT: Clone + nimble_steps::Deserialize + nimble_steps::Serialize,
+    StepT: Clone + Deserialize + Serialize + Eq + PartialEq + Debug,
 > {
     phase: ClientPhase,
     logic: Option<ClientLogic<Game, StepT>>,
@@ -48,7 +49,7 @@ pub struct Client<
 
 impl<
         Game: SeerCallback<StepT> + AssentCallback<StepT> + RectifyCallback,
-        StepT: Clone + nimble_steps::Deserialize + nimble_steps::Serialize,
+        StepT: Clone + Deserialize + Serialize,
     > Client<Game, StepT>
 {
     pub fn new(mut random: Box<dyn SecureRandom>) -> Client<Game, StepT> {
@@ -91,7 +92,7 @@ impl<
             .map(|logic| logic.add_predicted_step(step))
     }
 
-    fn write_header(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
+    fn write_header(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         match self.phase {
             ClientPhase::Connected(_, _) => {
                 prepare_out_stream(stream)?; // Add hash stream

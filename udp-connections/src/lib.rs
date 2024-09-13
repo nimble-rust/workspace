@@ -19,12 +19,12 @@ impl Nonce {
     pub fn new(value: u64) -> Self {
         Self(value)
     }
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> std::io::Result<()> {
+    pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> std::io::Result<()> {
         stream.write_u64(self.0)?;
         Ok(())
     }
 
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> std::io::Result<Self> {
+    pub fn from_stream(stream: &mut impl ReadOctetStream) -> std::io::Result<Self> {
         let x = stream.read_u64()?;
         Ok(Self(x))
     }
@@ -43,12 +43,12 @@ impl ConnectionId {
     pub fn new(value: u64) -> Self {
         Self(value)
     }
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> std::io::Result<()> {
+    pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> std::io::Result<()> {
         stream.write_u64(self.0)?;
         Ok(())
     }
 
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> std::io::Result<Self> {
+    pub fn from_stream(stream: &mut impl ReadOctetStream) -> std::io::Result<Self> {
         let x = stream.read_u64()?;
         Ok(Self(x))
     }
@@ -68,12 +68,12 @@ impl ServerChallenge {
         Self(value)
     }
 
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> std::io::Result<()> {
+    pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> std::io::Result<()> {
         stream.write_u64(self.0)?;
         Ok(())
     }
 
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> std::io::Result<Self> {
+    pub fn from_stream(stream: &mut impl ReadOctetStream) -> std::io::Result<Self> {
         let x = stream.read_u64()?;
         Ok(Self(x))
     }
@@ -92,13 +92,13 @@ pub struct ClientToHostPacket {
 }
 
 impl ClientToHostPacket {
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> std::io::Result<()> {
+    pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> std::io::Result<()> {
         self.header.to_stream(stream)?;
         stream.write(self.payload.as_slice())?;
         Ok(())
     }
 
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> std::io::Result<Self> {
+    pub fn from_stream(stream: &mut impl ReadOctetStream) -> std::io::Result<Self> {
         let header = PacketHeader::from_stream(stream)?;
         let mut target_buffer = Vec::with_capacity(header.size as usize);
         stream.read(&mut target_buffer)?;
@@ -116,13 +116,13 @@ pub struct PacketHeader {
 }
 
 impl PacketHeader {
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> std::io::Result<()> {
+    pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> std::io::Result<()> {
         self.connection_id.to_stream(stream)?;
         stream.write_u16(self.size)?;
         Ok(())
     }
 
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> std::io::Result<Self> {
+    pub fn from_stream(stream: &mut impl ReadOctetStream) -> std::io::Result<Self> {
         Ok(Self {
             connection_id: ConnectionId::from_stream(stream)?,
             size: stream.read_u16()?,
@@ -134,7 +134,7 @@ impl PacketHeader {
 pub struct HostToClientPacketHeader(PacketHeader);
 
 impl HostToClientPacketHeader {
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> std::io::Result<Self> {
+    pub fn from_stream(stream: &mut impl ReadOctetStream) -> std::io::Result<Self> {
         info!("packet from host");
         Ok(Self(PacketHeader::from_stream(stream)?))
     }
@@ -147,13 +147,13 @@ pub struct ConnectCommand {
 }
 
 impl ConnectCommand {
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> std::io::Result<()> {
+    pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> std::io::Result<()> {
         self.nonce.to_stream(stream)?;
         self.server_challenge.to_stream(stream)?;
         Ok(())
     }
 
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> std::io::Result<Self> {
+    pub fn from_stream(stream: &mut impl ReadOctetStream) -> std::io::Result<Self> {
         Ok(Self {
             nonce: Nonce::from_stream(stream)?,
             server_challenge: ServerChallenge::from_stream(stream)?,
@@ -168,14 +168,14 @@ pub struct InChallengeCommand {
 }
 
 impl InChallengeCommand {
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> std::io::Result<()> {
+    pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> std::io::Result<()> {
         self.nonce.to_stream(stream)?;
         self.incoming_server_challenge.to_stream(stream)?;
 
         Ok(())
     }
 
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> std::io::Result<Self> {
+    pub fn from_stream(stream: &mut impl ReadOctetStream) -> std::io::Result<Self> {
         Ok(Self {
             nonce: Nonce::from_stream(stream)?,
             incoming_server_challenge: ServerChallenge::from_stream(stream)?,
@@ -189,12 +189,12 @@ pub struct ClientToHostChallengeCommand {
 }
 
 impl ClientToHostChallengeCommand {
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> std::io::Result<()> {
+    pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> std::io::Result<()> {
         self.nonce.to_stream(stream)?;
         Ok(())
     }
 
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> std::io::Result<Self> {
+    pub fn from_stream(stream: &mut impl ReadOctetStream) -> std::io::Result<Self> {
         Ok(Self {
             nonce: Nonce::from_stream(stream)?,
         })
@@ -247,7 +247,7 @@ impl HostToClientCommands {
         }
     }
 
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
+    pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.to_octet() as u8)?;
         match self {
             HostToClientCommands::ChallengeType(client_to_host_challenge) => {
@@ -260,7 +260,7 @@ impl HostToClientCommands {
         }
     }
 
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> io::Result<Self> {
+    pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         let command_value = stream.read_u8()?;
         let command = HostToClientCommand::try_from(command_value)?;
         let x = match command {
@@ -284,12 +284,12 @@ pub struct ChallengeResponse {
 }
 
 impl ChallengeResponse {
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> std::io::Result<()> {
+    pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> std::io::Result<()> {
         self.nonce.to_stream(stream)?;
         Ok(())
     }
 
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> std::io::Result<Self> {
+    pub fn from_stream(stream: &mut impl ReadOctetStream) -> std::io::Result<Self> {
         Ok(Self {
             nonce: Nonce::from_stream(stream)?,
         })
@@ -347,7 +347,7 @@ impl ClientToHostCommands {
         }
     }
 
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
+    pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.to_octet() as u8)?;
         match self {
             ClientToHostCommands::ChallengeType(client_to_host_challenge) => {
@@ -360,7 +360,7 @@ impl ClientToHostCommands {
         }
     }
 
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> io::Result<Self> {
+    pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         let command_value = stream.read_u8()?;
         let command = ClientToHostCommand::try_from(command_value)?;
         let x = match command {
@@ -385,13 +385,13 @@ pub struct ConnectResponse {
 }
 
 impl ConnectResponse {
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> std::io::Result<()> {
+    pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> std::io::Result<()> {
         self.nonce.to_stream(stream)?;
         self.connection_id.to_stream(stream)?;
         Ok(())
     }
 
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> std::io::Result<Self> {
+    pub fn from_stream(stream: &mut impl ReadOctetStream) -> std::io::Result<Self> {
         Ok(Self {
             nonce: Nonce::from_stream(stream)?,
             connection_id: ConnectionId::from_stream(stream)?,

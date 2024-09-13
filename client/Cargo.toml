@@ -9,7 +9,7 @@ repository = "https://github.com/nimble-rust/client"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-flood-rs = "0.0.6"
+flood-rs = "0.0.7"
 log = "0.4.22"
 nimble-steps = { path = "../steps" }
 nimble-protocol = { path = "../protocol" }
@@ -28,4 +28,4 @@ udp-client = { path = "../udp-client" }
 udp-connections = { path = "../udp-connections" }
 datagram = { path = "../datagram" }
 test-log = "0.2.16"
-flood-rs = "0.0.6"
+flood-rs = "0.0.7"

@@ -22,7 +22,7 @@ fn communicate<
     SampleGame: nimble_seer::SeerCallback<SampleStep>
         + nimble_assent::AssentCallback<SampleStep>
         + nimble_rectify::RectifyCallback,
-    SampleStep: std::clone::Clone + nimble_steps::Deserialize,
+    SampleStep: Clone + nimble_steps::Deserialize,
 >(
     host: &mut HostLogic<SampleGame>,
     connection_id: ConnectionId,

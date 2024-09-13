@@ -123,7 +123,7 @@ pub struct HostLogic<StepT> {
     free_list: FreeList,
 }
 
-impl<StepT> HostLogic<StepT> {
+impl<StepT: std::clone::Clone> HostLogic<StepT> {
     pub fn new(last_known_state: State) -> Self {
         Self {
             combinator: Combinator::<StepT>::new(last_known_state.tick_id),
@@ -169,7 +169,7 @@ impl<StepT> HostLogic<StepT> {
         &mut self,
         connection_id: ConnectionId,
         request: &JoinGameRequest,
-    ) -> Result<HostToClientCommands, HostLogicError> {
+    ) -> Result<HostToClientCommands<StepT>, HostLogicError> {
         debug!("on_join {:?}", request);
 
         let join_accepted = JoinGameAccepted {
@@ -198,8 +198,8 @@ impl<StepT> HostLogic<StepT> {
     fn on_steps(
         &mut self,
         connection_id: ConnectionId,
-        request: &StepsRequest,
-    ) -> Result<HostToClientCommands, HostLogicError> {
+        request: &StepsRequest<StepT>,
+    ) -> Result<HostToClientCommands<StepT>, HostLogicError> {
         trace!("on_step {:?}", request);
         /*
                for participant in request.combined_predicted_steps.predicted_steps_for_players {
@@ -214,9 +214,9 @@ impl<StepT> HostLogic<StepT> {
             .get_mut(&connection_id.0)
             .ok_or(HostLogicError::UnknownConnectionId(connection_id))?;
 
-        for predicted_step_for_player in request
+        for (_, predicted_step_for_player) in request
             .combined_predicted_steps
-            .predicted_steps_for_players
+            .predicted_steps
             .iter()
         {
             if let Some(participant) = connection
@@ -245,11 +245,11 @@ impl<StepT> HostLogic<StepT> {
                 delta_buffer: 0,
                 last_step_received_from_client: 0,
             },
-            authoritative_ranges: AuthoritativeStepRanges {
+            authoritative_steps: AuthoritativeStepRanges {
                 start_step_id: 0,
                 ranges: vec![],
             },
-            payload: vec![],
+            authoritative_steps: vec![],
         };
         Ok(HostToClientCommands::GameStep(game_step_response))
     }
@@ -259,7 +259,7 @@ impl<StepT> HostLogic<StepT> {
         connection_id: ConnectionId,
         now: Instant,
         request: &DownloadGameStateRequest,
-    ) -> Result<Vec<HostToClientCommands>, HostLogicError> {
+    ) -> Result<Vec<HostToClientCommands<StepT>>, HostLogicError> {
         debug!("client requested download {:?}", request);
         let state = self.session.state();
         let connection = self
@@ -346,8 +346,8 @@ impl<StepT> HostLogic<StepT> {
         &mut self,
         connection_id: ConnectionId,
         now: Instant,
-        request: &ClientToHostCommands,
-    ) -> Result<Vec<HostToClientCommands>, HostLogicError> {
+        request: &ClientToHostCommands<StepT>,
+    ) -> Result<Vec<HostToClientCommands<StepT>>, HostLogicError> {
         match request {
             ClientToHostCommands::JoinGameType(join_game_request) => {
                 Ok(vec![self.on_join(connection_id, join_game_request)?])

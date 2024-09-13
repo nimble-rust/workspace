@@ -29,7 +29,7 @@ impl ConnectionId {
     /// # Errors
     ///
     /// Returns an `io::Result` error if writing to the stream fails.
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> Result<()> {
+    pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> Result<()> {
         stream.write_u8(self.value)
     }
 
@@ -42,7 +42,7 @@ impl ConnectionId {
     /// # Returns
     ///
     /// A `Result` containing the `ConnectionId` if successful, or an `io::Result` error if reading fails.
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> Result<Self> {
+    pub fn from_stream(stream: &mut impl ReadOctetStream) -> Result<Self> {
         Ok(Self {
             value: stream.read_u8()?,
         })
@@ -60,7 +60,7 @@ impl ConnectionId {
 /// # Errors
 ///
 /// Returns an `io::Result` error if writing to the stream fails.
-pub fn prepare_out_stream(stream: &mut dyn WriteOctetStream) -> Result<()> {
+pub fn prepare_out_stream(stream: &mut impl WriteOctetStream) -> Result<()> {
     let connection_id = ConnectionId { value: 0 };
     connection_id.to_stream(stream)?; // connection id must be outside the hashing
     stream.write_u32(0) // prepare hash value
@@ -90,7 +90,7 @@ impl ConnectionLayerMode {
     /// # Errors
     ///
     /// Returns an `io::Result` error if writing to the stream fails.
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> Result<()> {
+    pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> Result<()> {
         match self {
             ConnectionLayerMode::OOB => ConnectionId::default().to_stream(stream),
             ConnectionLayerMode::Connection(layer) => {
@@ -109,7 +109,7 @@ impl ConnectionLayerMode {
     /// # Returns
     ///
     /// A `Result` containing the `ConnectionLayerMode` if successful, or an `io::Result` error if reading fails.
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> Result<Self> {
+    pub fn from_stream(stream: &mut impl ReadOctetStream) -> Result<Self> {
         let connection_id = ConnectionId::from_stream(stream)?;
         let mode = match connection_id.value {
             0 => ConnectionLayerMode::OOB,
@@ -136,7 +136,7 @@ impl ConnectionLayerMode {
 ///
 /// Returns an `io::Result` error if writing to the stream fails.
 pub fn write_to_stream(
-    stream: &mut dyn WriteOctetStream,
+    stream: &mut impl WriteOctetStream,
     connection_id: ConnectionId,
     seed: ConnectionSecretSeed,
     payload: &[u8],

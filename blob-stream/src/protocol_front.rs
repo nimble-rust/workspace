@@ -19,7 +19,7 @@ impl SetChunkFrontData {
     /// This function will return an `io::Error` if there is an issue with writing to the stream.
     /// This could happen if the stream is closed or if there are underlying I/O errors during the write operation.
     #[allow(clippy::cast_possible_truncation)]
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
+    pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         self.transfer_id.to_stream(stream)?;
         self.data.to_stream(stream)?;
         Ok(())
@@ -29,7 +29,7 @@ impl SetChunkFrontData {
     ///
     /// This function will return an `io::Error` if there is an issue with writing to the stream.
     /// This could happen if the stream is closed or if there are underlying I/O errors during the write operation.
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> io::Result<Self> {
+    pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         Ok(Self {
             transfer_id: TransferId::from_stream(stream)?,
             data: SetChunkData::from_stream(stream)?,
@@ -78,7 +78,7 @@ impl SenderToReceiverFrontCommands {
     /// This function will return an `io::Error` if there is an issue with writing to the stream.
     /// This could happen if the stream is closed or if there are underlying I/O errors during the write operation.
 
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
+    pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.to_octet())?;
         match self {
             Self::SetChunk(set_chunk_header) => set_chunk_header.to_stream(stream),
@@ -90,7 +90,7 @@ impl SenderToReceiverFrontCommands {
     ///
     /// This function will return an `io::Error` if there is an issue with writing to the stream.
     /// This could happen if the stream is closed or if there are underlying I/O errors during the write operation.
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> io::Result<Self> {
+    pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         let command_value = stream.read_u8()?;
         let command = SenderToReceiverFrontCommand::try_from(command_value)?;
         let x = match command {
@@ -137,7 +137,7 @@ impl AckChunkFrontData {
     ///
     /// This function will return an `io::Error` if there is an issue with writing to the stream.
     /// This could happen if the stream is closed or if there are underlying I/O errors during the write operation.
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
+    pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         self.transfer_id.to_stream(stream)?;
         self.data.to_stream(stream)?;
         Ok(())
@@ -147,7 +147,7 @@ impl AckChunkFrontData {
     ///
     /// This function will return an `io::Error` if there is an issue with writing to the stream.
     /// This could happen if the stream is closed or if there are underlying I/O errors during the write operation.
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> io::Result<Self> {
+    pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         Ok(Self {
             transfer_id: TransferId::from_stream(stream)?,
             data: AckChunkData::from_stream(stream)?,
@@ -174,7 +174,7 @@ impl ReceiverToSenderFrontCommands {
     ///
     /// This function will return an `io::Error` if there is an issue with writing to the stream.
     /// This could happen if the stream is closed or if there are underlying I/O errors during the write operation.
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
+    pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.to_octet())?;
         match self {
             Self::AckChunk(set_chunk_header) => set_chunk_header.to_stream(stream),
@@ -186,7 +186,7 @@ impl ReceiverToSenderFrontCommands {
     ///
     /// This function will return an `io::Error` if there is an issue with writing to the stream.
     /// This could happen if the stream is closed or if there are underlying I/O errors during the write operation.
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> io::Result<Self> {
+    pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         let command_value = stream.read_u8()?;
         let command = ReceiverToSenderFrontCommand::try_from(command_value)?;
         let x = match command {
