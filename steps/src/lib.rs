@@ -51,7 +51,6 @@ pub enum Step<T> {
     Custom(T),
 }
 
-
 #[derive(Clone)]
 pub struct StepInfo<T> {
     pub step: T,

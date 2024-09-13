@@ -3,7 +3,9 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 use nimble_client::logic::ClientLogic;
-use nimble_protocol::client_to_host::{PredictedStep, PredictedStepsForAllPlayers, StepsAck, StepsRequest};
+use nimble_protocol::client_to_host::{
+    PredictedStep, PredictedStepsForAllPlayers, StepsAck, StepsRequest,
+};
 use nimble_protocol::prelude::ClientToHostCommands;
 use nimble_sample_step::{SampleGame, SampleStep};
 use secure_random::GetRandom;
@@ -20,18 +22,15 @@ fn basic_logic() {
         let commands = client_logic.send();
         assert_eq!(commands.len(), 1);
         if let ClientToHostCommands::Steps(StepsRequest {
-                                               ack:
-                                               StepsAck {
-                                                   latest_received_step_tick_id: 0,
-                                                   lost_steps_mask_after_last_received: 0b0,
-                                               },
-                                               combined_predicted_steps: PredictedStepsForAllPlayers {
-                                                   predicted_players,
-                                               }
-                                               ,
-                                           }) = &commands[0]
+            ack:
+                StepsAck {
+                    latest_received_step_tick_id: 0,
+                    lost_steps_mask_after_last_received: 0b0,
+                },
+            combined_predicted_steps: PredictedStepsForAllPlayers { predicted_players },
+        }) = &commands[0]
         {
-            assert_eq!(predicted_players.len(), 1);
+            assert_eq!(predicted_players.len(), 0);
         } else {
             panic!("Command did not match expected structure or pattern");
         }
@@ -57,16 +56,13 @@ fn send_steps() {
         let commands = client_logic.send();
         assert_eq!(commands.len(), 1);
         if let ClientToHostCommands::Steps(StepsRequest {
-                                               ack:
-                                               StepsAck {
-                                                   latest_received_step_tick_id: 0,
-                                                   lost_steps_mask_after_last_received: 0b0,
-                                               },
-                                               combined_predicted_steps:
-                                               PredictedStepsForAllPlayers {
-                                                   predicted_players,
-                                               },
-                                           }) = &commands[0]
+            ack:
+                StepsAck {
+                    latest_received_step_tick_id: 0,
+                    lost_steps_mask_after_last_received: 0b0,
+                },
+            combined_predicted_steps: PredictedStepsForAllPlayers { predicted_players },
+        }) = &commands[0]
         {
             assert_eq!(predicted_players.len(), 1);
         } else {

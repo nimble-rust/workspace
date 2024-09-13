@@ -216,13 +216,10 @@ impl<StepT: std::clone::Clone + Eq + Debug + Deserialize + Serialize> HostLogic<
             .get_mut(&connection_id.0)
             .ok_or(HostLogicError::UnknownConnectionId(connection_id))?;
 
-        for (local_index, predicted_step_for_player) in &request
-            .combined_predicted_steps.predicted_players
+        for (local_index, predicted_step_for_player) in
+            &request.combined_predicted_steps.predicted_players
         {
-            if let Some(participant) = connection
-                .participant_lookup
-                .get(&local_index)
-            {
+            if let Some(participant) = connection.participant_lookup.get(&local_index) {
                 for serialized_predicted_step_for_participant in
                     &predicted_step_for_player.predicted_steps
                 {
@@ -230,9 +227,7 @@ impl<StepT: std::clone::Clone + Eq + Debug + Deserialize + Serialize> HostLogic<
                     info!("connection: {connection:?}");
                 }
             } else {
-                return Err(HostLogicError::UnknownPartyMemberIndex(
-                    *local_index
-                ));
+                return Err(HostLogicError::UnknownPartyMemberIndex(*local_index));
             }
         }
 

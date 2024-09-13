@@ -283,9 +283,13 @@ impl<StepT: Deserialize + Serialize + Debug + Eq + Clone> AuthoritativeStepRange
         let delta_steps = stream.read_u8()?;
         let count = stream.read_u8()?;
 
-        let mut authoritative_steps_vec = Vec::<AuthoritativeCombinedStepForAllParticipants<StepT>>::with_capacity(count as usize);
+        let mut authoritative_steps_vec =
+            Vec::<AuthoritativeCombinedStepForAllParticipants<StepT>>::with_capacity(
+                count as usize,
+            );
         for _ in 0..count {
-            let authoritative_combined_step = AuthoritativeCombinedStepForAllParticipants::deserialize(stream)?;
+            let authoritative_combined_step =
+                AuthoritativeCombinedStepForAllParticipants::deserialize(stream)?;
             authoritative_steps_vec.push(authoritative_combined_step);
         }
         Ok(Self {
@@ -333,18 +337,6 @@ impl<StepT: Deserialize + Serialize + Debug + Eq + Clone> AuthoritativeStepRange
 pub struct GameStepResponse<StepT: Serialize + Deserialize + Debug + Clone + Eq> {
     pub response_header: GameStepResponseHeader,
     pub authoritative_steps: AuthoritativeStepRanges<StepT>,
-}
-
-fn read_octets(stream: &mut impl ReadOctetStream) -> io::Result<Vec<u8>> {
-    let len = stream.read_u16()?;
-    let mut data: Vec<u8> = vec![0u8; len as usize];
-    stream.read(data.as_mut_slice())?;
-    Ok(data)
-}
-
-fn write_octets(stream: &mut impl WriteOctetStream, payload: &[u8]) -> io::Result<()> {
-    stream.write_u16(payload.len() as u16)?;
-    stream.write(payload)
 }
 
 impl<StepT: Deserialize + Serialize + Debug + Clone + Eq> GameStepResponse<StepT> {

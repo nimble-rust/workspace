@@ -54,14 +54,18 @@ impl DownloadGameStateRequest {
 }
 
 #[derive(Debug, Clone)]
-pub enum ClientToHostCommands<StepT: std::clone::Clone + Debug + Eq + PartialEq + Serialize + Deserialize> {
+pub enum ClientToHostCommands<
+    StepT: std::clone::Clone + Debug + Eq + PartialEq + Serialize + Deserialize,
+> {
     JoinGameType(JoinGameRequest),
     Steps(StepsRequest<StepT>),
     DownloadGameState(DownloadGameStateRequest),
     BlobStreamChannel(ReceiverToSenderFrontCommands),
 }
 
-impl<StepT: std::clone::Clone + Debug + Eq + PartialEq + Serialize + Deserialize> ClientToHostCommands<StepT> {
+impl<StepT: std::clone::Clone + Debug + Eq + PartialEq + Serialize + Deserialize>
+    ClientToHostCommands<StepT>
+{
     pub fn to_octet(&self) -> u8 {
         match self {
             ClientToHostCommands::Steps(_) => ClientToHostCommand::Steps as u8,
@@ -114,7 +118,9 @@ impl<StepT: std::clone::Clone + Debug + Eq + PartialEq + Serialize + Deserialize
     }
 }
 
-impl<StepT: Clone + Debug + Eq + PartialEq + Serialize + Deserialize> fmt::Display for ClientToHostCommands<StepT> {
+impl<StepT: Clone + Debug + Eq + PartialEq + Serialize + Deserialize> fmt::Display
+    for ClientToHostCommands<StepT>
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ClientToHostCommands::JoinGameType(join) => write!(f, "join {:?}", join),
@@ -311,21 +317,25 @@ impl StepsAck {
     }
 }
 
-
 #[derive(Debug, PartialEq, Clone)]
-pub struct AuthoritativeCombinedStepForAllParticipants<StepT: Serialize + Deserialize + Debug + Clone + Eq + PartialEq> {
+pub struct AuthoritativeCombinedStepForAllParticipants<
+    StepT: Serialize + Deserialize + Debug + Clone + Eq + PartialEq,
+> {
     pub authoritative_participants: HashMap<ParticipantId, StepT>,
 }
 
-
-impl<StepT: Serialize + Deserialize + Debug + Clone + Eq + PartialEq> Serialize for AuthoritativeCombinedStepForAllParticipants<StepT> {
+impl<StepT: Serialize + Deserialize + Debug + Clone + Eq + PartialEq> Serialize
+    for AuthoritativeCombinedStepForAllParticipants<StepT>
+{
     fn serialize(&self, stream: &mut impl WriteOctetStream) -> io::Result<()>
     where
         Self: Sized,
     {
         stream.write_u8(self.authoritative_participants.len() as u8)?;
 
-        for (participant_id, authoritative_step_for_one_participant) in self.authoritative_participants.iter() {
+        for (participant_id, authoritative_step_for_one_participant) in
+            self.authoritative_participants.iter()
+        {
             participant_id.to_stream(stream)?;
             authoritative_step_for_one_participant.serialize(stream)?;
         }
@@ -333,11 +343,14 @@ impl<StepT: Serialize + Deserialize + Debug + Clone + Eq + PartialEq> Serialize 
     }
 }
 
-impl<StepT: Serialize + Deserialize + Debug + Clone + Eq + PartialEq> Deserialize for AuthoritativeCombinedStepForAllParticipants<StepT> {
+impl<StepT: Serialize + Deserialize + Debug + Clone + Eq + PartialEq> Deserialize
+    for AuthoritativeCombinedStepForAllParticipants<StepT>
+{
     fn deserialize(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         let participant_count_in_combined_step = stream.read_u8()?;
 
-        let mut authoritative_steps_map = HashMap::with_capacity(participant_count_in_combined_step as usize);
+        let mut authoritative_steps_map =
+            HashMap::with_capacity(participant_count_in_combined_step as usize);
 
         for _ in 0..participant_count_in_combined_step {
             let participant_id = ParticipantId::from_stream(stream)?;
@@ -351,21 +364,23 @@ impl<StepT: Serialize + Deserialize + Debug + Clone + Eq + PartialEq> Deserializ
     }
 }
 
-
 #[derive(Debug, PartialEq, Clone)]
 pub struct PredictedStep<StepT: Serialize + Deserialize + Debug + Clone + Eq + PartialEq> {
     pub predicted_players: HashMap<LocalIndex, StepT>,
 }
 
-
 type LocalIndex = u8;
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct PredictedStepsForAllPlayers<StepT: Serialize + Deserialize + Debug + Clone + Eq + PartialEq> {
+pub struct PredictedStepsForAllPlayers<
+    StepT: Serialize + Deserialize + Debug + Clone + Eq + PartialEq,
+> {
     pub predicted_players: HashMap<LocalIndex, PredictedStepsForOnePlayer<StepT>>,
 }
 
-impl<StepT: Serialize + Deserialize + Debug + Clone + Eq + PartialEq> PredictedStepsForAllPlayers<StepT> {
+impl<StepT: Serialize + Deserialize + Debug + Clone + Eq + PartialEq>
+    PredictedStepsForAllPlayers<StepT>
+{
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.predicted_players.len() as u8)?;
 
@@ -394,7 +409,6 @@ impl<StepT: Serialize + Deserialize + Debug + Clone + Eq + PartialEq> PredictedS
     }
 }
 
-
 #[derive(Debug, PartialEq, Clone)]
 pub struct PredictedStepsForOnePlayer<StepT: Clone + Eq + PartialEq + Serialize + Deserialize> {
     pub first_tick_id: TickId,
@@ -413,12 +427,10 @@ impl<StepT: Clone + Eq + PartialEq + Serialize + Deserialize> PredictedStepsForO
         Ok(())
     }
     pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
-        let local_index = stream.read_u8()?;
         let first_tick_id = TickIdUtil::from_stream(stream)?;
         let step_count = stream.read_u8()?;
 
-        let mut predicted_steps_for_players =
-            Vec::<StepT>::with_capacity(step_count as usize);
+        let mut predicted_steps_for_players = Vec::<StepT>::with_capacity(step_count as usize);
 
         for _ in 0..step_count {
             let predicted_steps_for_player = StepT::deserialize(stream)?;

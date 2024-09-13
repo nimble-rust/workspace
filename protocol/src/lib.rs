@@ -71,7 +71,6 @@ impl Version {
     }
 }
 
-
 #[derive(PartialEq, Copy, Clone, Eq)]
 pub struct SessionConnectionSecret {
     pub value: u64,

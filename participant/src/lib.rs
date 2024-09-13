@@ -12,8 +12,6 @@ impl ParticipantId {
         stream.write_u8(self.0)
     }
     pub fn from_stream(stream: &mut impl ReadOctetStream) -> std::io::Result<Self> {
-        Ok(Self(
-            stream.read_u8()?,
-        ))
+        Ok(Self(stream.read_u8()?))
     }
 }

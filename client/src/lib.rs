@@ -12,10 +12,14 @@ use connection_layer::{
     ConnectionSecretSeed,
 };
 use datagram_pinger::{client_in_ping, client_out_ping, ClientTime};
-use flood_rs::{Deserialize, InOctetStream, OutOctetStream, ReadOctetStream, Serialize, WriteOctetStream};
+use flood_rs::{
+    Deserialize, InOctetStream, OutOctetStream, ReadOctetStream, Serialize, WriteOctetStream,
+};
 use log::info;
 use nimble_assent::AssentCallback;
-use nimble_protocol::client_to_host::{AuthoritativeCombinedStepForAllParticipants, JoinGameRequest, PredictedStep};
+use nimble_protocol::client_to_host::{
+    AuthoritativeCombinedStepForAllParticipants, JoinGameRequest, PredictedStep,
+};
 use nimble_protocol::client_to_host_oob::ClientToHostOobCommands;
 use nimble_protocol::host_to_client::HostToClientCommands;
 use nimble_protocol::host_to_client_oob::HostToClientOobCommands;
@@ -36,7 +40,9 @@ enum ClientPhase {
 }
 
 pub struct Client<
-    Game: SeerCallback<AuthoritativeCombinedStepForAllParticipants<StepT>> + AssentCallback<AuthoritativeCombinedStepForAllParticipants<StepT>> + RectifyCallback,
+    Game: SeerCallback<AuthoritativeCombinedStepForAllParticipants<StepT>>
+        + AssentCallback<AuthoritativeCombinedStepForAllParticipants<StepT>>
+        + RectifyCallback,
     StepT: Clone + Deserialize + Serialize + Eq + PartialEq + Debug,
 > {
     phase: ClientPhase,
@@ -48,9 +54,11 @@ pub struct Client<
 }
 
 impl<
-    Game: SeerCallback<AuthoritativeCombinedStepForAllParticipants<StepT>> + AssentCallback<AuthoritativeCombinedStepForAllParticipants<StepT>> + RectifyCallback,
-    StepT: Clone + Deserialize + Serialize + Eq + Debug,
-> Client<Game, StepT>
+        Game: SeerCallback<AuthoritativeCombinedStepForAllParticipants<StepT>>
+            + AssentCallback<AuthoritativeCombinedStepForAllParticipants<StepT>>
+            + RectifyCallback,
+        StepT: Clone + Deserialize + Serialize + Eq + Debug,
+    > Client<Game, StepT>
 {
     pub fn new(mut random: Box<dyn SecureRandom>) -> Client<Game, StepT> {
         let nonce = Nonce(random.get_random_u64());

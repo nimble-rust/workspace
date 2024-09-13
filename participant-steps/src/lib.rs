@@ -4,7 +4,7 @@
  */
 use flood_rs::{Deserialize, ReadOctetStream};
 use nimble_participant::ParticipantId;
-use nimble_steps::{Step};
+use nimble_steps::Step;
 use std::collections::HashMap;
 use std::io;
 

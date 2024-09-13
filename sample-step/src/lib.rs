@@ -2,7 +2,9 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-use flood_rs::{Deserialize, InOctetStream, OutOctetStream, ReadOctetStream, Serialize, WriteOctetStream};
+use flood_rs::{
+    Deserialize, InOctetStream, OutOctetStream, ReadOctetStream, Serialize, WriteOctetStream,
+};
 use nimble_assent::AssentCallback;
 use nimble_protocol::client_to_host::AuthoritativeCombinedStepForAllParticipants;
 use nimble_rectify::RectifyCallback;

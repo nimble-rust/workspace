@@ -18,7 +18,6 @@ use secure_random::GetRandom;
 //use test_log::test;
 use udp_client::UdpClient;
 
-
 //#[test]
 #[allow(dead_code)]
 fn send_to_host() {

@@ -5,10 +5,10 @@
 use anyhow::{self, Context};
 use easy_repl::{command, CommandStatus, Repl};
 use example_client::ExampleClient;
-
+use nimble_sample_step::{SampleGame, SampleStep};
 
 fn main() -> anyhow::Result<()> {
-    let _ = ExampleClient::<ExampleGame, ExampleStep>::new("localhost:27000");
+    let _ = ExampleClient::<SampleGame, SampleStep>::new("localhost:27000");
 
     let mut repl = Repl::builder()
         .add(

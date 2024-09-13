@@ -2,8 +2,6 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-use std::fmt::Debug;
-use crate::types::{SampleGame, SampleStep};
 use flood_rs::{Deserialize, Serialize};
 use nimble_client::logic::ClientLogic;
 use nimble_host::logic::{ConnectionId, HostLogic};
@@ -12,7 +10,9 @@ use nimble_protocol::client_to_host::{AuthoritativeCombinedStepForAllParticipant
 use nimble_protocol::client_to_host::{JoinPlayerRequest, JoinPlayerRequests};
 use nimble_protocol::prelude::*;
 use nimble_protocol::Nonce;
+use nimble_sample_step::{SampleGame, SampleStep};
 use secure_random::GetRandom;
+use std::fmt::Debug;
 use std::time::Instant;
 use test_log::test;
 use tick_id::TickId;
@@ -21,8 +21,13 @@ mod types;
 
 fn communicate<
     SampleGame: nimble_seer::SeerCallback<AuthoritativeCombinedStepForAllParticipants<SampleStep>>
-    + nimble_assent::AssentCallback<AuthoritativeCombinedStepForAllParticipants<SampleStep>>
-    + nimble_rectify::RectifyCallback + Clone + Eq + Debug + Deserialize + Serialize,
+        + nimble_assent::AssentCallback<AuthoritativeCombinedStepForAllParticipants<SampleStep>>
+        + nimble_rectify::RectifyCallback
+        + Clone
+        + Eq
+        + Debug
+        + Deserialize
+        + Serialize,
     SampleStep: Clone + Deserialize + Debug + Eq + PartialEq,
 >(
     host: &mut HostLogic<SampleStep>,
@@ -41,7 +46,9 @@ fn communicate<
                 .expect("should work in test")
         })
         .collect();
-    client.receive(to_client.as_slice()).expect("TODO: panic message");
+    client
+        .receive(to_client.as_slice())
+        .expect("TODO: panic message");
 }
 
 #[test]

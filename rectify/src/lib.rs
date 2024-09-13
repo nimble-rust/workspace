@@ -25,9 +25,9 @@ pub struct Rectify<
 }
 
 impl<
-    Game: AssentCallback<StepT> + SeerCallback<StepT> + RectifyCallback,
-    StepT: Clone + Deserialize,
-> Default for Rectify<Game, StepT>
+        Game: AssentCallback<StepT> + SeerCallback<StepT> + RectifyCallback,
+        StepT: Clone + Deserialize,
+    > Default for Rectify<Game, StepT>
 {
     fn default() -> Self {
         Self::new()
@@ -35,9 +35,9 @@ impl<
 }
 
 impl<
-    Game: AssentCallback<StepT> + SeerCallback<StepT> + RectifyCallback,
-    StepT: Clone + Deserialize,
-> Rectify<Game, StepT>
+        Game: AssentCallback<StepT> + SeerCallback<StepT> + RectifyCallback,
+        StepT: Clone + Deserialize,
+    > Rectify<Game, StepT>
 {
     /// Creates a new `Rectify` instance, initializing both [`Assent`] and [`Seer`] components.
     ///
