@@ -6,8 +6,8 @@ use blob_stream::prelude::FrontLogic;
 use flood_rs::{Deserialize, InOctetStream, OutOctetStream, Serialize};
 use log::info;
 use nimble_assent::prelude::*;
-use nimble_protocol::client_to_host::{AuthoritativeCombinedStepForAllParticipants, DownloadGameStateRequest, PredictedStepsForAllPlayers};
-use nimble_protocol::host_to_client::TickId;
+use nimble_participant::ParticipantId;
+use nimble_protocol::client_to_host::{AuthoritativeCombinedStepForAllParticipants, DownloadGameStateRequest, PredictedStep, PredictedStepsForAllPlayers};
 use nimble_protocol::prelude::*;
 use nimble_protocol::Nonce;
 use nimble_rectify::prelude::*;
@@ -16,6 +16,7 @@ use secure_random::SecureRandom;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::{fmt, io};
+use tick_id::TickId;
 
 #[derive(Eq, Debug, PartialEq)]
 pub enum ErrorLevel {
@@ -33,7 +34,7 @@ pub enum ClientError {
 impl fmt::Display for ClientError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Single(error) => error.fmt(f),
+            Self::Single(error) => std::fmt::Display::fmt(&error, f),
             Self::Multiple(errors) => {
                 writeln!(f, "Multiple errors occurred:")?;
 
@@ -99,7 +100,7 @@ enum Phase {
 }
 
 pub struct ClientLogic<
-    Game: SeerCallback<StepT> + AssentCallback<StepT> + RectifyCallback,
+    Game: SeerCallback<AuthoritativeCombinedStepForAllParticipants<StepT>> + AssentCallback<AuthoritativeCombinedStepForAllParticipants<StepT>> + RectifyCallback,
     StepT: Clone + Deserialize + Serialize + Debug + Eq + PartialEq,
 > {
     phase: Phase,
@@ -118,7 +119,7 @@ pub struct ClientLogic<
 }
 
 impl<
-    Game: SeerCallback<StepT> + AssentCallback<StepT> + RectifyCallback,
+    Game: SeerCallback<AuthoritativeCombinedStepForAllParticipants<StepT>> + AssentCallback<AuthoritativeCombinedStepForAllParticipants<StepT>> + RectifyCallback,
     StepT: Clone + Deserialize + Serialize + Debug + Eq + PartialEq,
 > ClientLogic<Game, StepT>
 {
@@ -169,7 +170,6 @@ impl<
                 let predicted_steps = self.rectify.seer().predicted_steps();
 
                 let predicted_steps_for_one_player = PredictedStepsForOnePlayer {
-                    local_index: 0,
                     first_tick_id: TickId(self.debug_tick_id_to_send),
                     predicted_steps: vec![],
                 };
@@ -208,8 +208,9 @@ impl<
         self.rectify.update(game)
     }
 
-    pub fn add_predicted_step(&mut self, step: StepT) {
-        self.rectify.push_predicted(step);
+    pub fn add_predicted_step(&mut self, step: PredictedStep<StepT>) {
+        let predicted_authenticated_combined_step: HashMap<_, _> = step.predicted_players.iter().map(|(local_index, predict_step)| (ParticipantId(*local_index), predict_step.clone())).collect();
+        self.rectify.push_predicted(AuthoritativeCombinedStepForAllParticipants { authoritative_participants: predicted_authenticated_combined_step });
     }
 
     fn on_join_game(&mut self, cmd: &JoinGameAccepted) -> Result<(), ClientErrorKind> {
@@ -219,9 +220,14 @@ impl<
 
     fn on_game_step(&mut self, cmd: &GameStepResponse<StepT>) -> Result<(), ClientErrorKind> {
         info!("game step response: {:?}", cmd);
+        let mut current_authoritative_tick_id = cmd.authoritative_steps.start_tick_id;
         for authoritative_step_range in &cmd.authoritative_steps.ranges {
+            current_authoritative_tick_id += authoritative_step_range.delta_steps_from_previous as u32;
             for authoritative_step in &authoritative_step_range.authoritative_steps {
-                self.rectify.push_authoritative(authoritative_step);
+                if self.rectify.waiting_for_authoritative_tick_id().map_or(true, |tick_id| tick_id >= current_authoritative_tick_id) {
+                    self.rectify.push_authoritative(authoritative_step.clone());
+                }
+                current_authoritative_tick_id += 1;
             }
         }
         Ok(())
@@ -257,7 +263,7 @@ impl<
         Ok(())
     }
 
-    pub fn receive(&mut self, commands: &[HostToClientCommands]) -> Result<(), ClientError> {
+    pub fn receive(&mut self, commands: &[HostToClientCommands<StepT>]) -> Result<(), ClientError> {
         let mut client_errors: Vec<ClientErrorKind> = Vec::new();
 
         for command in commands {

@@ -15,7 +15,7 @@ fn test_header() {
     let mut writer = OutOctetStream::new();
     connection.to_stream(&mut writer).expect("should work");
 
-    let buf = writer.data;
+    let buf = writer.octets_ref();
     assert_eq!(buf[0], 42);
     assert_eq!(&buf[1..=4], &[0xfe, 0x33, 0x44, 0x11]);
 

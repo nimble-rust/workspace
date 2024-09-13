@@ -7,6 +7,7 @@ pub mod prelude;
 use flood_rs::Deserialize;
 use nimble_assent::{Assent, AssentCallback, UpdateState};
 use nimble_seer::{Seer, SeerCallback};
+use tick_id::TickId;
 
 /// A callback trait that allows a game to handle the event when the authoritative state
 pub trait RectifyCallback {
@@ -24,9 +25,9 @@ pub struct Rectify<
 }
 
 impl<
-        Game: AssentCallback<StepT> + SeerCallback<StepT> + RectifyCallback,
-        StepT: Clone + Deserialize,
-    > Default for Rectify<Game, StepT>
+    Game: AssentCallback<StepT> + SeerCallback<StepT> + RectifyCallback,
+    StepT: Clone + Deserialize,
+> Default for Rectify<Game, StepT>
 {
     fn default() -> Self {
         Self::new()
@@ -34,9 +35,9 @@ impl<
 }
 
 impl<
-        Game: AssentCallback<StepT> + SeerCallback<StepT> + RectifyCallback,
-        StepT: Clone + Deserialize,
-    > Rectify<Game, StepT>
+    Game: AssentCallback<StepT> + SeerCallback<StepT> + RectifyCallback,
+    StepT: Clone + Deserialize,
+> Rectify<Game, StepT>
 {
     /// Creates a new `Rectify` instance, initializing both [`Assent`] and [`Seer`] components.
     ///
@@ -68,6 +69,14 @@ impl<
             self.seer.received_authoritative(end_tick_id);
         }
         self.seer.push(step)
+    }
+
+    pub fn waiting_for_authoritative_tick_id(&self) -> Option<TickId> {
+        if let Some(end_tick_id) = self.assent.end_tick_id() {
+            Some(end_tick_id + 1)
+        } else {
+            None
+        }
     }
 
     /// Pushes an authoritative step into the [`Assent`] component. This method is used to

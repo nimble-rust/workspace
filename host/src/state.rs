@@ -64,7 +64,7 @@ impl HostState {
             client_request: connection
                 .client_request
                 .expect("client_request should always be set at this point"),
-            tick_id: nimble_protocol::host_to_client::TickId(self.state.tick_id.0),
+            tick_id: TickId(self.state.tick_id.0),
             blob_stream_channel: connection
                 .assigned_blob_stream_channel
                 .expect("assigned_blob_stream_channel should always be set at this point"),

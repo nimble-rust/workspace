@@ -8,9 +8,10 @@ use nimble_assent::prelude::*;
 use nimble_client::Client;
 use nimble_protocol::hex_output;
 use nimble_seer::prelude::*;
-use nimble_steps::{Deserialize, Serialize};
 use secure_random::GetRandom;
 use std::io;
+use flood_rs::{Deserialize, Serialize};
+use nimble_sample_step::{SampleGame, SampleStep};
 use udp_client::UdpClient;
 use udp_connections::DatagramProcessor;
 

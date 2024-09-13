@@ -71,21 +71,6 @@ impl Version {
     }
 }
 
-#[derive(PartialEq, Eq, Copy, Hash, Clone, Debug)]
-pub struct ParticipantId {
-    pub value: u8,
-}
-
-impl ParticipantId {
-    pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> Result<()> {
-        stream.write_u8(self.value)
-    }
-    pub fn from_stream(stream: &mut impl ReadOctetStream) -> Result<Self> {
-        Ok(Self {
-            value: stream.read_u8()?,
-        })
-    }
-}
 
 #[derive(PartialEq, Copy, Clone, Eq)]
 pub struct SessionConnectionSecret {

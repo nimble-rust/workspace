@@ -2,14 +2,16 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-use crate::host_to_client::TickId;
-use crate::{Nonce, ParticipantId, SessionConnectionSecret};
+use crate::host_to_client::TickIdUtil;
+use crate::{Nonce, SessionConnectionSecret};
 use blob_stream::prelude::ReceiverToSenderFrontCommands;
 use flood_rs::{Deserialize, ReadOctetStream, Serialize, WriteOctetStream};
 use io::ErrorKind;
+use nimble_participant::ParticipantId;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::{fmt, io};
+use tick_id::TickId;
 
 #[repr(u8)]
 enum ClientToHostCommand {
@@ -350,6 +352,10 @@ impl<StepT: Serialize + Deserialize + Debug + Clone + Eq + PartialEq> Deserializ
 }
 
 
+#[derive(Debug, PartialEq, Clone)]
+pub struct PredictedStep<StepT: Serialize + Deserialize + Debug + Clone + Eq + PartialEq> {
+    pub predicted_players: HashMap<LocalIndex, StepT>,
+}
 
 
 type LocalIndex = u8;
@@ -397,7 +403,7 @@ pub struct PredictedStepsForOnePlayer<StepT: Clone + Eq + PartialEq + Serialize 
 
 impl<StepT: Clone + Eq + PartialEq + Serialize + Deserialize> PredictedStepsForOnePlayer<StepT> {
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
-        self.first_tick_id.to_stream(stream)?;
+        TickIdUtil::to_stream(self.first_tick_id, stream)?;
         stream.write_u8(self.predicted_steps.len() as u8)?;
 
         for predicted_step_for_player in self.predicted_steps.iter() {
@@ -408,7 +414,7 @@ impl<StepT: Clone + Eq + PartialEq + Serialize + Deserialize> PredictedStepsForO
     }
     pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         let local_index = stream.read_u8()?;
-        let first_tick_id = TickId::from_stream(stream)?;
+        let first_tick_id = TickIdUtil::from_stream(stream)?;
         let step_count = stream.read_u8()?;
 
         let mut predicted_steps_for_players =

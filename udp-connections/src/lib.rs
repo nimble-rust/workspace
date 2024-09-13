@@ -590,11 +590,11 @@ impl DatagramProcessor for Client {
         client_to_server_cmd.to_stream(&mut out_stream)?;
         out_stream.write(data)?;
 
-        Ok(out_stream.data)
+        Ok(out_stream.octets())
     }
 
     fn receive_datagram(&mut self, buffer: &[u8]) -> io::Result<Vec<u8>> {
-        let mut in_stream = InOctetStream::new(buffer.to_vec());
+        let mut in_stream = InOctetStream::new(buffer);
         let command = HostToClientCommands::from_stream(&mut in_stream)?;
         match command {
             HostToClientCommands::ChallengeType(challenge_command) => {

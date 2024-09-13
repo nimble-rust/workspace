@@ -2,9 +2,9 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-use flood_rs::{ReadOctetStream, WriteOctetStream};
+use flood_rs::prelude::*;
 use nimble_seer::prelude::*;
-use nimble_steps::{Deserialize, Serialize};
+
 use std::io;
 
 pub struct TestGame {

@@ -7,6 +7,7 @@ use crate::state::State;
 use blob_stream::out_logic_front::OutLogicFront;
 use blob_stream::out_stream::OutStreamError;
 use blob_stream::prelude::{ReceiverToSenderFrontCommands, TransferId};
+use flood_rs::{Deserialize, Serialize};
 use freelist::FreeList;
 use log::{debug, info, trace};
 use nimble_participant::ParticipantId;
@@ -19,11 +20,12 @@ use nimble_protocol::host_to_client::{
 };
 use nimble_protocol::prelude::{GameStepResponse, JoinGameRequest};
 use nimble_protocol::SessionConnectionSecret;
-use nimble_steps::GenericOctetStep;
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::fmt::Debug;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
+use tick_id::TickId;
 
 #[derive(Copy, Clone, Debug)]
 pub struct ConnectionId(pub u8);
@@ -123,7 +125,7 @@ pub struct HostLogic<StepT> {
     free_list: FreeList,
 }
 
-impl<StepT: std::clone::Clone> HostLogic<StepT> {
+impl<StepT: std::clone::Clone + Eq + Debug + Deserialize + Serialize> HostLogic<StepT> {
     pub fn new(last_known_state: State) -> Self {
         Self {
             combinator: Combinator::<StepT>::new(last_known_state.tick_id),
@@ -214,27 +216,22 @@ impl<StepT: std::clone::Clone> HostLogic<StepT> {
             .get_mut(&connection_id.0)
             .ok_or(HostLogicError::UnknownConnectionId(connection_id))?;
 
-        for (_, predicted_step_for_player) in request
-            .combined_predicted_steps
-            .predicted_steps
-            .iter()
+        for (local_index, predicted_step_for_player) in &request
+            .combined_predicted_steps.predicted_players
         {
             if let Some(participant) = connection
                 .participant_lookup
-                .get(&predicted_step_for_player.participant_party_index)
+                .get(&local_index)
             {
                 for serialized_predicted_step_for_participant in
-                    &predicted_step_for_player.serialized_predicted_steps
+                    &predicted_step_for_player.predicted_steps
                 {
-                    let _ = GenericOctetStep {
-                        payload: serialized_predicted_step_for_participant.to_vec(),
-                    };
                     connection.debug_counter += participant.borrow().client_local_index as u16;
                     info!("connection: {connection:?}");
                 }
             } else {
                 return Err(HostLogicError::UnknownPartyMemberIndex(
-                    predicted_step_for_player.participant_party_index,
+                    *local_index
                 ));
             }
         }
@@ -246,10 +243,9 @@ impl<StepT: std::clone::Clone> HostLogic<StepT> {
                 last_step_received_from_client: 0,
             },
             authoritative_steps: AuthoritativeStepRanges {
-                start_step_id: 0,
+                start_tick_id: TickId(0),
                 ranges: vec![],
             },
-            authoritative_steps: vec![],
         };
         Ok(HostToClientCommands::GameStep(game_step_response))
     }
@@ -288,7 +284,7 @@ impl<StepT: std::clone::Clone> HostLogic<StepT> {
 
         let response = DownloadGameStateResponse {
             client_request: request.request_id,
-            tick_id: nimble_protocol::host_to_client::TickId(state.tick_id.0),
+            tick_id: TickId(state.tick_id.0),
             blob_stream_channel: connection.out_blob_stream.as_ref().unwrap().transfer_id().0,
         };
         let mut commands = vec![];
@@ -317,7 +313,7 @@ impl<StepT: std::clone::Clone> HostLogic<StepT> {
         connection_id: ConnectionId,
         now: Instant,
         blob_stream_command: &ReceiverToSenderFrontCommands,
-    ) -> Result<Vec<HostToClientCommands>, HostLogicError> {
+    ) -> Result<Vec<HostToClientCommands<StepT>>, HostLogicError> {
         let connection = self
             .connections
             .get_mut(&connection_id.0)

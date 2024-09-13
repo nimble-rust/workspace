@@ -4,6 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-flood-rs = "0.0.7"
+flood-rs = "0.0.8"
 log = "0.4.22"
 mash-rs = "0.0.1"

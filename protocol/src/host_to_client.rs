@@ -2,14 +2,15 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
+use crate::client_to_host::AuthoritativeCombinedStepForAllParticipants;
+use crate::{Nonce, SessionConnectionSecret};
 use blob_stream::prelude::SenderToReceiverFrontCommands;
 use flood_rs::{Deserialize, ReadOctetStream, Serialize, WriteOctetStream};
 use io::ErrorKind;
+use nimble_participant::ParticipantId;
 use std::fmt::Debug;
 use std::io;
-
-use crate::client_to_host::AuthoritativeCombinedStepForAllParticipants;
-use crate::{Nonce, ParticipantId, SessionConnectionSecret};
+use tick_id::TickId;
 // #define NimbleSerializeCmdGameStepResponse (0x08)
 // #define NimbleSerializeCmdJoinGameResponse (0x09)
 // #define NimbleSerializeCmdGameStatePart (0x0a)
@@ -43,15 +44,15 @@ impl TryFrom<u8> for HostToClientCommand {
 }
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
-pub struct TickId(pub u32);
+pub struct TickIdUtil;
 
-impl TickId {
-    pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
-        stream.write_u32(self.0)
+impl TickIdUtil {
+    pub fn to_stream(tick_id: TickId, stream: &mut impl WriteOctetStream) -> io::Result<()> {
+        stream.write_u32(tick_id.0)
     }
 
-    pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
-        Ok(Self(stream.read_u32()?))
+    pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<TickId> {
+        Ok(TickId(stream.read_u32()?))
     }
 }
 
@@ -65,14 +66,14 @@ pub struct DownloadGameStateResponse {
 impl DownloadGameStateResponse {
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.client_request)?;
-        self.tick_id.to_stream(stream)?;
+        TickIdUtil::to_stream(self.tick_id, stream)?;
         stream.write_u16(self.blob_stream_channel)
     }
 
     pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         Ok(Self {
             client_request: stream.read_u8()?,
-            tick_id: TickId::from_stream(stream)?,
+            tick_id: TickIdUtil::from_stream(stream)?,
             blob_stream_channel: stream.read_u16()?,
         })
     }
@@ -296,13 +297,13 @@ impl<StepT: Deserialize + Serialize + Debug + Eq + Clone> AuthoritativeStepRange
 
 #[derive(Debug, PartialEq)]
 pub struct AuthoritativeStepRanges<StepT: Deserialize + Serialize + Debug + Eq + Clone> {
-    pub start_step_id: u32,
+    pub start_tick_id: TickId,
     pub ranges: Vec<AuthoritativeStepRange<StepT>>,
 }
 
 impl<StepT: Deserialize + Serialize + Debug + Eq + Clone> AuthoritativeStepRanges<StepT> {
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
-        stream.write_u32(self.start_step_id)?;
+        TickIdUtil::to_stream(self.start_tick_id, stream)?;
         stream.write_u8(self.ranges.len() as u8)?;
         for range in &self.ranges {
             range.to_stream(stream)?;
@@ -311,7 +312,7 @@ impl<StepT: Deserialize + Serialize + Debug + Eq + Clone> AuthoritativeStepRange
     }
 
     pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
-        let start_step_id = stream.read_u32()?;
+        let start_step_id = TickIdUtil::from_stream(stream)?;
         let range_count = stream.read_u8()?;
 
         let mut authoritative_step_ranges =
@@ -322,7 +323,7 @@ impl<StepT: Deserialize + Serialize + Debug + Eq + Clone> AuthoritativeStepRange
         }
 
         Ok(Self {
-            start_step_id,
+            start_tick_id: start_step_id,
             ranges: authoritative_step_ranges,
         })
     }
