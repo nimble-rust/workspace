@@ -10,7 +10,6 @@ use nimble_client::Client;
 use nimble_protocol::client_to_host::AuthoritativeCombinedStepForAllParticipants;
 use nimble_protocol::hex_output;
 use nimble_rectify::RectifyCallback;
-use nimble_sample_step::{SampleGame, SampleStep};
 use nimble_seer::prelude::*;
 use secure_random::GetRandom;
 use std::fmt::Debug;

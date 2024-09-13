@@ -219,10 +219,8 @@ impl<StepT: std::clone::Clone + Eq + Debug + Deserialize + Serialize> HostLogic<
         for (local_index, predicted_step_for_player) in
             &request.combined_predicted_steps.predicted_players
         {
-            if let Some(participant) = connection.participant_lookup.get(&local_index) {
-                for serialized_predicted_step_for_participant in
-                    &predicted_step_for_player.predicted_steps
-                {
+            if let Some(participant) = connection.participant_lookup.get(local_index) {
+                for _ in &predicted_step_for_player.predicted_steps {
                     connection.debug_counter += participant.borrow().client_local_index as u16;
                     info!("connection: {connection:?}");
                 }

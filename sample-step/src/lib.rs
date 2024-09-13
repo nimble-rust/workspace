@@ -61,7 +61,7 @@ pub struct SampleState {
 
 impl SampleState {
     pub fn update(&mut self, step: &AuthoritativeCombinedStepForAllParticipants<SampleStep>) {
-        for (_, step) in &step.authoritative_participants {
+        for step in step.authoritative_participants.values() {
             match step {
                 SampleStep::MoveLeft(amount) => self.x -= *amount as i32,
                 SampleStep::MoveRight(amount) => self.x += *amount as i32,

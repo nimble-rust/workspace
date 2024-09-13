@@ -19,7 +19,6 @@ use nimble_steps::Steps;
 use secure_random::SecureRandom;
 use std::collections::HashMap;
 use std::fmt::Debug;
-use std::hash::Hash;
 use std::{fmt, io};
 use tick_id::TickId;
 

@@ -72,11 +72,7 @@ impl<
     }
 
     pub fn waiting_for_authoritative_tick_id(&self) -> Option<TickId> {
-        if let Some(end_tick_id) = self.assent.end_tick_id() {
-            Some(end_tick_id + 1)
-        } else {
-            None
-        }
+        self.assent.end_tick_id().map(|end_tick_id| end_tick_id + 1)
     }
 
     /// Pushes an authoritative step into the [`Assent`] component. This method is used to
