@@ -14,3 +14,4 @@ nimble-steps = { path = "../steps" }
 tick-id = "0.0.7"
 secure-random = { path = "../secure-random" }
 nimble-protocol = { path = "../protocol" }
+log = "0.4.22"

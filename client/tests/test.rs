@@ -14,6 +14,7 @@ use nimble_protocol::client_to_host::{
 };
 use nimble_protocol::{hex_output, Nonce};
 use nimble_sample_step::{SampleGame, SampleStep};
+use nimble_steps::Step;
 use secure_random::GetRandom;
 //use test_log::test;
 use udp_client::UdpClient;
@@ -23,7 +24,7 @@ use udp_client::UdpClient;
 fn send_to_host() {
     let random = GetRandom {};
     let random_box = Box::new(random);
-    let mut client = Client::<SampleGame, SampleStep>::new(random_box);
+    let mut client = Client::<SampleGame, Step<SampleStep>>::new(random_box);
     let mut udp_client = UdpClient::new("127.0.0.1:23000").unwrap();
     let communicator: &mut dyn DatagramCommunicator = &mut udp_client;
     let random2 = GetRandom {};

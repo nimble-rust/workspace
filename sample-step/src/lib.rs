@@ -5,10 +5,12 @@
 use flood_rs::{
     Deserialize, InOctetStream, OutOctetStream, ReadOctetStream, Serialize, WriteOctetStream,
 };
+use log::info;
 use nimble_assent::AssentCallback;
 use nimble_protocol::client_to_host::AuthoritativeCombinedStepForAllParticipants;
 use nimble_rectify::RectifyCallback;
 use nimble_seer::SeerCallback;
+use nimble_steps::Step;
 use std::io;
 
 #[derive(Clone, Eq, PartialEq, Debug)]
@@ -19,10 +21,7 @@ pub enum SampleStep {
 }
 
 impl Serialize for SampleStep {
-    fn serialize(&self, stream: &mut impl WriteOctetStream) -> io::Result<()>
-    where
-        Self: Sized,
-    {
+    fn serialize(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         match self {
             SampleStep::MoveLeft(amount) => {
                 stream.write_u8(0x01)?;
@@ -38,10 +37,7 @@ impl Serialize for SampleStep {
 }
 
 impl Deserialize for SampleStep {
-    fn deserialize(stream: &mut impl ReadOctetStream) -> io::Result<Self>
-    where
-        Self: Sized,
-    {
+    fn deserialize(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         let octet = stream.read_u8()?;
         let value = match octet {
             0x01 => SampleStep::MoveLeft(stream.read_i16()?),
@@ -60,12 +56,21 @@ pub struct SampleState {
 }
 
 impl SampleState {
-    pub fn update(&mut self, step: &AuthoritativeCombinedStepForAllParticipants<SampleStep>) {
-        for step in step.authoritative_participants.values() {
-            match step {
-                SampleStep::MoveLeft(amount) => self.x -= *amount as i32,
-                SampleStep::MoveRight(amount) => self.x += *amount as i32,
-                SampleStep::Jump => self.y += 1,
+    pub fn update(&mut self, step: &AuthoritativeCombinedStepForAllParticipants<Step<SampleStep>>) {
+        for (participant_id, step) in &step.authoritative_participants {
+            match &step {
+                Step::Custom(custom) => match custom {
+                    SampleStep::MoveLeft(amount) => self.x -= *amount as i32,
+                    SampleStep::MoveRight(amount) => self.x += *amount as i32,
+                    SampleStep::Jump => self.y += 1,
+                },
+                Step::Forced => self.y += 1,
+                Step::WaitingForReconnect => info!("waiting for reconnect"),
+                Step::Joined(data) => info!(
+                    "participant {} joined at time {}",
+                    participant_id, data.tick_id
+                ),
+                Step::Left => info!("participant {} left", participant_id),
             }
         }
     }
@@ -130,17 +135,17 @@ impl Deserialize for SampleGame {
     }
 }
 
-impl SeerCallback<AuthoritativeCombinedStepForAllParticipants<SampleStep>> for SampleGame {
-    fn on_tick(&mut self, step: &AuthoritativeCombinedStepForAllParticipants<SampleStep>) {
+impl SeerCallback<AuthoritativeCombinedStepForAllParticipants<Step<SampleStep>>> for SampleGame {
+    fn on_tick(&mut self, step: &AuthoritativeCombinedStepForAllParticipants<Step<SampleStep>>) {
         self.predicted.update(step);
     }
 }
 
-impl AssentCallback<AuthoritativeCombinedStepForAllParticipants<SampleStep>> for SampleGame {
+impl AssentCallback<AuthoritativeCombinedStepForAllParticipants<Step<SampleStep>>> for SampleGame {
     fn on_pre_ticks(&mut self) {
         self.predicted = self.authoritative.clone();
     }
-    fn on_tick(&mut self, step: &AuthoritativeCombinedStepForAllParticipants<SampleStep>) {
+    fn on_tick(&mut self, step: &AuthoritativeCombinedStepForAllParticipants<Step<SampleStep>>) {
         self.predicted.update(step);
     }
     fn on_post_ticks(&mut self) {

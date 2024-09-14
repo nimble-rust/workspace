@@ -11,6 +11,7 @@ use nimble_protocol::client_to_host::{JoinPlayerRequest, JoinPlayerRequests};
 use nimble_protocol::prelude::*;
 use nimble_protocol::Nonce;
 use nimble_sample_step::{SampleGame, SampleStep};
+use nimble_steps::Step;
 use secure_random::GetRandom;
 use std::fmt::Debug;
 use std::time::Instant;
@@ -20,8 +21,8 @@ use tick_id::TickId;
 mod types;
 
 fn communicate<
-    SampleGame: nimble_seer::SeerCallback<AuthoritativeCombinedStepForAllParticipants<SampleStep>>
-        + nimble_assent::AssentCallback<AuthoritativeCombinedStepForAllParticipants<SampleStep>>
+    SampleGame: nimble_seer::SeerCallback<AuthoritativeCombinedStepForAllParticipants<Step<SampleStep>>>
+        + nimble_assent::AssentCallback<AuthoritativeCombinedStepForAllParticipants<Step<SampleStep>>>
         + nimble_rectify::RectifyCallback
         + Clone
         + Eq
@@ -30,9 +31,9 @@ fn communicate<
         + Serialize,
     SampleStep: Clone + Deserialize + Debug + Eq + PartialEq,
 >(
-    host: &mut HostLogic<SampleStep>,
+    host: &mut HostLogic<Step<SampleStep>>,
     connection_id: ConnectionId,
-    client: &mut ClientLogic<SampleGame, SampleStep>,
+    client: &mut ClientLogic<SampleGame, Step<SampleStep>>,
 ) where
     SampleStep: Serialize,
 {
@@ -58,12 +59,12 @@ fn client_host_integration() {
         .authoritative_octets()
         .expect("expect it possible to get state");
     let state = State::new(TickId(42), state_octets.as_slice());
-    let mut host = HostLogic::<SampleStep>::new(state);
+    let mut host = HostLogic::<Step<SampleStep>>::new(state);
     let connection = host.create_connection().expect("should create connection");
 
     let random = GetRandom {};
     let random_box = Box::new(random);
-    let mut client = ClientLogic::<SampleGame, SampleStep>::new(random_box);
+    let mut client = ClientLogic::<SampleGame, Step<SampleStep>>::new(random_box);
     let joining_player = JoinPlayerRequest { local_index: 0 };
 
     let join_game_request = JoinGameRequest {

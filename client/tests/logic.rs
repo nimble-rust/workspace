@@ -8,6 +8,7 @@ use nimble_protocol::client_to_host::{
 };
 use nimble_protocol::prelude::ClientToHostCommands;
 use nimble_sample_step::{SampleGame, SampleStep};
+use nimble_steps::Step;
 use secure_random::GetRandom;
 use test_log::test;
 
@@ -16,7 +17,7 @@ fn basic_logic() {
     let random = GetRandom {};
     let random_box = Box::new(random);
     let mut game = SampleGame::default();
-    let mut client_logic = ClientLogic::<SampleGame, SampleStep>::new(random_box);
+    let mut client_logic = ClientLogic::<SampleGame, Step<SampleStep>>::new(random_box);
 
     {
         let commands = client_logic.send();
@@ -46,10 +47,10 @@ fn send_steps() {
     let random = GetRandom {};
     let random_box = Box::new(random);
     let mut game = SampleGame::default();
-    let mut client_logic = ClientLogic::<SampleGame, SampleStep>::new(random_box);
+    let mut client_logic = ClientLogic::<SampleGame, Step<SampleStep>>::new(random_box);
 
     client_logic.add_predicted_step(PredictedStep {
-        predicted_players: [(0, SampleStep::MoveRight(3))].into(),
+        predicted_players: [(0, Step::Custom(SampleStep::MoveRight(3)))].into(),
     });
 
     {
