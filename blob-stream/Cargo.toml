@@ -9,7 +9,7 @@ repository = "https://github.com/piot/blob-stream-rs"
 
 [dependencies]
 bit-array-rs = "0.0.3"
-flood-rs = "0.0.6"
+flood-rs = "0.0.8"
 log = "0.4.22"
 test-log = "0.2.16"
 

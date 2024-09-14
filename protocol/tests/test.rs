@@ -39,7 +39,7 @@ fn check_connect() {
     };
     connect.to_stream(&mut out_stream).unwrap();
 
-    let mut in_stream = InOctetStream::new(out_stream.data);
+    let mut in_stream = InOctetStream::new(out_stream.octets_ref());
 
     let received_connect = ConnectRequest::from_stream(&mut in_stream).unwrap();
 

@@ -9,7 +9,7 @@ repository = "https://github.com/nimble-rust/client"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-flood-rs = "0.0.6"
+flood-rs = "0.0.8"
 log = "0.4.22"
 nimble-steps = { path = "../steps" }
 nimble-protocol = { path = "../protocol" }
@@ -18,14 +18,16 @@ ordered-datagram = { path = "../ordered-datagram" }
 datagram-pinger = { path = "../datagram-pinger" }
 connection-layer = { path = "../connection-layer" }
 nimble-participant-steps = { path = "../participant-steps" }
+nimble-participant = { path = "../participant" }
 nimble-rectify = { path = "../rectify" }
 nimble-assent = { path = "../assent" }
 nimble-seer = { path = "../seer" }
 blob-stream = { path = "../blob-stream" }
+tick-id = "0.0.7"
 
 [dev-dependencies]
 udp-client = { path = "../udp-client" }
 udp-connections = { path = "../udp-connections" }
 datagram = { path = "../datagram" }
 test-log = "0.2.16"
-flood-rs = "0.0.6"
+nimble-sample-step = { path = "../sample-step" }

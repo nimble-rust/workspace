@@ -2,11 +2,16 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-use crate::{Nonce, ParticipantId, SessionConnectionSecret};
+use crate::host_to_client::TickIdUtil;
+use crate::{Nonce, SessionConnectionSecret};
 use blob_stream::prelude::ReceiverToSenderFrontCommands;
-use flood_rs::{ReadOctetStream, WriteOctetStream};
+use flood_rs::{Deserialize, ReadOctetStream, Serialize, WriteOctetStream};
 use io::ErrorKind;
+use nimble_participant::ParticipantId;
+use std::collections::HashMap;
+use std::fmt::Debug;
 use std::{fmt, io};
+use tick_id::TickId;
 
 #[repr(u8)]
 enum ClientToHostCommand {
@@ -37,11 +42,11 @@ pub struct DownloadGameStateRequest {
 }
 
 impl DownloadGameStateRequest {
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
+    pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.request_id)
     }
 
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> io::Result<Self> {
+    pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         Ok(Self {
             request_id: stream.read_u8()?,
         })
@@ -49,14 +54,18 @@ impl DownloadGameStateRequest {
 }
 
 #[derive(Debug, Clone)]
-pub enum ClientToHostCommands {
+pub enum ClientToHostCommands<
+    StepT: std::clone::Clone + Debug + Eq + PartialEq + Serialize + Deserialize,
+> {
     JoinGameType(JoinGameRequest),
-    Steps(StepsRequest),
+    Steps(StepsRequest<StepT>),
     DownloadGameState(DownloadGameStateRequest),
     BlobStreamChannel(ReceiverToSenderFrontCommands),
 }
 
-impl ClientToHostCommands {
+impl<StepT: std::clone::Clone + Debug + Eq + PartialEq + Serialize + Deserialize>
+    ClientToHostCommands<StepT>
+{
     pub fn to_octet(&self) -> u8 {
         match self {
             ClientToHostCommands::Steps(_) => ClientToHostCommand::Steps as u8,
@@ -70,7 +79,7 @@ impl ClientToHostCommands {
         }
     }
 
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
+    pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.to_octet())?;
         match self {
             ClientToHostCommands::Steps(predicted_steps_and_ack) => {
@@ -88,7 +97,7 @@ impl ClientToHostCommands {
         }
     }
 
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> io::Result<Self> {
+    pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         let command_value = stream.read_u8()?;
         let command = ClientToHostCommand::try_from(command_value)?;
         let x = match command {
@@ -109,7 +118,9 @@ impl ClientToHostCommands {
     }
 }
 
-impl fmt::Display for ClientToHostCommands {
+impl<StepT: Clone + Debug + Eq + PartialEq + Serialize + Deserialize> fmt::Display
+    for ClientToHostCommands<StepT>
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ClientToHostCommands::JoinGameType(join) => write!(f, "join {:?}", join),
@@ -145,12 +156,12 @@ impl JoinGameTypeValue {
             }
         }
     }
-    pub fn to_stream(self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
+    pub fn to_stream(self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.to_octet())?;
         Ok(())
     }
 
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> io::Result<Self> {
+    pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         let join_game_type_value_raw = stream.read_u8()?;
         JoinGameTypeValue::try_from(join_game_type_value_raw)
     }
@@ -190,7 +201,7 @@ impl JoinGameType {
         }
     }
 
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
+    pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.to_octet())?;
         match self {
             JoinGameType::NoSecret => {}
@@ -202,7 +213,7 @@ impl JoinGameType {
         Ok(())
     }
 
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> io::Result<Self> {
+    pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         let join_game_type_value_raw = stream.read_u8()?;
         let value = JoinGameTypeValue::try_from(join_game_type_value_raw)?;
         let join_game_type = match value {
@@ -224,11 +235,11 @@ pub struct JoinPlayerRequest {
 }
 
 impl JoinPlayerRequest {
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
+    pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.local_index)
     }
 
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> io::Result<Self> {
+    pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         Ok(Self {
             local_index: stream.read_u8()?,
         })
@@ -241,7 +252,7 @@ pub struct JoinPlayerRequests {
 }
 
 impl JoinPlayerRequests {
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
+    pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.players.len() as u8)?;
         for player in self.players.iter() {
             player.to_stream(stream)?;
@@ -249,7 +260,7 @@ impl JoinPlayerRequests {
         Ok(())
     }
 
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> io::Result<Self> {
+    pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         let count = stream.read_u8()?;
         let mut vec = Vec::<JoinPlayerRequest>::with_capacity(count as usize);
         for v in vec.iter_mut() {
@@ -268,7 +279,7 @@ pub struct JoinGameRequest {
 }
 
 impl JoinGameRequest {
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
+    pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         self.nonce.to_stream(stream)?;
         self.join_game_type.to_stream(stream)?;
         // TODO: Add more for other join game types.
@@ -276,7 +287,7 @@ impl JoinGameRequest {
         Ok(())
     }
 
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> io::Result<Self> {
+    pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         Ok(Self {
             nonce: Nonce::from_stream(stream)?,
             join_game_type: JoinGameType::from_stream(stream)?,
@@ -292,13 +303,13 @@ pub struct StepsAck {
 }
 
 impl StepsAck {
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
+    pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u32(self.latest_received_step_tick_id)?;
         stream.write_u64(self.lost_steps_mask_after_last_received)?;
         Ok(())
     }
 
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> io::Result<Self> {
+    pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         Ok(Self {
             latest_received_step_tick_id: stream.read_u32()?,
             lost_steps_mask_after_last_received: stream.read_u64()?,
@@ -307,96 +318,149 @@ impl StepsAck {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct PredictedStepsForPlayer {
-    pub participant_party_index: u8,
-    pub first_step_id: u32,
-    pub serialized_predicted_steps: Vec<Vec<u8>>,
+pub struct AuthoritativeCombinedStepForAllParticipants<
+    StepT: Serialize + Deserialize + Debug + Clone + Eq + PartialEq,
+> {
+    pub authoritative_participants: HashMap<ParticipantId, StepT>,
 }
 
-impl PredictedStepsForPlayer {
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
-        stream.write_u8(self.participant_party_index)?;
-        stream.write_u32(self.first_step_id)?;
-        stream.write_u8(self.serialized_predicted_steps.len() as u8)?;
+impl<StepT: Serialize + Deserialize + Debug + Clone + Eq + PartialEq> Serialize
+    for AuthoritativeCombinedStepForAllParticipants<StepT>
+{
+    fn serialize(&self, stream: &mut impl WriteOctetStream) -> io::Result<()>
+    where
+        Self: Sized,
+    {
+        stream.write_u8(self.authoritative_participants.len() as u8)?;
 
-        for serialized_predicted_step in self.serialized_predicted_steps.iter() {
-            stream.write_u8(serialized_predicted_step.len() as u8)?;
-            stream.write(serialized_predicted_step)?;
+        for (participant_id, authoritative_step_for_one_participant) in
+            self.authoritative_participants.iter()
+        {
+            participant_id.to_stream(stream)?;
+            authoritative_step_for_one_participant.serialize(stream)?;
         }
-
         Ok(())
     }
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> io::Result<Self> {
-        let participant_party_index = stream.read_u8()?;
-        let first_step_id = stream.read_u32()?;
-        let step_count = stream.read_u8()?;
+}
 
-        let mut temp = vec![0u8; 256];
-        let mut steps_vec = Vec::with_capacity(step_count as usize);
+impl<StepT: Serialize + Deserialize + Debug + Clone + Eq + PartialEq> Deserialize
+    for AuthoritativeCombinedStepForAllParticipants<StepT>
+{
+    fn deserialize(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
+        let participant_count_in_combined_step = stream.read_u8()?;
 
-        for _ in 0..step_count {
-            let octet_count = stream.read_u8()? as usize;
-            stream.read(&mut temp[0..octet_count])?;
-            steps_vec.push(temp[0..octet_count].to_vec());
+        let mut authoritative_steps_map =
+            HashMap::with_capacity(participant_count_in_combined_step as usize);
+
+        for _ in 0..participant_count_in_combined_step {
+            let participant_id = ParticipantId::from_stream(stream)?;
+            let authoritative_step = StepT::deserialize(stream)?;
+            authoritative_steps_map.insert(participant_id, authoritative_step);
         }
 
         Ok(Self {
-            participant_party_index,
-            first_step_id,
-            serialized_predicted_steps: steps_vec,
+            authoritative_participants: authoritative_steps_map,
         })
     }
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct PredictedStepsForPlayers {
-    pub predicted_steps_for_players: Vec<PredictedStepsForPlayer>,
+pub struct PredictedStep<StepT: Serialize + Deserialize + Debug + Clone + Eq + PartialEq> {
+    pub predicted_players: HashMap<LocalIndex, StepT>,
 }
 
-impl PredictedStepsForPlayers {
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
-        stream.write_u8(self.predicted_steps_for_players.len() as u8)?;
+type LocalIndex = u8;
 
-        for predicted_steps_for_player in self.predicted_steps_for_players.iter() {
-            predicted_steps_for_player.to_stream(stream)?;
+#[derive(Debug, PartialEq, Clone)]
+pub struct PredictedStepsForAllPlayers<
+    StepT: Serialize + Deserialize + Debug + Clone + Eq + PartialEq,
+> {
+    pub predicted_players: HashMap<LocalIndex, PredictedStepsForOnePlayer<StepT>>,
+}
+
+impl<StepT: Serialize + Deserialize + Debug + Clone + Eq + PartialEq>
+    PredictedStepsForAllPlayers<StepT>
+{
+    pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
+        stream.write_u8(self.predicted_players.len() as u8)?;
+
+        for (local_index, predicted_steps_for_one_player) in self.predicted_players.iter() {
+            stream.write_u8(*local_index)?;
+            predicted_steps_for_one_player.to_stream(stream)?;
         }
 
         Ok(())
     }
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> io::Result<Self> {
+
+    pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         let player_count = stream.read_u8()?;
 
-        let mut predicted_steps_for_players =
-            Vec::<PredictedStepsForPlayer>::with_capacity(player_count as usize);
+        let mut players_vector = HashMap::with_capacity(player_count as usize);
 
         for _ in 0..player_count {
-            let predicted_steps_for_player = PredictedStepsForPlayer::from_stream(stream)?;
+            let predicted_steps_for_one_player = PredictedStepsForOnePlayer::from_stream(stream)?;
+            let index = stream.read_u8()?;
+            players_vector.insert(index, predicted_steps_for_one_player);
+        }
+
+        Ok(Self {
+            predicted_players: players_vector,
+        })
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct PredictedStepsForOnePlayer<StepT: Clone + Eq + PartialEq + Serialize + Deserialize> {
+    pub first_tick_id: TickId,
+    pub predicted_steps: Vec<StepT>,
+}
+
+impl<StepT: Clone + Eq + PartialEq + Serialize + Deserialize> PredictedStepsForOnePlayer<StepT> {
+    pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
+        TickIdUtil::to_stream(self.first_tick_id, stream)?;
+        stream.write_u8(self.predicted_steps.len() as u8)?;
+
+        for predicted_step_for_player in self.predicted_steps.iter() {
+            predicted_step_for_player.serialize(stream)?;
+        }
+
+        Ok(())
+    }
+    pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
+        let first_tick_id = TickIdUtil::from_stream(stream)?;
+        let step_count = stream.read_u8()?;
+
+        let mut predicted_steps_for_players = Vec::<StepT>::with_capacity(step_count as usize);
+
+        for _ in 0..step_count {
+            let predicted_steps_for_player = StepT::deserialize(stream)?;
             predicted_steps_for_players.push(predicted_steps_for_player);
         }
 
         Ok(Self {
-            predicted_steps_for_players,
+            first_tick_id,
+            predicted_steps: predicted_steps_for_players,
         })
     }
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct StepsRequest {
+pub struct StepsRequest<StepT: Clone + Eq + PartialEq + Serialize + Deserialize + Debug> {
     pub ack: StepsAck,
-    pub combined_predicted_steps: PredictedStepsForPlayers,
+    pub combined_predicted_steps: PredictedStepsForAllPlayers<StepT>,
 }
 
-impl StepsRequest {
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
+impl<StepT: Clone + Eq + PartialEq + Serialize + Deserialize + Debug> StepsRequest<StepT> {
+    pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         self.ack.to_stream(stream)?;
         self.combined_predicted_steps.to_stream(stream)?;
         Ok(())
     }
 
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> io::Result<Self> {
+    pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         Ok(Self {
             ack: StepsAck::from_stream(stream)?,
-            combined_predicted_steps: PredictedStepsForPlayers::from_stream(stream)?,
+            combined_predicted_steps: PredictedStepsForAllPlayers::from_stream(stream)?,
         })
     }
 }

@@ -16,4 +16,5 @@ nimble-participant = { path = "../participant" }
 
 log = "0.4.22"
 test-log = "0.2.16"
-flood-rs = "0.0.6"
+flood-rs = "0.0.8"
+tick-id = "0.0.7"

@@ -40,7 +40,7 @@ pub enum HostToClientOobCommands {
 }
 
 impl ConnectionAccepted {
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
+    pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.flags)?;
         self.response_to_nonce.to_stream(stream)?;
         self.host_assigned_connection_id.to_stream(stream)?;
@@ -48,7 +48,7 @@ impl ConnectionAccepted {
         Ok(())
     }
 
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> io::Result<Self> {
+    pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         Ok(Self {
             flags: stream.read_u8()?,
             response_to_nonce: Nonce::from_stream(stream)?,
@@ -65,7 +65,7 @@ impl HostToClientOobCommands {
         }
     }
 
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
+    pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.to_octet())?;
         match self {
             HostToClientOobCommands::ConnectType(connect_command) => {
@@ -74,7 +74,7 @@ impl HostToClientOobCommands {
         }
     }
 
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> io::Result<Self> {
+    pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         let command_value = stream.read_u8()?;
         let command = HostToClientOobCommand::try_from(command_value)?;
         let x = match command {

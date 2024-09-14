@@ -2,9 +2,9 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-use flood_rs::ReadOctetStream;
+use flood_rs::{Deserialize, ReadOctetStream};
 use nimble_participant::ParticipantId;
-use nimble_steps::{Deserialize, Step};
+use nimble_steps::Step;
 use std::collections::HashMap;
 use std::io;
 

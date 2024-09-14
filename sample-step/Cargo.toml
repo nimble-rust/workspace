@@ -1,12 +1,7 @@
 [package]
-name = "nimble-rust"
+name = "nimble-sample-step"
 version = "0.0.1"
 edition = "2021"
-license = "MIT"
-description = "Nimble"
-repository = "https://github.com/nimble-rust/nimble"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 nimble-client = { path = "../client" }
@@ -19,7 +14,4 @@ nimble-steps = { path = "../steps" }
 tick-id = "0.0.7"
 secure-random = { path = "../secure-random" }
 nimble-protocol = { path = "../protocol" }
-nimble-sample-step = { path = "../sample-step" }
-
-[dev-dependencies]
-test-log = "0.2.16"
+log = "0.4.22"

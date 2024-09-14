@@ -4,8 +4,7 @@
  */
 pub use {
     crate::client_to_host::{
-        ClientToHostCommands, JoinGameRequest, PredictedStepsForPlayer, PredictedStepsForPlayers,
-        StepsAck, StepsRequest,
+        ClientToHostCommands, JoinGameRequest, PredictedStepsForOnePlayer, StepsAck, StepsRequest,
     },
     crate::client_to_host_oob::ConnectRequest,
     crate::host_to_client::{GameStepResponse, HostToClientCommands, JoinGameAccepted},

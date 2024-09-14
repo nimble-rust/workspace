@@ -17,6 +17,8 @@ tick-id = "0.0.7"
 nimble-protocol = { path = "../protocol" }
 freelist = { path = "../freelist" }
 log = "0.4.22"
+flood-rs = "0.0.8"
 
 [dev-dependencies]
 test-log = "0.2.16"
+nimble-sample-step = { path = "../sample-step" }

@@ -2,7 +2,7 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-use flood_rs::{ReadOctetStream, WriteOctetStream};
+use flood_rs::prelude::*;
 use std::collections::VecDeque;
 use std::io;
 use tick_id::TickId;
@@ -38,8 +38,21 @@ impl Deserialize for GenericOctetStep {
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub struct JoinedData {
-    pub participant_id: u8,
     pub tick_id: TickId,
+}
+
+impl Serialize for JoinedData {
+    fn serialize(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
+        stream.write_u32(self.tick_id.0)
+    }
+}
+
+impl Deserialize for JoinedData {
+    fn deserialize(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
+        Ok(Self {
+            tick_id: TickId(stream.read_u32()?),
+        })
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
@@ -51,16 +64,46 @@ pub enum Step<T> {
     Custom(T),
 }
 
-pub trait Deserialize {
-    fn deserialize(stream: &mut impl ReadOctetStream) -> io::Result<Self>
-    where
-        Self: Sized;
+impl<T> Step<T> {
+    #[must_use]
+    pub fn to_octet(&self) -> u8 {
+        match self {
+            Step::Forced => 0x01,
+            Step::WaitingForReconnect => 0x02,
+            Step::Joined(_) => 0x03,
+            Step::Left => 0x04,
+            Step::Custom(_) => 0x05,
+        }
+    }
 }
 
-pub trait Serialize {
-    fn serialize(&self, stream: &mut impl WriteOctetStream) -> io::Result<()>
-    where
-        Self: Sized;
+impl<T: Serialize> Serialize for Step<T> {
+    fn serialize(&self, stream: &mut impl flood_rs::WriteOctetStream) -> io::Result<()> {
+        stream.write_u8(self.to_octet())?;
+        match self {
+            Step::Joined(join) => join.serialize(stream),
+            Step::Custom(custom) => custom.serialize(stream),
+            _ => Ok(()),
+        }
+    }
+}
+
+impl<T: Deserialize> Deserialize for Step<T> {
+    fn deserialize(stream: &mut impl flood_rs::ReadOctetStream) -> io::Result<Self> {
+        let step_type = stream.read_u8()?;
+        let t = match step_type {
+            0x01 => Step::Forced,
+            0x02 => Step::WaitingForReconnect,
+            0x03 => Step::Joined(JoinedData::deserialize(stream)?),
+            0x04 => Step::Left,
+            0x05 => Step::Custom(T::deserialize(stream)?),
+            _ => Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "invalid input, unknown step type",
+            ))?,
+        };
+        Ok(t)
+    }
 }
 
 #[derive(Clone)]

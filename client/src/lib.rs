@@ -12,10 +12,14 @@ use connection_layer::{
     ConnectionSecretSeed,
 };
 use datagram_pinger::{client_in_ping, client_out_ping, ClientTime};
-use flood_rs::{InOctetStream, OutOctetStream, ReadOctetStream, WriteOctetStream};
+use flood_rs::{
+    Deserialize, InOctetStream, OutOctetStream, ReadOctetStream, Serialize, WriteOctetStream,
+};
 use log::info;
 use nimble_assent::AssentCallback;
-use nimble_protocol::client_to_host::JoinGameRequest;
+use nimble_protocol::client_to_host::{
+    AuthoritativeCombinedStepForAllParticipants, JoinGameRequest, PredictedStep,
+};
 use nimble_protocol::client_to_host_oob::ClientToHostOobCommands;
 use nimble_protocol::host_to_client::HostToClientCommands;
 use nimble_protocol::host_to_client_oob::HostToClientOobCommands;
@@ -25,6 +29,7 @@ use nimble_rectify::RectifyCallback;
 use nimble_seer::SeerCallback;
 use ordered_datagram::{OrderedIn, OrderedOut};
 use secure_random::SecureRandom;
+use std::fmt::Debug;
 use std::io;
 use std::io::{Error, ErrorKind};
 
@@ -35,8 +40,10 @@ enum ClientPhase {
 }
 
 pub struct Client<
-    Game: SeerCallback<StepT> + AssentCallback<StepT> + RectifyCallback,
-    StepT: Clone + nimble_steps::Deserialize + nimble_steps::Serialize,
+    Game: SeerCallback<AuthoritativeCombinedStepForAllParticipants<StepT>>
+        + AssentCallback<AuthoritativeCombinedStepForAllParticipants<StepT>>
+        + RectifyCallback,
+    StepT: Clone + Deserialize + Serialize + Eq + PartialEq + Debug,
 > {
     phase: ClientPhase,
     logic: Option<ClientLogic<Game, StepT>>,
@@ -47,8 +54,10 @@ pub struct Client<
 }
 
 impl<
-        Game: SeerCallback<StepT> + AssentCallback<StepT> + RectifyCallback,
-        StepT: Clone + nimble_steps::Deserialize + nimble_steps::Serialize,
+        Game: SeerCallback<AuthoritativeCombinedStepForAllParticipants<StepT>>
+            + AssentCallback<AuthoritativeCombinedStepForAllParticipants<StepT>>
+            + RectifyCallback,
+        StepT: Clone + Deserialize + Serialize + Eq + Debug,
     > Client<Game, StepT>
 {
     pub fn new(mut random: Box<dyn SecureRandom>) -> Client<Game, StepT> {
@@ -84,14 +93,14 @@ impl<
             .map(|logic| logic.update(game))
     }
 
-    pub fn add_predicted_step(&mut self, step: StepT) -> Result<(), String> {
+    pub fn add_predicted_step(&mut self, step: PredictedStep<StepT>) -> Result<(), String> {
         self.logic
             .as_mut()
             .ok_or("Logic is not initialized".to_string())
             .map(|logic| logic.add_predicted_step(step))
     }
 
-    fn write_header(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
+    fn write_header(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         match self.phase {
             ClientPhase::Connected(_, _) => {
                 prepare_out_stream(stream)?; // Add hash stream
@@ -118,7 +127,7 @@ impl<
         seed: ConnectionSecretSeed,
         out_stream: &mut OutOctetStream,
     ) -> io::Result<()> {
-        let payload = out_stream.data.as_mut_slice();
+        let mut payload = out_stream.octets();
         let mut hash_stream = OutOctetStream::new();
         let payload_to_calculate_on = &payload[5..];
         info!("payload: {:?}", payload_to_calculate_on);
@@ -128,7 +137,7 @@ impl<
             seed,
             payload_to_calculate_on,
         )?; // Write hash connection layer header
-        payload[..hash_stream.data.len()].copy_from_slice(hash_stream.data.as_slice());
+        payload[..hash_stream.octets().len()].copy_from_slice(hash_stream.octets_ref());
         Ok(())
     }
 
@@ -166,7 +175,7 @@ impl<
             }
         }
 
-        let datagrams = vec![out_stream.data];
+        let datagrams = vec![out_stream.octets()];
         Ok(datagrams)
     }
 
@@ -204,7 +213,7 @@ impl<
     }
 
     pub fn receive(&mut self, datagram: &[u8]) -> io::Result<()> {
-        let mut in_stream = InOctetStream::new(datagram.to_vec());
+        let mut in_stream = InOctetStream::new(datagram);
         let connection_mode = ConnectionLayerMode::from_stream(&mut in_stream)?;
         match connection_mode {
             ConnectionLayerMode::OOB => {

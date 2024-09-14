@@ -18,12 +18,12 @@ impl DatagramId {
         self.0
     }
 
-    fn to_stream(self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
+    fn to_stream(self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u16(self.0)
     }
 
     #[allow(unused)]
-    fn from_stream(stream: &mut dyn ReadOctetStream) -> io::Result<DatagramId> {
+    fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<DatagramId> {
         Ok(Self(stream.read_u16()?))
     }
 
@@ -62,7 +62,7 @@ impl OrderedOut {
             sequence_to_send: DatagramId(0),
         }
     }
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
+    pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         self.sequence_to_send.to_stream(stream)
     }
 }
@@ -73,7 +73,7 @@ pub struct OrderedIn {
 }
 
 impl OrderedIn {
-    pub fn read_and_verify(&mut self, stream: &mut dyn ReadOctetStream) -> io::Result<()> {
+    pub fn read_and_verify(&mut self, stream: &mut impl ReadOctetStream) -> io::Result<()> {
         let potential_expected_or_successor = DatagramId::from_stream(stream)?;
 
         if self

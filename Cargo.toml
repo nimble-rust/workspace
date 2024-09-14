@@ -1,4 +1,4 @@
 [workspace]
-members = ["nimble", "assent", "client", "host", "blob-stream", "participant", "participant-steps", "steps", "nimble", "seer", "rectify", "freelist", "protocol", "udp-client", "datagram", "udp-connections", "secure-random", "ordered-datagram", "datagram-pinger", "connection-layer", "cli", "example_client"]
+members = ["nimble", "assent", "client", "host", "blob-stream", "participant", "participant-steps", "steps", "nimble", "seer", "rectify", "freelist", "protocol", "udp-client", "datagram", "udp-connections", "secure-random", "ordered-datagram", "datagram-pinger", "connection-layer", "cli", "example_client", "sample-step"]
 resolver = "2"
 

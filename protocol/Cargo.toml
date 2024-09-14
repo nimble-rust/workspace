@@ -8,6 +8,8 @@ repository = "https://github.com/nimble-rust/protocol"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-flood-rs = "0.0.6"
+flood-rs = "0.0.8"
 connection-layer = { path = "../connection-layer" }
 blob-stream = { path = "../blob-stream" }
+nimble-participant = { path = "../participant" }
+tick-id = "0.0.7"

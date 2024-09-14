@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 nimble-steps = { path = "../steps" }
 nimble-protocol = { path = "../protocol" }
-flood-rs = "0.0.6"
+flood-rs = "0.0.8"
 secure-random = { path = "../secure-random" }
 ordered-datagram = { path = "../ordered-datagram" }
 datagram-pinger = { path = "../datagram-pinger" }
@@ -19,6 +19,7 @@ datagram = { path = "../datagram" }
 nimble-seer = { path = "../seer" }
 nimble-assent = { path = "../assent" }
 nimble-rectify = { path = "../rectify" }
+nimble-sample-step = { path = "../sample-step" }
 
 [dev-dependencies]
 env_logger = "0.11.3"

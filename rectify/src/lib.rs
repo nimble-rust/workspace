@@ -4,9 +4,10 @@
  */
 pub mod prelude;
 
+use flood_rs::Deserialize;
 use nimble_assent::{Assent, AssentCallback, UpdateState};
 use nimble_seer::{Seer, SeerCallback};
-use nimble_steps::Deserialize;
+use tick_id::TickId;
 
 /// A callback trait that allows a game to handle the event when the authoritative state
 pub trait RectifyCallback {
@@ -68,6 +69,10 @@ impl<
             self.seer.received_authoritative(end_tick_id);
         }
         self.seer.push(step)
+    }
+
+    pub fn waiting_for_authoritative_tick_id(&self) -> Option<TickId> {
+        self.assent.end_tick_id().map(|end_tick_id| end_tick_id + 1)
     }
 
     /// Pushes an authoritative step into the [`Assent`] component. This method is used to

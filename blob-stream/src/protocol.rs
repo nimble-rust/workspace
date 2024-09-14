@@ -17,7 +17,7 @@ impl SetChunkData {
     /// This function will return an `io::Error` if there is an issue with writing to the stream.
     /// This could happen if the stream is closed or if there are underlying I/O errors during the write operation.
     #[allow(clippy::cast_possible_truncation)]
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
+    pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u32(self.chunk_index)?;
         stream.write_u16(self.payload.len() as u16)?;
         stream.write(&self.payload[..])?;
@@ -28,7 +28,7 @@ impl SetChunkData {
     ///
     /// This function will return an `io::Error` if there is an issue with writing to the stream.
     /// This could happen if the stream is closed or if there are underlying I/O errors during the write operation.
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> io::Result<Self> {
+    pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         let chunk_index = stream.read_u32()?;
         let octet_length = stream.read_u16()?;
         let mut payload = vec![0u8; octet_length as usize];
@@ -50,7 +50,7 @@ impl TransferId {
     /// This function will return an `io::Error` if there is an issue with writing to the stream.
     /// This could happen if the stream is closed or if there are underlying I/O errors during the write operation.
 
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
+    pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u16(self.0)
     }
 
@@ -58,7 +58,7 @@ impl TransferId {
     ///
     /// This function will return an `io::Error` if there is an issue with writing to the stream.
     /// This could happen if the stream is closed or if there are underlying I/O errors during the write operation.
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> io::Result<Self> {
+    pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         Ok(Self(stream.read_u16()?))
     }
 }
@@ -76,7 +76,7 @@ impl AckChunkData {
     ///
     /// This function will return an `io::Error` if there is an issue with writing to the stream.
     /// This could happen if the stream is closed or if there are underlying I/O errors during the write operation.
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
+    pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u32(self.waiting_for_chunk_index)?;
         stream.write_u64(self.receive_mask_after_last)?;
         Ok(())
@@ -86,7 +86,7 @@ impl AckChunkData {
     ///
     /// This function will return an `io::Error` if there is an issue with writing to the stream.
     /// This could happen if the stream is closed or if there are underlying I/O errors during the write operation.
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> io::Result<Self> {
+    pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         Ok(Self {
             waiting_for_chunk_index: stream.read_u32()?,
             receive_mask_after_last: stream.read_u64()?,
@@ -107,7 +107,7 @@ impl StartTransferData {
     /// This function will return an `io::Error` if there is an issue with writing to the stream.
     /// This could happen if the stream is closed or if there are underlying I/O errors during the write operation.
     #[allow(clippy::cast_possible_truncation)]
-    pub fn to_stream(&self, stream: &mut dyn WriteOctetStream) -> io::Result<()> {
+    pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u16(self.transfer_id)?;
         stream.write_u32(self.total_octet_size)?;
         stream.write_u16(self.chunk_size)?;
@@ -118,7 +118,7 @@ impl StartTransferData {
     ///
     /// This function will return an `io::Error` if there is an issue with writing to the stream.
     /// This could happen if the stream is closed or if there are underlying I/O errors during the write operation.
-    pub fn from_stream(stream: &mut dyn ReadOctetStream) -> io::Result<Self> {
+    pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         let transfer_id = stream.read_u16()?;
         let total_octet_size = stream.read_u32()?;
         let chunk_size = stream.read_u16()?;
