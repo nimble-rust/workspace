@@ -85,14 +85,14 @@ pub struct GameStatePart {
 }
 
 #[derive(Debug)]
-pub enum HostToClientCommands<StepT: Deserialize + Serialize + Debug + Clone + Eq> {
+pub enum HostToClientCommands<StepT: Deserialize + Serialize + Debug + Clone> {
     JoinGame(JoinGameAccepted),
     GameStep(GameStepResponse<StepT>),
     DownloadGameState(DownloadGameStateResponse),
     BlobStreamChannel(SenderToReceiverFrontCommands),
 }
 
-impl<StepT: Deserialize + Serialize + Debug + Clone + Eq> HostToClientCommands<StepT> {
+impl<StepT: Deserialize + Serialize + Debug + Clone> HostToClientCommands<StepT> {
     pub fn to_octet(&self) -> u8 {
         match self {
             HostToClientCommands::JoinGame(_) => HostToClientCommand::JoinGame as u8,
@@ -263,12 +263,12 @@ impl GameStepResponseHeader {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct AuthoritativeStepRange<StepT: Deserialize + Serialize + Debug + Eq + Clone> {
+pub struct AuthoritativeStepRange<StepT: Deserialize + Serialize + Debug + Clone> {
     pub delta_steps_from_previous: u8,
     pub authoritative_steps: Vec<AuthoritativeCombinedStepForAllParticipants<StepT>>,
 }
 
-impl<StepT: Deserialize + Serialize + Debug + Eq + Clone> AuthoritativeStepRange<StepT> {
+impl<StepT: Deserialize + Serialize + Debug + Clone> AuthoritativeStepRange<StepT> {
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.delta_steps_from_previous)?;
         stream.write_u8(self.authoritative_steps.len() as u8)?;
@@ -300,12 +300,12 @@ impl<StepT: Deserialize + Serialize + Debug + Eq + Clone> AuthoritativeStepRange
 }
 
 #[derive(Debug, PartialEq)]
-pub struct AuthoritativeStepRanges<StepT: Deserialize + Serialize + Debug + Eq + Clone> {
+pub struct AuthoritativeStepRanges<StepT: Deserialize + Serialize + Debug + Clone> {
     pub start_tick_id: TickId,
     pub ranges: Vec<AuthoritativeStepRange<StepT>>,
 }
 
-impl<StepT: Deserialize + Serialize + Debug + Eq + Clone> AuthoritativeStepRanges<StepT> {
+impl<StepT: Deserialize + Serialize + Debug + Clone> AuthoritativeStepRanges<StepT> {
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         TickIdUtil::to_stream(self.start_tick_id, stream)?;
         stream.write_u8(self.ranges.len() as u8)?;
@@ -334,12 +334,12 @@ impl<StepT: Deserialize + Serialize + Debug + Eq + Clone> AuthoritativeStepRange
 }
 
 #[derive(Debug)]
-pub struct GameStepResponse<StepT: Serialize + Deserialize + Debug + Clone + Eq> {
+pub struct GameStepResponse<StepT: Serialize + Deserialize + Debug + Clone> {
     pub response_header: GameStepResponseHeader,
     pub authoritative_steps: AuthoritativeStepRanges<StepT>,
 }
 
-impl<StepT: Deserialize + Serialize + Debug + Clone + Eq> GameStepResponse<StepT> {
+impl<StepT: Deserialize + Serialize + Debug + Clone> GameStepResponse<StepT> {
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         self.response_header.to_stream(stream)?;
         self.authoritative_steps.to_stream(stream)

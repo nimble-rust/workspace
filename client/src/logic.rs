@@ -107,7 +107,7 @@ pub struct ClientLogic<
     Game: SeerCallback<AuthoritativeCombinedStepForAllParticipants<StepT>>
         + AssentCallback<AuthoritativeCombinedStepForAllParticipants<StepT>>
         + RectifyCallback,
-    StepT: Clone + Deserialize + Serialize + Debug + Eq + PartialEq,
+    StepT: Clone + Deserialize + Serialize + Debug,
 > {
     phase: Phase,
     joining_player: Option<JoinGameRequest>,
@@ -129,7 +129,7 @@ impl<
         Game: SeerCallback<AuthoritativeCombinedStepForAllParticipants<StepT>>
             + AssentCallback<AuthoritativeCombinedStepForAllParticipants<StepT>>
             + RectifyCallback,
-        StepT: Clone + Deserialize + Serialize + Debug + Eq + PartialEq,
+        StepT: Clone + Deserialize + Serialize + Debug,
     > ClientLogic<Game, StepT>
 {
     pub fn new(random: Box<dyn SecureRandom>) -> ClientLogic<Game, StepT> {

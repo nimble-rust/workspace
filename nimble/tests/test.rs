@@ -25,8 +25,6 @@ fn communicate<
         + nimble_assent::AssentCallback<AuthoritativeCombinedStepForAllParticipants<Step<SampleStep>>>
         + nimble_rectify::RectifyCallback
         + Clone
-        + Eq
-        + Debug
         + Deserialize
         + Serialize,
     SampleStep: Clone + Deserialize + Debug + Eq + PartialEq,

@@ -43,7 +43,7 @@ pub struct Client<
     Game: SeerCallback<AuthoritativeCombinedStepForAllParticipants<StepT>>
         + AssentCallback<AuthoritativeCombinedStepForAllParticipants<StepT>>
         + RectifyCallback,
-    StepT: Clone + Deserialize + Serialize + Eq + PartialEq + Debug,
+    StepT: Clone + Deserialize + Serialize + Debug,
 > {
     phase: ClientPhase,
     logic: Option<ClientLogic<Game, StepT>>,
@@ -57,7 +57,7 @@ impl<
         Game: SeerCallback<AuthoritativeCombinedStepForAllParticipants<StepT>>
             + AssentCallback<AuthoritativeCombinedStepForAllParticipants<StepT>>
             + RectifyCallback,
-        StepT: Clone + Deserialize + Serialize + Eq + Debug,
+        StepT: Clone + Deserialize + Serialize + Debug,
     > Client<Game, StepT>
 {
     pub fn new(mut random: Box<dyn SecureRandom>) -> Client<Game, StepT> {
@@ -167,7 +167,7 @@ impl<
             ClientPhase::Connected(connection_id, seed) => {
                 let client_commands_to_send = self.logic.as_mut().expect("reason").send();
                 for command_to_send in client_commands_to_send.iter() {
-                    info!("sending command {}", command_to_send);
+                    info!("sending command {:?}", command_to_send);
                     command_to_send.to_stream(&mut out_stream)?;
                 }
                 info!("writing connected header");

@@ -36,7 +36,7 @@ impl Deserialize for GenericOctetStep {
     }
 }
 
-#[derive(Debug, Eq, PartialEq, Copy, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct JoinedData {
     pub tick_id: TickId,
 }
@@ -55,7 +55,7 @@ impl Deserialize for JoinedData {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)] // Clone is needed since it can be in collections (like pending steps queue), Eq and PartialEq is to be able to use in tests, Debug for debug output.
 pub enum Step<T> {
     Forced,
     WaitingForReconnect,

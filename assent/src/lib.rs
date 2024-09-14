@@ -9,7 +9,7 @@ use std::marker::PhantomData;
 use nimble_steps::Steps;
 use tick_id::TickId;
 
-pub trait AssentCallback<CombinedStepT: Clone> {
+pub trait AssentCallback<CombinedStepT> {
     fn on_pre_ticks(&mut self) {}
 
     fn on_tick(&mut self, step: &CombinedStepT);
@@ -26,7 +26,6 @@ pub enum UpdateState {
 // Define the Assent struct
 pub struct Assent<C, CombinedStepT>
 where
-    CombinedStepT: Clone,
     C: AssentCallback<CombinedStepT>,
 {
     phantom: PhantomData<C>,
@@ -35,7 +34,6 @@ where
 
 impl<C, CombinedStepT> Default for Assent<C, CombinedStepT>
 where
-    CombinedStepT: Clone,
     C: AssentCallback<CombinedStepT>,
 {
     fn default() -> Self {
@@ -45,7 +43,6 @@ where
 
 impl<C, CombinedStepT> Assent<C, CombinedStepT>
 where
-    CombinedStepT: Clone,
     C: AssentCallback<CombinedStepT>,
 {
     pub fn new() -> Self {

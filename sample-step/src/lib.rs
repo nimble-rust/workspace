@@ -13,7 +13,7 @@ use nimble_seer::SeerCallback;
 use nimble_steps::Step;
 use std::io;
 
-#[derive(Clone, Eq, PartialEq, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SampleStep {
     MoveLeft(i16),
     MoveRight(i16),

@@ -4,7 +4,6 @@
  */
 pub mod prelude;
 
-use flood_rs::Deserialize;
 use nimble_assent::{Assent, AssentCallback, UpdateState};
 use nimble_seer::{Seer, SeerCallback};
 use tick_id::TickId;
@@ -16,28 +15,21 @@ pub trait RectifyCallback {
 
 /// The `Rectify` struct coordinates between the [`Assent`] and [`Seer`] components, managing
 /// authoritative and predicted game states.
-pub struct Rectify<
-    Game: AssentCallback<StepT> + SeerCallback<StepT> + RectifyCallback,
-    StepT: Deserialize + Clone,
-> {
+pub struct Rectify<Game: AssentCallback<StepT> + SeerCallback<StepT> + RectifyCallback, StepT> {
     assent: Assent<Game, StepT>,
     seer: Seer<Game, StepT>,
 }
 
-impl<
-        Game: AssentCallback<StepT> + SeerCallback<StepT> + RectifyCallback,
-        StepT: Clone + Deserialize,
-    > Default for Rectify<Game, StepT>
+impl<Game: AssentCallback<StepT> + SeerCallback<StepT> + RectifyCallback, StepT> Default
+    for Rectify<Game, StepT>
 {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<
-        Game: AssentCallback<StepT> + SeerCallback<StepT> + RectifyCallback,
-        StepT: Clone + Deserialize,
-    > Rectify<Game, StepT>
+impl<Game: AssentCallback<StepT> + SeerCallback<StepT> + RectifyCallback, StepT>
+    Rectify<Game, StepT>
 {
     /// Creates a new `Rectify` instance, initializing both [`Assent`] and [`Seer`] components.
     ///
