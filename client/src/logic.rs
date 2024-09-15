@@ -2,7 +2,8 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-use blob_stream::prelude::FrontLogic;
+use crate::err::{ClientError, ClientErrorKind, ErrorLevel};
+use blob_stream::prelude::{FrontLogic, SenderToReceiverFrontCommands};
 use flood_rs::{Deserialize, Serialize};
 use log::info;
 use nimble_assent::prelude::*;
@@ -11,92 +12,15 @@ use nimble_protocol::client_to_host::{
     AuthoritativeCombinedStepForAllParticipants, DownloadGameStateRequest, PredictedStep,
     PredictedStepsForAllPlayers,
 };
+use nimble_protocol::host_to_client::DownloadGameStateResponse;
 use nimble_protocol::prelude::*;
-use nimble_protocol::Nonce;
 use nimble_rectify::prelude::*;
 use nimble_seer::prelude::*;
 use nimble_steps::Steps;
 use secure_random::SecureRandom;
 use std::collections::HashMap;
 use std::fmt::Debug;
-use std::{fmt, io};
 use tick_id::TickId;
-
-#[derive(Eq, Debug, PartialEq)]
-pub enum ErrorLevel {
-    Info,     // Informative, can be ignored
-    Warning,  // Should be logged, but recoverable
-    Critical, // Requires immediate attention, unrecoverable
-}
-
-#[derive(Debug)]
-pub enum ClientError {
-    Single(ClientErrorKind),
-    Multiple(Vec<ClientErrorKind>),
-}
-
-impl fmt::Display for ClientError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Single(error) => std::fmt::Display::fmt(&error, f),
-            Self::Multiple(errors) => {
-                writeln!(f, "Multiple errors occurred:")?;
-
-                for (index, error) in errors.iter().enumerate() {
-                    writeln!(f, "{}: {}", index + 1, error)?;
-                }
-
-                Ok(())
-            }
-        }
-    }
-}
-
-#[derive(Debug)]
-pub enum ClientErrorKind {
-    Unexpected,
-    IoErr(io::Error),
-    WrongConnectResponseNonce(Nonce),
-    WrongDownloadRequestId,
-    DownloadResponseWasUnexpected,
-}
-
-impl ClientErrorKind {
-    pub fn error_level(&self) -> ErrorLevel {
-        match self {
-            Self::IoErr(_) => ErrorLevel::Critical,
-            Self::WrongConnectResponseNonce(_) => ErrorLevel::Info,
-            Self::WrongDownloadRequestId => ErrorLevel::Warning,
-            Self::DownloadResponseWasUnexpected => ErrorLevel::Info,
-            Self::Unexpected => ErrorLevel::Critical,
-        }
-    }
-}
-
-impl fmt::Display for ClientErrorKind {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Unexpected => {
-                write!(f, "Unexpected")
-            }
-            Self::IoErr(io_err) => {
-                write!(f, "io:err {:?}", io_err)
-            }
-            Self::WrongConnectResponseNonce(nonce) => {
-                write!(f, "wrong nonce in reply to connect {:?}", nonce)
-            }
-            Self::WrongDownloadRequestId => {
-                write!(f, "WrongDownloadRequestId")
-            }
-            Self::DownloadResponseWasUnexpected => {
-                write!(f, "DownloadResponseWasUnexpected")
-            }
-        }
-    }
-}
-
-impl std::error::Error for ClientErrorKind {} // it implements Debug and Display
-impl std::error::Error for ClientError {} // it implements Debug and Display
 
 #[derive(PartialEq, Debug)]
 enum Phase {
@@ -267,6 +191,32 @@ impl<
         Ok(())
     }
 
+    fn on_download_state_response(
+        &mut self,
+        download_response: &DownloadGameStateResponse,
+    ) -> Result<(), ClientErrorKind> {
+        if self.download_state_request_id.is_none() {
+            return Err(ClientErrorKind::DownloadResponseWasUnexpected);
+        } else if download_response.client_request != self.download_state_request_id.unwrap() {
+            return Err(ClientErrorKind::WrongDownloadRequestId);
+        }
+        self.downloading_game_state_tick_id = download_response.tick_id;
+        Ok(())
+    }
+
+    fn on_blob_stream(
+        &mut self,
+        blob_stream_command: &SenderToReceiverFrontCommands,
+    ) -> Result<(), ClientErrorKind> {
+        let answer = self
+            .blob_stream_client
+            .update(blob_stream_command)
+            .map_err(ClientErrorKind::IoErr)?;
+        self.commands_to_send
+            .push(ClientToHostCommands::BlobStreamChannel(answer));
+        Ok(())
+    }
+
     fn receive_cmd(
         &mut self,
         command: &HostToClientCommands<StepT>,
@@ -279,22 +229,10 @@ impl<
                 self.on_game_step(game_step_response)?
             }
             HostToClientCommands::DownloadGameState(download_response) => {
-                if self.download_state_request_id.is_none() {
-                    return Err(ClientErrorKind::DownloadResponseWasUnexpected);
-                } else if download_response.client_request
-                    != self.download_state_request_id.unwrap()
-                {
-                    return Err(ClientErrorKind::WrongDownloadRequestId);
-                }
-                self.downloading_game_state_tick_id = download_response.tick_id;
+                self.on_download_state_response(download_response)?
             }
             HostToClientCommands::BlobStreamChannel(blob_stream_command) => {
-                let answer = self
-                    .blob_stream_client
-                    .update(blob_stream_command)
-                    .map_err(ClientErrorKind::IoErr)?;
-                self.commands_to_send
-                    .push(ClientToHostCommands::BlobStreamChannel(answer));
+                self.on_blob_stream(blob_stream_command)?
             }
         }
         Ok(())

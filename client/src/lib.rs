@@ -4,6 +4,7 @@
  */
 extern crate core;
 
+mod err;
 pub mod logic;
 
 use crate::logic::ClientLogic;
