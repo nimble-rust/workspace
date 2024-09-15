@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
+ * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/piot/datagram
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 use std::io;
@@ -16,13 +16,13 @@ pub trait DatagramSender {
     ///
     /// # Arguments
     ///
-    /// * `data` - An octet slice to be sent as a datagram.
+    /// * `buf` - An octet slice to be sent as a datagram.
     ///
     /// # Returns
     ///
     /// * `Ok(())` if the datagram was sent successfully.
     /// * `Err(io::Error)` if an error occurred during sending.
-    fn send(&mut self, data: &[u8]) -> Result<()>;
+    fn send(&mut self, buf: &[u8]) -> Result<()>;
 }
 
 /// Trait for receiving datagrams.
@@ -36,7 +36,7 @@ pub trait DatagramReceiver {
     ///
     /// # Arguments
     ///
-    /// * `buffer` - A mutable byte slice where the received datagram will be stored.
+    /// * `buf` - A mutable byte slice where the received datagram will be stored.
     ///
     /// # Returns
     ///
@@ -48,7 +48,7 @@ pub trait DatagramReceiver {
     /// Returns an `io::Error` if the datagram could not be received. Common error
     /// scenarios include network failures, invalid data formats, or issues with
     /// the underlying transport mechanism.
-    fn receive(&mut self, buffer: &mut [u8]) -> Result<usize>;
+    fn receive(&mut self, buf: &mut [u8]) -> Result<usize>;
 }
 
 /// A trait that combines sending and receiving datagrams.
@@ -60,12 +60,12 @@ impl<T> DatagramCommunicator for T where T: DatagramSender + DatagramReceiver {}
 
 /// Trait for encoding datagrams.
 pub trait DatagramEncoder {
-    fn encode(&mut self, data: &[u8]) -> io::Result<Vec<u8>>;
+    fn encode(&mut self, buf: &[u8]) -> io::Result<Vec<u8>>;
 }
 
 /// Trait for decoding datagrams.
 pub trait DatagramDecoder {
-    fn decode(&mut self, buffer: &[u8]) -> io::Result<Vec<u8>>;
+    fn decode(&mut self, buf: &[u8]) -> io::Result<Vec<u8>>;
 }
 
 pub trait DatagramCodec: DatagramEncoder + DatagramDecoder {}
