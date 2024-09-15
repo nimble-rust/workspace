@@ -30,7 +30,7 @@ fn send_to_host() {
     let random2_box = Box::new(random2);
     let mut udp_connections_client = udp_connections::Client::new(random2_box);
 
-    let processor: &mut dyn DatagramCodec = &mut udp_connections_client;
+    let codec: &mut dyn DatagramCodec = &mut udp_connections_client;
     let joining_player = JoinPlayerRequest { local_index: 32 };
 
     let join_game_request = JoinGameRequest {
@@ -54,7 +54,7 @@ fn send_to_host() {
                 datagram_to_send.len(),
                 hex_output(datagram_to_send.as_slice())
             );
-            let processed = processor.encode(datagram_to_send.as_slice()).unwrap();
+            let processed = codec.encode(datagram_to_send.as_slice()).unwrap();
             communicator.send(processed.as_slice()).unwrap();
         }
         if let Ok(size) = communicator.receive(&mut buf) {
@@ -64,7 +64,7 @@ fn send_to_host() {
                 size,
                 hex_output(received_buf)
             );
-            match processor.decode(received_buf) {
+            match codec.decode(received_buf) {
                 Ok(datagram_for_client) => {
                     if datagram_for_client.len() > 0 {
                         info!(
