@@ -5,12 +5,10 @@
 use std::io::{Error, ErrorKind};
 use std::{fmt, io};
 
+use datagram::{DatagramDecoder, DatagramEncoder};
 use flood_rs::{InOctetStream, OutOctetStream, ReadOctetStream, WriteOctetStream};
 use log::info;
-
 use secure_random::SecureRandom;
-
-use crate::ClientPhase::{Challenge, Connected, Connecting};
 
 #[derive(Debug, Copy, Clone, PartialEq, Default)]
 pub struct Nonce(pub u64);
@@ -409,15 +407,15 @@ enum ClientPhase {
 impl fmt::Display for ClientPhase {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ClientPhase::Challenge(nonce) => {
+            Self::Challenge(nonce) => {
                 write!(f, "clientPhase: Challenge Phase with {}", nonce)
             }
-            ClientPhase::Connecting(nonce, challenge) => write!(
+            Self::Connecting(nonce, challenge) => write!(
                 f,
                 "clientPhase: Connecting Phase with {} and {}",
                 nonce, challenge
             ),
-            ClientPhase::Connected(connection_id) => {
+            Self::Connected(connection_id) => {
                 write!(f, "clientPhase: Connected with {}", *connection_id)
             }
         }
@@ -430,17 +428,17 @@ pub struct Client {
 
 impl Client {
     pub fn new(mut random: Box<dyn SecureRandom>) -> Self {
-        let phase = Challenge(Nonce(random.get_random_u64()));
+        let phase = ClientPhase::Challenge(Nonce(random.get_random_u64()));
         Self { phase }
     }
 
     pub fn on_challenge(&mut self, cmd: InChallengeCommand) -> io::Result<()> {
         match self.phase {
-            Challenge(nonce) => {
+            ClientPhase::Challenge(nonce) => {
                 if cmd.nonce != nonce {
                     return Err(Error::new(ErrorKind::InvalidData, "Wrong nonce"));
                 }
-                self.phase = Connecting(nonce, cmd.incoming_server_challenge);
+                self.phase = ClientPhase::Connecting(nonce, cmd.incoming_server_challenge);
                 Ok(())
             }
             _ => Err(Error::new(
@@ -455,7 +453,7 @@ impl Client {
 
     pub fn on_connect(&mut self, cmd: ConnectResponse) -> io::Result<()> {
         match self.phase {
-            Connecting(nonce, _) => {
+            ClientPhase::Connecting(nonce, _) => {
                 if cmd.nonce != nonce {
                     return Err(Error::new(
                         ErrorKind::InvalidData,
@@ -466,7 +464,7 @@ impl Client {
                     "udp_connections: on_connect connected {}",
                     cmd.connection_id
                 );
-                self.phase = Connected(cmd.connection_id);
+                self.phase = ClientPhase::Connected(cmd.connection_id);
                 Ok(())
             }
             _ => Err(Error::new(
@@ -485,7 +483,7 @@ impl Client {
         in_stream: &mut InOctetStream,
     ) -> io::Result<Vec<u8>> {
         match self.phase {
-            Connected(expected_connection_id) => {
+            ClientPhase::Connected(expected_connection_id) => {
                 if cmd.0.connection_id != expected_connection_id {
                     return Err(Error::new(
                         ErrorKind::InvalidData,
@@ -514,7 +512,7 @@ impl Client {
 
     pub fn send_challenge(&mut self) -> io::Result<ClientToHostChallengeCommand> {
         match self.phase {
-            Challenge(nonce) => Ok(ClientToHostChallengeCommand { nonce }),
+            ClientPhase::Challenge(nonce) => Ok(ClientToHostChallengeCommand { nonce }),
             _ => Err(Error::new(
                 ErrorKind::InvalidInput,
                 "can not send_challenge in current client state",
@@ -524,7 +522,7 @@ impl Client {
 
     pub fn send_connect_request(&mut self) -> io::Result<ConnectCommand> {
         match self.phase {
-            Connecting(nonce, server_challenge) => Ok(ConnectCommand {
+            ClientPhase::Connecting(nonce, server_challenge) => Ok(ConnectCommand {
                 nonce,
                 server_challenge,
             }),
@@ -537,7 +535,7 @@ impl Client {
 
     pub fn send_packet(&mut self, data: &[u8]) -> io::Result<ClientToHostPacket> {
         match self.phase {
-            Connected(connection_id) => {
+            ClientPhase::Connected(connection_id) => {
                 info!("send packet: {}", hex_output(data));
                 Ok(ClientToHostPacket {
                     header: PacketHeader {
@@ -557,17 +555,17 @@ impl Client {
     pub fn send(&mut self, data: &[u8]) -> io::Result<ClientToHostCommands> {
         info!("self.phase: {}", self.phase);
         match self.phase {
-            Challenge(_) => {
+            ClientPhase::Challenge(_) => {
                 let challenge = self.send_challenge()?;
                 Ok(ClientToHostCommands::ChallengeType(challenge))
             }
 
-            Connecting(_, _) => {
+            ClientPhase::Connecting(_, _) => {
                 let connect_request = self.send_connect_request()?;
                 Ok(ClientToHostCommands::ConnectType(connect_request))
             }
 
-            Connected(_) => {
+            ClientPhase::Connected(_) => {
                 info!("connected");
                 let packet = self.send_packet(data)?;
                 info!("connected sending datagram {:?}", packet);
@@ -576,13 +574,9 @@ impl Client {
         }
     }
 }
-pub trait DatagramProcessor {
-    fn send_datagram(&mut self, data: &[u8]) -> io::Result<Vec<u8>>;
-    fn receive_datagram(&mut self, buffer: &[u8]) -> io::Result<Vec<u8>>;
-}
 
-impl DatagramProcessor for Client {
-    fn send_datagram(&mut self, data: &[u8]) -> io::Result<Vec<u8>> {
+impl DatagramEncoder for Client {
+    fn encode(&mut self, data: &[u8]) -> io::Result<Vec<u8>> {
         let mut out_stream = OutOctetStream::new();
 
         let client_to_server_cmd = self.send(data)?;
@@ -592,8 +586,10 @@ impl DatagramProcessor for Client {
 
         Ok(out_stream.octets())
     }
+}
 
-    fn receive_datagram(&mut self, buffer: &[u8]) -> io::Result<Vec<u8>> {
+impl DatagramDecoder for Client {
+    fn decode(&mut self, buffer: &[u8]) -> io::Result<Vec<u8>> {
         let mut in_stream = InOctetStream::new(buffer);
         let command = HostToClientCommands::from_stream(&mut in_stream)?;
         match command {

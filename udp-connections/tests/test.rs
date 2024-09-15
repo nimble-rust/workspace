@@ -2,9 +2,10 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
+use datagram::DatagramEncoder;
 use secure_random::SecureRandom;
 
-use udp_connections::{Client, DatagramProcessor};
+use udp_connections::Client;
 
 pub struct FakeRandom {
     pub counter: u64,
@@ -26,7 +27,7 @@ fn simple_connection() {
     let example = vec![0x18, 0x24, 0x32];
 
     let datagram_to_send = client
-        .send_datagram(example.as_slice())
+        .encode(example.as_slice())
         .expect("TODO: panic message");
 
     let expected = vec![

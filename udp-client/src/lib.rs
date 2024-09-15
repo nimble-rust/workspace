@@ -5,7 +5,7 @@
 use std::io::{Error, ErrorKind, Result};
 use std::net::UdpSocket;
 
-use datagram::{DatagramCommunicator, DatagramReceiver, DatagramSender};
+use datagram::{DatagramReceiver, DatagramSender};
 
 pub struct UdpClient {
     socket: UdpSocket,
@@ -32,16 +32,14 @@ impl UdpClient {
 }
 
 impl DatagramSender for UdpClient {
-    fn send_datagram(&mut self, data: &[u8]) -> Result<()> {
+    fn send(&mut self, data: &[u8]) -> Result<()> {
         self.socket.send(data)?;
         Ok(())
     }
 }
 
 impl DatagramReceiver for UdpClient {
-    fn receive_datagram(&mut self, buffer: &mut [u8]) -> Result<usize> {
+    fn receive(&mut self, buffer: &mut [u8]) -> Result<usize> {
         self.socket.recv(buffer)
     }
 }
-
-impl DatagramCommunicator for UdpClient {}

@@ -2,7 +2,7 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-use datagram::DatagramCommunicator;
+use datagram::{DatagramCodec, DatagramCommunicator};
 use flood_rs::{Deserialize, Serialize};
 use log::{error, info, warn};
 use nimble_assent::prelude::*;
@@ -15,7 +15,6 @@ use secure_random::GetRandom;
 use std::fmt::Debug;
 use std::io;
 use udp_client::UdpClient;
-use udp_connections::DatagramProcessor;
 
 pub struct ExampleClient<
     Game: SeerCallback<AuthoritativeCombinedStepForAllParticipants<StepData>>
@@ -25,7 +24,7 @@ pub struct ExampleClient<
 > {
     pub client: Client<Game, StepData>,
     pub communicator: Box<dyn DatagramCommunicator>,
-    pub processor: Box<dyn DatagramProcessor>,
+    pub codec: Box<dyn DatagramCodec>,
 }
 
 //"127.0.0.1:23000"
@@ -47,7 +46,7 @@ impl<
         let random2_box = Box::new(random2);
         let udp_connections_client = udp_connections::Client::new(random2_box);
 
-        let processor: Box<dyn DatagramProcessor> = Box::new(udp_connections_client);
+        let processor: Box<dyn DatagramCodec> = Box::new(udp_connections_client);
         //let joining_player = JoinPlayerRequest { local_index: 32 };
         /*
                 let join_game_request = JoinGameRequest {
@@ -65,7 +64,7 @@ impl<
         Self {
             client,
             communicator,
-            processor,
+            codec: processor,
         }
     }
 
@@ -79,17 +78,17 @@ impl<
                     datagram_to_send.len(),
                     hex_output(datagram_to_send.as_slice())
                 );
-                let processed = self.processor.send_datagram(datagram_to_send.as_slice())?;
-                self.communicator.send_datagram(processed.as_slice())?;
+                let processed = self.codec.encode(datagram_to_send.as_slice())?;
+                self.communicator.send(processed.as_slice())?;
             }
-            if let Ok(size) = self.communicator.receive_datagram(&mut buf) {
+            if let Ok(size) = self.communicator.receive(&mut buf) {
                 let received_buf = &buf[0..size];
                 info!(
                     "received datagram of size: {} payload: {}",
                     size,
                     hex_output(received_buf)
                 );
-                match self.processor.receive_datagram(received_buf) {
+                match self.codec.decode(received_buf) {
                     Ok(datagram_for_client) => {
                         if !datagram_for_client.is_empty() {
                             info!(

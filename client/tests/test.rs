@@ -4,9 +4,8 @@
  */
 use std::thread;
 use std::time::Duration;
-use udp_connections::DatagramProcessor;
 
-use datagram::DatagramCommunicator;
+use datagram::{DatagramCodec, DatagramCommunicator};
 use log::{error, info, warn};
 use nimble_client::Client;
 use nimble_protocol::client_to_host::{
@@ -31,7 +30,7 @@ fn send_to_host() {
     let random2_box = Box::new(random2);
     let mut udp_connections_client = udp_connections::Client::new(random2_box);
 
-    let processor: &mut dyn DatagramProcessor = &mut udp_connections_client;
+    let processor: &mut dyn DatagramCodec = &mut udp_connections_client;
     let joining_player = JoinPlayerRequest { local_index: 32 };
 
     let join_game_request = JoinGameRequest {
@@ -55,19 +54,17 @@ fn send_to_host() {
                 datagram_to_send.len(),
                 hex_output(datagram_to_send.as_slice())
             );
-            let processed = processor
-                .send_datagram(datagram_to_send.as_slice())
-                .unwrap();
-            communicator.send_datagram(processed.as_slice()).unwrap();
+            let processed = processor.encode(datagram_to_send.as_slice()).unwrap();
+            communicator.send(processed.as_slice()).unwrap();
         }
-        if let Ok(size) = communicator.receive_datagram(&mut buf) {
+        if let Ok(size) = communicator.receive(&mut buf) {
             let received_buf = &buf[0..size];
             info!(
                 "received datagram of size: {} payload: {}",
                 size,
                 hex_output(received_buf)
             );
-            match processor.receive_datagram(received_buf) {
+            match processor.decode(received_buf) {
                 Ok(datagram_for_client) => {
                     if datagram_for_client.len() > 0 {
                         info!(
