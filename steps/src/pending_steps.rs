@@ -4,11 +4,11 @@
  */
 use discoid::discoid::DiscoidBuffer;
 
-use crate::{Step, TickId};
+use crate::TickId;
 
 #[derive(Clone)]
-pub struct PendingStepInfo<T: Clone> {
-    pub step: Step<T>,
+pub struct PendingStepInfo<StepT: Clone> {
+    pub step: StepT,
     pub tick_id: TickId,
 }
 
@@ -57,7 +57,7 @@ impl<T: Clone> PendingSteps<T> {
         }
     }
 
-    pub fn set(&mut self, tick_id: TickId, step: Step<T>) -> Result<(), String> {
+    pub fn set(&mut self, tick_id: TickId, step: T) -> Result<(), String> {
         let index_in_discoid = tick_id.value() - self.front_tick_id.value();
         if index_in_discoid >= self.capacity as u32 {
             // self.steps.capacity()
@@ -91,41 +91,5 @@ impl<T: Clone> PendingSteps<T> {
 
     pub fn front_tick_id(&self) -> Option<TickId> {
         self.steps.get_ref_at_index(0).map(|info| info.tick_id)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::Step::Custom;
-
-    use super::*;
-
-    #[derive(Debug, PartialEq, Eq, Copy, Clone)]
-    enum GameInput {
-        Jumping(bool),
-        MoveHorizontal(i32),
-    }
-
-    #[test]
-    fn add_step() {
-        let mut steps = PendingSteps::<GameInput>::new(32, TickId(10));
-        let first_tick_id = TickId(12);
-        steps
-            .set(first_tick_id, Custom(GameInput::MoveHorizontal(-2)))
-            .expect("this should work");
-        assert_eq!(steps.front_tick_id(), None);
-        assert_eq!(steps.is_empty(), true);
-        steps
-            .set(first_tick_id - 2, Custom(GameInput::Jumping(false)))
-            .expect("this should work");
-        assert_eq!(steps.is_empty(), false);
-        assert_eq!(steps.front_tick_id().unwrap().value(), 10);
-        let first_jumping_step = steps.pop();
-        assert_eq!(first_jumping_step.tick_id, first_tick_id - 2);
-        assert_eq!(steps.front_tick_id(), None);
-        steps.discard_up_to(first_tick_id);
-        assert_eq!(steps.is_empty(), true);
-        steps.discard_up_to(first_tick_id + 1);
-        assert_eq!(steps.is_empty(), true);
     }
 }

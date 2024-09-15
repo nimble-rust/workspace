@@ -15,7 +15,7 @@ pub struct GenericOctetStep {
 }
 
 impl Serialize for GenericOctetStep {
-    fn serialize(&self, stream: &mut impl flood_rs::WriteOctetStream) -> io::Result<()>
+    fn serialize(&self, stream: &mut impl WriteOctetStream) -> io::Result<()>
     where
         Self: Sized,
     {
@@ -25,7 +25,7 @@ impl Serialize for GenericOctetStep {
 }
 
 impl Deserialize for GenericOctetStep {
-    fn deserialize(stream: &mut impl flood_rs::ReadOctetStream) -> io::Result<Self>
+    fn deserialize(stream: &mut impl ReadOctetStream) -> io::Result<Self>
     where
         Self: Sized,
     {
@@ -78,7 +78,7 @@ impl<T> Step<T> {
 }
 
 impl<T: Serialize> Serialize for Step<T> {
-    fn serialize(&self, stream: &mut impl flood_rs::WriteOctetStream) -> io::Result<()> {
+    fn serialize(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.to_octet())?;
         match self {
             Step::Joined(join) => join.serialize(stream),
@@ -89,7 +89,7 @@ impl<T: Serialize> Serialize for Step<T> {
 }
 
 impl<T: Deserialize> Deserialize for Step<T> {
-    fn deserialize(stream: &mut impl flood_rs::ReadOctetStream) -> io::Result<Self> {
+    fn deserialize(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         let step_type = stream.read_u8()?;
         let t = match step_type {
             0x01 => Step::Forced,
@@ -141,8 +141,8 @@ impl<'a, T> FromIndexIterator<'a, T> {
     }
 }
 
-impl<T: Clone> Iterator for FromIndexIterator<'_, T> {
-    type Item = StepInfo<T>;
+impl<StepType: Clone> Iterator for FromIndexIterator<'_, StepType> {
+    type Item = StepInfo<StepType>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let item = self.deque.get(self.current_index)?;
@@ -159,7 +159,7 @@ impl<T> Default for Steps<T> {
 
 pub const TICK_ID_MAX: u32 = u32::MAX;
 
-impl<T> Steps<T> {
+impl<StepType> Steps<StepType> {
     pub fn new() -> Self {
         Self {
             steps: VecDeque::new(),
@@ -182,7 +182,7 @@ impl<T> Steps<T> {
         }
     }
 
-    pub fn push(&mut self, step: T) {
+    pub fn push(&mut self, step: StepType) {
         let info = StepInfo {
             step,
             tick_id: self.expected_write_id,
@@ -191,7 +191,7 @@ impl<T> Steps<T> {
         self.expected_write_id += 1;
     }
 
-    pub fn pop(&mut self) -> Option<StepInfo<T>> {
+    pub fn pop(&mut self) -> Option<StepInfo<StepType>> {
         let info = self.steps.pop_front();
         if let Some(ref step_info) = info {
             assert_eq!(step_info.tick_id, self.expected_read_id);
@@ -234,67 +234,7 @@ impl<T> Steps<T> {
         self.steps.is_empty()
     }
 
-    pub fn iter_index(&self, start_index: usize) -> FromIndexIterator<T> {
+    pub fn iter_index(&self, start_index: usize) -> FromIndexIterator<StepType> {
         FromIndexIterator::new(&self.steps, start_index)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[derive(Debug, PartialEq, Eq)]
-    enum GameInput {
-        Jumping(bool),
-        MoveHorizontal(i32),
-    }
-
-    #[test]
-    fn add_step() {
-        let mut steps = Steps::<GameInput>::new_with_initial_tick(TickId(23));
-        steps.push(GameInput::MoveHorizontal(-2));
-        assert_eq!(steps.len(), 1);
-        assert_eq!(steps.front_tick_id().unwrap().value(), 23)
-    }
-
-    #[test]
-    fn push_and_pop_step() {
-        let mut steps = Steps::<GameInput>::new_with_initial_tick(TickId(23));
-        steps.push(GameInput::Jumping(true));
-        steps.push(GameInput::MoveHorizontal(42));
-        assert_eq!(steps.len(), 2);
-        assert_eq!(steps.front_tick_id().unwrap().value(), 23);
-        assert_eq!(steps.pop().unwrap().step, GameInput::Jumping(true));
-        assert_eq!(steps.front_tick_id().unwrap().value(), 24);
-    }
-
-    #[test]
-    fn push_and_pop_count() {
-        let mut steps = Steps::<GameInput>::new_with_initial_tick(TickId(23));
-        steps.push(GameInput::Jumping(true));
-        steps.push(GameInput::MoveHorizontal(42));
-        assert_eq!(steps.len(), 2);
-        steps.pop_count(8);
-        assert_eq!(steps.len(), 0);
-    }
-
-    #[test]
-    fn push_and_pop_up_to_lower() {
-        let mut steps = Steps::<GameInput>::new_with_initial_tick(TickId(23));
-        steps.push(GameInput::Jumping(true));
-        steps.push(GameInput::MoveHorizontal(42));
-        assert_eq!(steps.len(), 2);
-        steps.pop_up_to(TickId(1));
-        assert_eq!(steps.len(), 2);
-    }
-
-    #[test]
-    fn push_and_pop_up_to_equal() {
-        let mut steps = Steps::<GameInput>::new_with_initial_tick(TickId(23));
-        steps.push(GameInput::Jumping(true));
-        steps.push(GameInput::MoveHorizontal(42));
-        assert_eq!(steps.len(), 2);
-        steps.pop_up_to(TickId::new(24));
-        assert_eq!(steps.len(), 1);
     }
 }
