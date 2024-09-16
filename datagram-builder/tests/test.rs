@@ -84,7 +84,6 @@ impl DatagramBuilder for ExampleDatagramBuilder {
             return Err(DatagramError::BufferFull);
         }
 
-
         self.buffer.extend_from_slice(data);
         Ok(())
     }
@@ -206,5 +205,7 @@ fn too_big_item_size() {
     if let Err(ref err) = result {
         println!("{}", err);
     }
-    assert!(matches!(result, Err(e) if e.kind() == io::ErrorKind::InvalidData && e.to_string() == "Item size is too big"));
+    assert!(
+        matches!(result, Err(e) if e.kind() == io::ErrorKind::InvalidData && e.to_string() == "Item size is too big")
+    );
 }

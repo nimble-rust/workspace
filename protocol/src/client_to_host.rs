@@ -318,42 +318,62 @@ pub struct AuthoritativeCombinedStepForAllParticipants<StepT: Serialize + Deseri
     pub authoritative_participants: HashMap<ParticipantId, StepT>,
 }
 
-impl<StepT: Serialize + Deserialize> Serialize
-    for AuthoritativeCombinedStepForAllParticipants<StepT>
-{
+#[derive(Debug, PartialEq, Clone)]
+pub struct AuthoritativeStepsForSerialization<StepT: Serialize + Deserialize> {
+    pub first_tick_id: TickId,
+    pub count: u8,
+    pub authoritative_participants: HashMap<ParticipantId, Vec<StepT>>,
+}
+
+impl<StepT: Serialize + Deserialize> Serialize for AuthoritativeStepsForSerialization<StepT> {
     fn serialize(&self, stream: &mut impl WriteOctetStream) -> io::Result<()>
     where
         Self: Sized,
     {
+        stream.write_u32(self.first_tick_id.0)?;
+        stream.write_u8(self.count)?; // how many ticks follows
+
+        // How many participants streams follows
         stream.write_u8(self.authoritative_participants.len() as u8)?;
 
-        for (participant_id, authoritative_step_for_one_participant) in
+        for (participant_id, authoritative_steps_for_one_player_vector) in
             self.authoritative_participants.iter()
         {
             participant_id.to_stream(stream)?;
-            authoritative_step_for_one_participant.serialize(stream)?;
+            if authoritative_steps_for_one_player_vector.len() != self.count as usize {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "all vectors must have same length",
+                ));
+            }
+            for authoritative_step_for_one_player in authoritative_steps_for_one_player_vector {
+                authoritative_step_for_one_player.serialize(stream)?;
+            }
         }
         Ok(())
     }
 }
 
-impl<StepT: Serialize + Deserialize> Deserialize
-    for AuthoritativeCombinedStepForAllParticipants<StepT>
-{
+impl<StepT: Serialize + Deserialize> Deserialize for AuthoritativeStepsForSerialization<StepT> {
     fn deserialize(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
-        let participant_count_in_combined_step = stream.read_u8()?;
+        let first_tick_id = stream.read_u32()?;
+        let tick_count = stream.read_u8()?;
+        let participant_count = stream.read_u8()?;
 
-        let mut authoritative_steps_map =
-            HashMap::with_capacity(participant_count_in_combined_step as usize);
-
-        for _ in 0..participant_count_in_combined_step {
+        let mut authoritative_participants = HashMap::with_capacity(tick_count as usize);
+        for _ in 0..participant_count {
             let participant_id = ParticipantId::from_stream(stream)?;
-            let authoritative_step = StepT::deserialize(stream)?;
-            authoritative_steps_map.insert(participant_id, authoritative_step);
+            let mut steps = Vec::new();
+            for _ in 0..tick_count {
+                steps.push(StepT::deserialize(stream)?);
+            }
+            authoritative_participants.insert(participant_id, steps);
         }
 
         Ok(Self {
-            authoritative_participants: authoritative_steps_map,
+            first_tick_id: TickId(first_tick_id),
+            count: tick_count,
+            authoritative_participants,
         })
     }
 }

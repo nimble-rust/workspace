@@ -177,13 +177,18 @@ impl<
         for authoritative_step_range in &cmd.authoritative_steps.ranges {
             current_authoritative_tick_id +=
                 authoritative_step_range.delta_steps_from_previous as u32;
-            for authoritative_step in &authoritative_step_range.authoritative_steps {
+            for _ in &authoritative_step_range.authoritative_steps {
                 if self
                     .rectify
                     .waiting_for_authoritative_tick_id()
                     .map_or(true, |tick_id| tick_id >= current_authoritative_tick_id)
                 {
-                    self.rectify.push_authoritative(authoritative_step.clone());
+                    //for (participant_id, steps_vector) in authoritative_step.authoritative_participants {}
+                    // TODO: Convert from serialization to combined step
+                    let auth_step = AuthoritativeCombinedStepForAllParticipants {
+                        authoritative_participants: HashMap::new(),
+                    };
+                    self.rectify.push_authoritative(auth_step);
                 }
                 current_authoritative_tick_id += 1;
             }
