@@ -1,4 +1,28 @@
 [workspace]
-members = ["nimble", "assent", "client", "host", "blob-stream", "participant", "participant-steps", "steps", "nimble", "seer", "rectify", "freelist", "protocol", "udp-client", "datagram", "udp-connections", "secure-random", "ordered-datagram", "datagram-pinger", "connection-layer", "cli", "example_client", "sample-step", "datagram-builder"]
+members = [
+    "crates/nimble",
+    "crates/assent",
+    "crates/client",
+    "crates/host",
+    "crates/blob-stream",
+    "crates/participant",
+    "crates/participant-steps",
+    "crates/steps",
+    "crates/nimble",
+    "crates/seer",
+    "crates/rectify",
+    "crates/freelist",
+    "crates/protocol",
+    "crates/udp-client",
+    "crates/datagram",
+    "crates/udp-connections",
+    "crates/secure-random",
+    "crates/ordered-datagram",
+    "crates/datagram-pinger",
+    "crates/connection-layer",
+    "crates/cli",
+    "crates/example_client",
+    "crates/sample-step",
+    "crates/datagram-builder"
+]
 resolver = "2"
-
