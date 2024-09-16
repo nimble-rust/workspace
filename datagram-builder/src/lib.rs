@@ -4,7 +4,7 @@
  */
 pub mod deserialize;
 
-use flood_rs::{OutOctetStream, Serialize};
+use flood_rs::{out_stream::OutOctetStream, Serialize};
 use std::io;
 
 /// A trait for building datagrams by adding headers and footers.

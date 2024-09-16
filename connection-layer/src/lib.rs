@@ -6,7 +6,7 @@ pub mod prelude;
 
 use std::io::{Error, ErrorKind, Result};
 
-use flood_rs::{ReadOctetStream, WriteOctetStream};
+use flood_rs::prelude::*;
 use mash_rs::murmur3_32;
 
 /// A seed used for generating a [Murmur3 hash](https://en.wikipedia.org/wiki/MurmurHash#MurmurHash3) for connection validation.

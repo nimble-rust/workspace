@@ -4,7 +4,7 @@ version = "0.0.1"
 edition = "2021"
 
 [dependencies]
-flood-rs = "0.0.8"
+flood-rs = "0.0.9"
 datagram = { path = "../datagram" }
 secure-random = { path = "../secure-random" }
 log = "0.4.22"

@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 nimble-steps = { path = "../steps" }
 nimble-protocol = { path = "../protocol" }
-flood-rs = "0.0.8"
+flood-rs = "0.0.9"
 secure-random = { path = "../secure-random" }
 ordered-datagram = { path = "../ordered-datagram" }
 datagram-pinger = { path = "../datagram-pinger" }

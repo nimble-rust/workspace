@@ -6,7 +6,7 @@ use std::io::{Error, ErrorKind};
 use std::{fmt, io};
 
 use datagram::{DatagramDecoder, DatagramEncoder};
-use flood_rs::{InOctetStream, OutOctetStream, ReadOctetStream, WriteOctetStream};
+use flood_rs::prelude::*;
 use log::info;
 use secure_random::SecureRandom;
 

@@ -2,7 +2,7 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-use flood_rs::{InOctetStream, OutOctetStream};
+use flood_rs::prelude::*;
 
 use nimble_protocol::client_to_host_oob::ConnectRequest;
 use nimble_protocol::{Nonce, Version};

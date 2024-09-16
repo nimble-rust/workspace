@@ -2,9 +2,7 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-use flood_rs::{
-    Deserialize, InOctetStream, OutOctetStream, ReadOctetStream, Serialize, WriteOctetStream,
-};
+use flood_rs::prelude::*;
 use nimble_steps::Step;
 use std::io;
 

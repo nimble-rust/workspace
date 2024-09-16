@@ -2,7 +2,7 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-use flood_rs::{Deserialize, InOctetStream, ReadOctetStream};
+use flood_rs::{in_stream::InOctetStream, Deserialize, ReadOctetStream};
 use std::io;
 
 /// A trait for parsing and interpreting datagrams.
