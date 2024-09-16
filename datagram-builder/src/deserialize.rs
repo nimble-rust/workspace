@@ -2,22 +2,9 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
+use datagram::DatagramParser;
 use flood_rs::{in_stream::InOctetStream, Deserialize, ReadOctetStream};
 use std::io;
-
-/// A trait for parsing and interpreting datagrams.
-pub trait DatagramParser {
-    /// Parses the entire datagram, validating both the header and footer.
-    ///
-    /// # Arguments
-    ///
-    /// * `datagram` - A slice containing the entire datagram.
-    ///
-    /// # Returns
-    ///
-    /// * `io::Result<(usize, usize)>` - The range of the slice that contains the payload.
-    fn parse<'a>(&mut self, datagram: &'a [u8]) -> io::Result<&'a [u8]>;
-}
 
 /// Deserializes a collection of datagrams into a vector of items.
 ///

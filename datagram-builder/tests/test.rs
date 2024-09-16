@@ -2,8 +2,9 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-use datagram_builder::deserialize::{deserialize_datagrams, DatagramParser};
-use datagram_builder::{serialize_datagrams, DatagramBuilder};
+use datagram::{DatagramBuilder, DatagramError, DatagramParser};
+use datagram_builder::deserialize::deserialize_datagrams;
+use datagram_builder::serialize_datagrams;
 use flood_rs::prelude::*;
 use std::io;
 
@@ -55,20 +56,46 @@ impl Deserialize for TestItem {
     }
 }
 
-struct ExampleDatagramBuilder;
+pub struct ExampleDatagramBuilder {
+    buffer: Vec<u8>,
+    max_size: usize,
+}
+
+impl ExampleDatagramBuilder {
+    pub fn new(max_size: usize) -> Self {
+        let mut s = Self {
+            buffer: Vec::with_capacity(max_size),
+            max_size,
+        };
+        s.clear();
+        s
+    }
+}
 
 impl DatagramBuilder for ExampleDatagramBuilder {
-    fn start_datagram(&mut self, buffer: &mut [u8]) -> io::Result<(usize, usize)> {
-        buffer[0] = 0x01;
-        buffer[1] = 0xff;
-        Ok((2, buffer.len() - 1))
+    fn push(&mut self, data: &[u8]) -> Result<(), DatagramError> {
+        const FOOTER_SIZE: usize = 1;
+        if self.buffer.len() + data.len() > self.max_size - FOOTER_SIZE {
+            return Err(DatagramError::BufferFull);
+        }
+        self.buffer.extend_from_slice(data);
+        Ok(())
     }
 
-    fn end_datagram(&mut self, buffer: &mut [u8], payload_len: usize) -> io::Result<usize> {
-        buffer[0] = 0x02;
-        buffer[payload_len + 2] = 0x00;
+    fn finalize(&mut self) -> &[u8] {
+        // Finalize header
+        self.buffer.push(0x00); // Signals end of datagram
+        self.buffer[0] = 0x02;
+        self.buffer.as_slice()
+    }
 
-        Ok(3 + payload_len)
+    fn is_empty(&self) -> bool {
+        self.buffer.is_empty()
+    }
+
+    fn clear(&mut self) {
+        self.buffer.clear();
+        self.buffer.extend_from_slice(&[0x01, 0x0ff]);
     }
 }
 
@@ -97,8 +124,8 @@ fn serialize_single_datagram() {
     const EXPECTED_DATAGRAM: &[u8] = &[
         0x02, 0xff, 0x01, 3, b'f', b'o', b'o', 0x02, 0x00, 42, 0x01, 3, b'b', b'a', b'r', 0x00,
     ];
-    let mut builder = ExampleDatagramBuilder;
-    let datagrams = serialize_datagrams(&items, 1024, &mut builder).expect("serialization failed");
+    let mut builder = ExampleDatagramBuilder::new(1024);
+    let datagrams = serialize_datagrams(&items, &mut builder).expect("serialization failed");
     assert_eq!(datagrams.len(), 1);
     assert_eq!(datagrams[0], EXPECTED_DATAGRAM);
 
@@ -139,9 +166,8 @@ fn serialize_and_deserialize_multiple_datagrams() {
 
     const EXPECTED_DATAGRAM_COUNT: usize = 3;
 
-    let mut builder = ExampleDatagramBuilder;
-    let datagrams =
-        serialize_datagrams(&items, MAX_PACKET_SIZE, &mut builder).expect("serialization failed");
+    let mut builder = ExampleDatagramBuilder::new(MAX_PACKET_SIZE);
+    let datagrams = serialize_datagrams(&items, &mut builder).expect("serialization failed");
     assert_eq!(datagrams.len(), EXPECTED_DATAGRAM_COUNT);
 
     for i in 0..EXPECTED_DATAGRAM_COUNT {
