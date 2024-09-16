@@ -21,12 +21,12 @@ use udp_client::UdpClient;
 //#[test]
 #[allow(dead_code)]
 fn send_to_host() {
-    let random = GetRandom {};
+    let random = GetRandom;
     let random_box = Box::new(random);
     let mut client = Client::<SampleGame, Step<SampleStep>>::new(random_box);
     let mut udp_client = UdpClient::new("127.0.0.1:23000").unwrap();
     let communicator: &mut dyn DatagramCommunicator = &mut udp_client;
-    let random2 = GetRandom {};
+    let random2 = GetRandom;
     let random2_box = Box::new(random2);
     let mut udp_connections_client = udp_connections::Client::new(random2_box);
 

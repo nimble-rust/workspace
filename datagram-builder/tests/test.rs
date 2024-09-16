@@ -97,12 +97,12 @@ fn serialize_single_datagram() {
     const EXPECTED_DATAGRAM: &[u8] = &[
         0x02, 0xff, 0x01, 3, b'f', b'o', b'o', 0x02, 0x00, 42, 0x01, 3, b'b', b'a', b'r', 0x00,
     ];
-    let mut builder = ExampleDatagramBuilder {};
+    let mut builder = ExampleDatagramBuilder;
     let datagrams = serialize_datagrams(&items, 1024, &mut builder).expect("serialization failed");
     assert_eq!(datagrams.len(), 1);
     assert_eq!(datagrams[0], EXPECTED_DATAGRAM);
 
-    let mut parser = ExampleDatagramParser {};
+    let mut parser = ExampleDatagramParser;
     let deserialized_items: Vec<TestItem> =
         deserialize_datagrams(datagrams, &mut parser).expect("deserialization failed");
     assert_eq!(items.len(), deserialized_items.len());

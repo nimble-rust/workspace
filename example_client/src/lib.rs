@@ -37,12 +37,12 @@ impl<
     > ExampleClient<Game, StepData>
 {
     pub fn new(url: &str) -> Self {
-        let random = GetRandom {};
+        let random = GetRandom;
         let random_box = Box::new(random);
         let client = Client::<Game, StepData>::new(random_box);
         let udp_client = UdpClient::new(url).unwrap();
         let communicator: Box<dyn DatagramCommunicator> = Box::new(udp_client);
-        let random2 = GetRandom {};
+        let random2 = GetRandom;
         let random2_box = Box::new(random2);
         let udp_connections_client = udp_connections::Client::new(random2_box);
 

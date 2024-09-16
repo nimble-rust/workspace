@@ -14,7 +14,7 @@ use test_log::test;
 
 #[test]
 fn basic_logic() {
-    let random = GetRandom {};
+    let random = GetRandom;
     let random_box = Box::new(random);
     let mut game = SampleGame::default();
     let mut client_logic = ClientLogic::<SampleGame, Step<SampleStep>>::new(random_box);
@@ -44,7 +44,7 @@ fn basic_logic() {
 
 #[test]
 fn send_steps() {
-    let random = GetRandom {};
+    let random = GetRandom;
     let random_box = Box::new(random);
     let mut game = SampleGame::default();
     let mut client_logic = ClientLogic::<SampleGame, Step<SampleStep>>::new(random_box);

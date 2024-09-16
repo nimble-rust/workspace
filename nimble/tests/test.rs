@@ -60,7 +60,7 @@ fn client_host_integration() {
     let mut host = HostLogic::<Step<SampleStep>>::new(state);
     let connection = host.create_connection().expect("should create connection");
 
-    let random = GetRandom {};
+    let random = GetRandom;
     let random_box = Box::new(random);
     let mut client = ClientLogic::<SampleGame, Step<SampleStep>>::new(random_box);
     let joining_player = JoinPlayerRequest { local_index: 0 };

@@ -8,7 +8,7 @@ pub trait SecureRandom {
     fn get_random_u64(&mut self) -> u64;
 }
 
-pub struct GetRandom {}
+pub struct GetRandom;
 
 impl SecureRandom for GetRandom {
     fn get_random_u64(&mut self) -> u64 {
@@ -27,7 +27,7 @@ mod tests {
 
     #[test]
     fn check_random() {
-        let mut random = GetRandom {};
+        let mut random = GetRandom;
         let result = random.get_random_u64();
         info!("result: {}", result)
     }
