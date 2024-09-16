@@ -89,6 +89,7 @@ use std::io;
 #[derive(Debug)]
 pub enum DatagramError {
     BufferFull,
+    ItemSizeTooBig,
     IoError(io::Error),
     OtherError(String),
 }
@@ -99,6 +100,7 @@ impl fmt::Display for DatagramError {
             DatagramError::BufferFull => write!(f, "Buffer is full"),
             DatagramError::IoError(err) => write!(f, "I/O error: {}", err),
             DatagramError::OtherError(err) => write!(f, "strange error: {}", err),
+            DatagramError::ItemSizeTooBig => write!(f, "Item size is too big"),
         }
     }
 }

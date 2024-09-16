@@ -4,6 +4,8 @@
  */
 #[derive(Debug, Clone, PartialEq, Eq)] // Debug is needed for asserts in tests
 pub enum GameInput {
+    #[allow(unused)]
     Jumping(bool),
+    #[allow(unused)]
     MoveHorizontal(i32),
 }

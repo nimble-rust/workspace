@@ -75,9 +75,16 @@ impl ExampleDatagramBuilder {
 impl DatagramBuilder for ExampleDatagramBuilder {
     fn push(&mut self, data: &[u8]) -> Result<(), DatagramError> {
         const FOOTER_SIZE: usize = 1;
+
+        if data.len() > self.max_size - FOOTER_SIZE {
+            return Err(DatagramError::ItemSizeTooBig);
+        }
+
         if self.buffer.len() + data.len() > self.max_size - FOOTER_SIZE {
             return Err(DatagramError::BufferFull);
         }
+
+
         self.buffer.extend_from_slice(data);
         Ok(())
     }
@@ -179,4 +186,25 @@ fn serialize_and_deserialize_multiple_datagrams() {
     let deserialized_items: Vec<TestItem> =
         deserialize_datagrams(datagrams, &mut parser).expect("deserialization failed");
     assert_eq!(items.len(), deserialized_items.len());
+}
+
+#[test]
+fn too_big_item_size() {
+    const MAX_PACKET_SIZE: usize = 4;
+    let items = [
+        TestItem::Name {
+            input: "foo".into(),
+        },
+        TestItem::Amount(42),
+        TestItem::Name {
+            input: "bar".into(),
+        },
+    ];
+
+    let mut builder = ExampleDatagramBuilder::new(MAX_PACKET_SIZE);
+    let result = serialize_datagrams(&items, &mut builder);
+    if let Err(ref err) = result {
+        println!("{}", err);
+    }
+    assert!(matches!(result, Err(e) if e.kind() == io::ErrorKind::InvalidData && e.to_string() == "Item size is too big"));
 }
