@@ -6,7 +6,7 @@ use flood_rs::{Deserialize, Serialize};
 use nimble_client::logic::ClientLogic;
 use nimble_host::logic::{ConnectionId, HostLogic};
 use nimble_host::state::State;
-use nimble_protocol::client_to_host::{AuthoritativeCombinedStepForAllParticipants, JoinGameType};
+use nimble_protocol::client_to_host::{AuthoritativeStep, JoinGameType};
 use nimble_protocol::client_to_host::{JoinPlayerRequest, JoinPlayerRequests};
 use nimble_protocol::prelude::*;
 use nimble_protocol::Nonce;
@@ -21,8 +21,8 @@ use tick_id::TickId;
 mod types;
 
 fn communicate<
-    SampleGame: nimble_seer::SeerCallback<AuthoritativeCombinedStepForAllParticipants<Step<SampleStep>>>
-        + nimble_assent::AssentCallback<AuthoritativeCombinedStepForAllParticipants<Step<SampleStep>>>
+    SampleGame: nimble_seer::SeerCallback<AuthoritativeStep<Step<SampleStep>>>
+        + nimble_assent::AssentCallback<AuthoritativeStep<Step<SampleStep>>>
         + nimble_rectify::RectifyCallback
         + Clone
         + Deserialize

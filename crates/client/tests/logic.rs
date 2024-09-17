@@ -8,8 +8,8 @@ use nimble_client::err::ClientError;
 use nimble_client::logic::ClientLogic;
 use nimble_participant::ParticipantId;
 use nimble_protocol::client_to_host::{
-    AuthoritativeCombinedStepForAllParticipants, AuthoritativeStepRangeForAllParticipants,
-    PredictedStep, PredictedStepsForAllPlayers, StepsAck, StepsRequest,
+    AuthoritativeStep, AuthoritativeStepRangeForAllParticipants, PredictedStep,
+    PredictedStepsForAllPlayers, StepsAck, StepsRequest,
 };
 use nimble_protocol::host_to_client::{
     AuthoritativeStepRange, AuthoritativeStepRanges, GameStepResponse, GameStepResponseHeader,
@@ -57,8 +57,8 @@ fn basic_logic() {
 }
 
 fn setup_logic<
-    GameT: SeerCallback<AuthoritativeCombinedStepForAllParticipants<StepT>>
-        + AssentCallback<AuthoritativeCombinedStepForAllParticipants<StepT>>
+    GameT: SeerCallback<AuthoritativeStep<StepT>>
+        + AssentCallback<AuthoritativeStep<StepT>>
         + RectifyCallback,
     StepT: Clone + Deserialize + Serialize + Debug,
 >() -> ClientLogic<GameT, StepT> {
@@ -175,15 +175,14 @@ fn receive_authoritative_steps() -> Result<(), ClientError> {
     expected_hash_map.insert(first_participant_id, Custom(SampleStep::MoveLeft(-10)));
     expected_hash_map.insert(second_participant_id, Forced);
 
-    let expected_step = AuthoritativeCombinedStepForAllParticipants::<Step<SampleStep>> {
+    let expected_step = AuthoritativeStep::<Step<SampleStep>> {
         authoritative_participants: expected_hash_map,
     };
 
-    let expected_step_with_step_info =
-        StepInfo::<AuthoritativeCombinedStepForAllParticipants<Step<SampleStep>>> {
-            step: expected_step,
-            tick_id: TickId(1),
-        };
+    let expected_step_with_step_info = StepInfo::<AuthoritativeStep<Step<SampleStep>>> {
+        step: expected_step,
+        tick_id: TickId(1),
+    };
 
     assert_eq!(
         *auth_steps
@@ -191,6 +190,16 @@ fn receive_authoritative_steps() -> Result<(), ClientError> {
             .expect("should be able to get index 1"),
         expected_step_with_step_info
     );
+
+    let mut game = SampleGame::default();
+
+    assert_eq!(game.authoritative.x, 0);
+    assert_eq!(game.authoritative.y, 0);
+
+    client_logic.update(&mut game);
+
+    assert_eq!(game.authoritative.x, 32000 - 42 + 10); // Right(32000) + Left(42) + Left(-10)
+    assert_eq!(game.authoritative.y, 1 + 1 + 1); // Two jumps and a forced
 
     Ok(())
 }

@@ -5,7 +5,7 @@
 use flood_rs::prelude::*;
 use log::info;
 use nimble_assent::AssentCallback;
-use nimble_protocol::client_to_host::AuthoritativeCombinedStepForAllParticipants;
+use nimble_protocol::client_to_host::AuthoritativeStep;
 use nimble_rectify::RectifyCallback;
 use nimble_seer::SeerCallback;
 use nimble_steps::Step;
@@ -57,7 +57,7 @@ pub struct SampleState {
 }
 
 impl SampleState {
-    pub fn update(&mut self, step: &AuthoritativeCombinedStepForAllParticipants<Step<SampleStep>>) {
+    pub fn update(&mut self, step: &AuthoritativeStep<Step<SampleStep>>) {
         for (participant_id, step) in &step.authoritative_participants {
             match &step {
                 Step::Custom(custom) => match custom {
@@ -137,18 +137,18 @@ impl Deserialize for SampleGame {
     }
 }
 
-impl SeerCallback<AuthoritativeCombinedStepForAllParticipants<Step<SampleStep>>> for SampleGame {
-    fn on_tick(&mut self, step: &AuthoritativeCombinedStepForAllParticipants<Step<SampleStep>>) {
+impl SeerCallback<AuthoritativeStep<Step<SampleStep>>> for SampleGame {
+    fn on_tick(&mut self, step: &AuthoritativeStep<Step<SampleStep>>) {
         self.predicted.update(step);
     }
 }
 
-impl AssentCallback<AuthoritativeCombinedStepForAllParticipants<Step<SampleStep>>> for SampleGame {
+impl AssentCallback<AuthoritativeStep<Step<SampleStep>>> for SampleGame {
     fn on_pre_ticks(&mut self) {
         self.predicted = self.authoritative.clone();
     }
-    fn on_tick(&mut self, step: &AuthoritativeCombinedStepForAllParticipants<Step<SampleStep>>) {
-        self.predicted.update(step);
+    fn on_tick(&mut self, step: &AuthoritativeStep<Step<SampleStep>>) {
+        self.authoritative.update(step);
     }
     fn on_post_ticks(&mut self) {
         self.authoritative = self.predicted.clone();

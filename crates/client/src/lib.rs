@@ -16,9 +16,7 @@ use nimble_connection_layer::{
     prepare_out_stream, verify_hash, write_to_stream, ConnectionId, ConnectionLayerMode,
     ConnectionSecretSeed,
 };
-use nimble_protocol::client_to_host::{
-    AuthoritativeCombinedStepForAllParticipants, JoinGameRequest, PredictedStep,
-};
+use nimble_protocol::client_to_host::{AuthoritativeStep, JoinGameRequest, PredictedStep};
 use nimble_protocol::client_to_host_oob::ClientToHostOobCommands;
 use nimble_protocol::host_to_client::HostToClientCommands;
 use nimble_protocol::host_to_client_oob::HostToClientOobCommands;
@@ -39,8 +37,8 @@ enum ClientPhase {
 }
 
 pub struct Client<
-    Game: SeerCallback<AuthoritativeCombinedStepForAllParticipants<StepT>>
-        + AssentCallback<AuthoritativeCombinedStepForAllParticipants<StepT>>
+    Game: SeerCallback<AuthoritativeStep<StepT>>
+        + AssentCallback<AuthoritativeStep<StepT>>
         + RectifyCallback,
     StepT: Clone + Deserialize + Serialize + Debug,
 > {
@@ -53,8 +51,8 @@ pub struct Client<
 }
 
 impl<
-        Game: SeerCallback<AuthoritativeCombinedStepForAllParticipants<StepT>>
-            + AssentCallback<AuthoritativeCombinedStepForAllParticipants<StepT>>
+        Game: SeerCallback<AuthoritativeStep<StepT>>
+            + AssentCallback<AuthoritativeStep<StepT>>
             + RectifyCallback,
         StepT: Clone + Deserialize + Serialize + Debug,
     > Client<Game, StepT>

@@ -9,8 +9,7 @@ use log::info;
 use nimble_assent::prelude::*;
 use nimble_participant::ParticipantId;
 use nimble_protocol::client_to_host::{
-    AuthoritativeCombinedStepForAllParticipants, DownloadGameStateRequest, PredictedStep,
-    PredictedStepsForAllPlayers,
+    AuthoritativeStep, DownloadGameStateRequest, PredictedStep, PredictedStepsForAllPlayers,
 };
 use nimble_protocol::host_to_client::DownloadGameStateResponse;
 use nimble_protocol::prelude::*;
@@ -28,8 +27,8 @@ enum Phase {
 }
 
 pub struct ClientLogic<
-    Game: SeerCallback<AuthoritativeCombinedStepForAllParticipants<StepT>>
-        + AssentCallback<AuthoritativeCombinedStepForAllParticipants<StepT>>
+    Game: SeerCallback<AuthoritativeStep<StepT>>
+        + AssentCallback<AuthoritativeStep<StepT>>
         + RectifyCallback,
     StepT: Clone + Deserialize + Serialize + Debug,
 > {
@@ -39,7 +38,7 @@ pub struct ClientLogic<
     random: Box<dyn SecureRandom>,
     tick_id: u32,
     debug_tick_id_to_send: u32,
-    rectify: Rectify<Game, AuthoritativeCombinedStepForAllParticipants<StepT>>,
+    rectify: Rectify<Game, AuthoritativeStep<StepT>>,
     blob_stream_client: FrontLogic,
     commands_to_send: Vec<ClientToHostCommands<StepT>>,
     downloading_game_state_tick_id: TickId,
@@ -50,8 +49,8 @@ pub struct ClientLogic<
 }
 
 impl<
-        Game: SeerCallback<AuthoritativeCombinedStepForAllParticipants<StepT>>
-            + AssentCallback<AuthoritativeCombinedStepForAllParticipants<StepT>>
+        Game: SeerCallback<AuthoritativeStep<StepT>>
+            + AssentCallback<AuthoritativeStep<StepT>>
             + RectifyCallback,
         StepT: Clone + Deserialize + Serialize + Debug,
     > ClientLogic<Game, StepT>
@@ -74,9 +73,7 @@ impl<
         }
     }
 
-    pub fn debug_rectify(
-        &self,
-    ) -> &Rectify<Game, AuthoritativeCombinedStepForAllParticipants<StepT>> {
+    pub fn debug_rectify(&self) -> &Rectify<Game, AuthoritativeStep<StepT>> {
         &self.rectify
     }
 
@@ -156,10 +153,9 @@ impl<
             .iter()
             .map(|(local_index, predict_step)| (ParticipantId(*local_index), predict_step.clone()))
             .collect();
-        self.rectify
-            .push_predicted(AuthoritativeCombinedStepForAllParticipants {
-                authoritative_participants: predicted_authenticated_combined_step,
-            });
+        self.rectify.push_predicted(AuthoritativeStep {
+            authoritative_participants: predicted_authenticated_combined_step,
+        });
 
         for (index, step) in &step.predicted_players {
             if !self.outgoing_predicted_steps.contains_key(index) {
@@ -234,7 +230,7 @@ impl<
                 self.rectify
                     .push_authoritative_with_check(
                         current_authoritative_tick_id + actual_skip_count as u32 + index as u32,
-                        AuthoritativeCombinedStepForAllParticipants {
+                        AuthoritativeStep {
                             authoritative_participants: combined_authoritative.clone(),
                         },
                     )

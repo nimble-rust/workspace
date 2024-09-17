@@ -7,7 +7,7 @@ use flood_rs::{Deserialize, Serialize};
 use log::{error, info, warn};
 use nimble_assent::prelude::*;
 use nimble_client::Client;
-use nimble_protocol::client_to_host::AuthoritativeCombinedStepForAllParticipants;
+use nimble_protocol::client_to_host::AuthoritativeStep;
 use nimble_protocol::hex_output;
 use nimble_rectify::RectifyCallback;
 use nimble_seer::prelude::*;
@@ -17,8 +17,8 @@ use std::io;
 use udp_client::UdpClient;
 
 pub struct ExampleClient<
-    Game: SeerCallback<AuthoritativeCombinedStepForAllParticipants<StepData>>
-        + AssentCallback<AuthoritativeCombinedStepForAllParticipants<StepData>>
+    Game: SeerCallback<AuthoritativeStep<StepData>>
+        + AssentCallback<AuthoritativeStep<StepData>>
         + RectifyCallback,
     StepData: Clone + Deserialize + Serialize + Debug + Eq + PartialEq,
 > {
@@ -30,8 +30,8 @@ pub struct ExampleClient<
 //"127.0.0.1:23000"
 
 impl<
-        Game: SeerCallback<AuthoritativeCombinedStepForAllParticipants<StepData>>
-            + AssentCallback<AuthoritativeCombinedStepForAllParticipants<StepData>>
+        Game: SeerCallback<AuthoritativeStep<StepData>>
+            + AssentCallback<AuthoritativeStep<StepData>>
             + RectifyCallback,
         StepData: Clone + Deserialize + Serialize + Debug + Eq + PartialEq,
     > ExampleClient<Game, StepData>
