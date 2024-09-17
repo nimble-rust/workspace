@@ -177,7 +177,7 @@ impl<
         for authoritative_step_range in &cmd.authoritative_steps.ranges {
             current_authoritative_tick_id +=
                 authoritative_step_range.delta_steps_from_previous as u32;
-            for _ in &authoritative_step_range.authoritative_steps {
+            for _ in &authoritative_step_range.authoritative_steps.authoritative_participants {
                 if self
                     .rectify
                     .waiting_for_authoritative_tick_id()

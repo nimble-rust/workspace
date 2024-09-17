@@ -2,7 +2,7 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-use crate::client_to_host::AuthoritativeStepsForSerialization;
+use crate::client_to_host::AuthoritativeStepRangeForAllParticipants;
 use crate::{Nonce, SessionConnectionSecret};
 use blob_stream::prelude::SenderToReceiverFrontCommands;
 use flood_rs::{Deserialize, ReadOctetStream, Serialize, WriteOctetStream};
@@ -265,34 +265,47 @@ impl GameStepResponseHeader {
 #[derive(Debug)]
 pub struct AuthoritativeStepRange<StepT: Deserialize + Serialize + Debug + Clone> {
     pub delta_steps_from_previous: u8,
-    pub authoritative_steps: Vec<AuthoritativeStepsForSerialization<StepT>>,
+    pub required_step_count: u8,
+    pub authoritative_steps: AuthoritativeStepRangeForAllParticipants<StepT>,
 }
 
 impl<StepT: Deserialize + Serialize + Debug + Clone> AuthoritativeStepRange<StepT> {
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.delta_steps_from_previous)?;
-        stream.write_u8(self.authoritative_steps.len() as u8)?;
+        stream.write_u8(self.required_step_count)?;
+        stream.write_u8(self.authoritative_steps.authoritative_participants.len() as u8)?;
 
-        for authoritative_step_payload in &self.authoritative_steps {
-            authoritative_step_payload.serialize(stream)?;
-        }
+        self.authoritative_steps
+            .serialize_with_len(stream, self.required_step_count)?;
+
         Ok(())
     }
 
     pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         let delta_steps = stream.read_u8()?;
-        let count = stream.read_u8()?;
+        let required_step_count = stream.read_u8()?;
+        let required_participant_count_in_range = stream.read_u8()?;
 
-        let mut authoritative_steps_vec =
-            Vec::<AuthoritativeStepsForSerialization<StepT>>::with_capacity(count as usize);
-        for _ in 0..count {
-            let authoritative_combined_step =
-                AuthoritativeStepsForSerialization::deserialize(stream)?;
-            authoritative_steps_vec.push(authoritative_combined_step);
+        let authoritative_combined_step =
+            AuthoritativeStepRangeForAllParticipants::deserialize_with_len(
+                stream,
+                required_participant_count_in_range,
+                required_step_count as usize,
+            )?;
+
+        if authoritative_combined_step.authoritative_participants.len()
+            != required_participant_count_in_range as usize
+        {
+            return Err(io::Error::new(
+                ErrorKind::InvalidData,
+                "must have exact required_participant_count",
+            ));
         }
+
         Ok(Self {
+            required_step_count,
             delta_steps_from_previous: delta_steps,
-            authoritative_steps: authoritative_steps_vec,
+            authoritative_steps: authoritative_combined_step,
         })
     }
 }
@@ -307,6 +320,7 @@ impl<StepT: Deserialize + Serialize + Debug + Clone> AuthoritativeStepRanges<Ste
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         TickIdUtil::to_stream(self.start_tick_id, stream)?;
         stream.write_u8(self.ranges.len() as u8)?;
+
         for range in &self.ranges {
             range.to_stream(stream)?;
         }
