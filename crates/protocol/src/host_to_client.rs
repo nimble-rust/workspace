@@ -265,17 +265,17 @@ impl GameStepResponseHeader {
 #[derive(Debug)]
 pub struct AuthoritativeStepRange<StepT: Deserialize + Serialize + Debug + Clone> {
     pub delta_steps_from_previous: u8,
-    pub required_step_count: u8,
+    pub step_count: u8,
     pub authoritative_steps: AuthoritativeStepRangeForAllParticipants<StepT>,
 }
 
 impl<StepT: Deserialize + Serialize + Debug + Clone> AuthoritativeStepRange<StepT> {
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.delta_steps_from_previous)?;
-        stream.write_u8(self.required_step_count)?;
+        stream.write_u8(self.step_count)?;
 
         self.authoritative_steps
-            .serialize_with_len(stream, self.required_step_count)?;
+            .serialize_with_len(stream, self.step_count)?;
 
         Ok(())
     }
@@ -291,7 +291,7 @@ impl<StepT: Deserialize + Serialize + Debug + Clone> AuthoritativeStepRange<Step
             )?;
 
         Ok(Self {
-            required_step_count,
+            step_count: required_step_count,
             delta_steps_from_previous: delta_steps,
             authoritative_steps: authoritative_combined_step,
         })

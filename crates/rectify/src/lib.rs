@@ -79,6 +79,33 @@ impl<Game: AssentCallback<StepT> + SeerCallback<StepT> + RectifyCallback, StepT>
             .received_authoritative(self.assent.end_tick_id().unwrap());
     }
 
+    /// Pushes an authoritative step into the [`Assent`] component. This method is used to
+    /// add new steps that have been determined by the authoritative host.
+    ///
+    /// # Arguments
+    ///
+    /// * `step` - The authoritative step to be pushed.
+    pub fn push_authoritative_with_check(
+        &mut self,
+        step_for_tick_id: TickId,
+        step: StepT,
+    ) -> Result<(), String> {
+        if let Some(end_tick_id) = self.assent.end_tick_id() {
+            if end_tick_id + 1 != step_for_tick_id {
+                Err(format!(
+                    "encountered {} but expected {}",
+                    step_for_tick_id,
+                    end_tick_id + 1
+                ))?;
+            }
+        }
+        self.assent.push(step);
+        self.seer
+            .received_authoritative(self.assent.end_tick_id().unwrap());
+
+        Ok(())
+    }
+
     /// Updates the authoritative state. If all the authoritative state has been calculated
     /// it predicts from the last authoritative state.
     /// # Arguments

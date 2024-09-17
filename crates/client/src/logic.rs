@@ -174,26 +174,65 @@ impl<
     fn on_game_step(&mut self, cmd: &GameStepResponse<StepT>) -> Result<(), ClientErrorKind> {
         info!("game step response: {:?}", cmd);
         let mut current_authoritative_tick_id = cmd.authoritative_steps.start_tick_id;
+
         for authoritative_step_range in &cmd.authoritative_steps.ranges {
             current_authoritative_tick_id +=
                 authoritative_step_range.delta_steps_from_previous as u32;
-            for _ in &authoritative_step_range
-                .authoritative_steps
-                .authoritative_participants
+            let skip_count = self
+                .rectify
+                .waiting_for_authoritative_tick_id()
+                .map_or(0, |tick_id| tick_id - current_authoritative_tick_id);
+
+            if skip_count >= authoritative_step_range.step_count as i64 {
+                continue;
+            }
+
+            if skip_count + authoritative_step_range.step_count as i64 <= 0 {
+                continue;
+            }
+
+            let actual_skip_count = if skip_count < 0 {
+                0
+            } else {
+                skip_count as usize
+            };
+
+            let remaining_step_count =
+                authoritative_step_range.step_count as usize - actual_skip_count;
+
+            let mut vector_for_range: Vec<HashMap<ParticipantId, StepT>> =
+                Vec::with_capacity(remaining_step_count);
+            for _ in 0..remaining_step_count {
+                vector_for_range.push(HashMap::new());
+            }
+
+            for (participant_id, authoritative_steps_vector_for_each_participant) in
+                &authoritative_step_range
+                    .authoritative_steps
+                    .authoritative_participants
             {
-                if self
-                    .rectify
-                    .waiting_for_authoritative_tick_id()
-                    .map_or(true, |tick_id| tick_id >= current_authoritative_tick_id)
+                for (index, authoritative_step_for_one_participant) in
+                    authoritative_steps_vector_for_each_participant
+                        .iter()
+                        .skip(actual_skip_count)
+                        .enumerate()
                 {
-                    //for (participant_id, steps_vector) in authoritative_step.authoritative_participants {}
-                    // TODO: Convert from serialization to combined step
-                    let auth_step = AuthoritativeCombinedStepForAllParticipants {
-                        authoritative_participants: HashMap::new(),
-                    };
-                    self.rectify.push_authoritative(auth_step);
+                    let x = vector_for_range.get_mut(index).unwrap();
+                    x.insert(
+                        *participant_id,
+                        authoritative_step_for_one_participant.clone(),
+                    );
                 }
-                current_authoritative_tick_id += 1;
+            }
+            for (index, combined_authoritative) in vector_for_range.iter().enumerate() {
+                self.rectify
+                    .push_authoritative_with_check(
+                        current_authoritative_tick_id + actual_skip_count as u32 + index as u32,
+                        AuthoritativeCombinedStepForAllParticipants {
+                            authoritative_participants: combined_authoritative.clone(),
+                        },
+                    )
+                    .map_err(ClientErrorKind::Unexpected)?;
             }
         }
         Ok(())

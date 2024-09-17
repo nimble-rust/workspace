@@ -72,7 +72,7 @@ fn check_authoritative() -> io::Result<()> {
 
     let range_to_send = AuthoritativeStepRange::<SampleStep> {
         delta_steps_from_previous: 0,
-        required_step_count: first_steps.len() as u8,
+        step_count: first_steps.len() as u8,
         authoritative_steps: AuthoritativeStepRangeForAllParticipants {
             authoritative_participants: range_for_all_participants,
         },
@@ -99,10 +99,7 @@ fn check_authoritative() -> io::Result<()> {
 
     let first_and_only_range = &received_ranges.ranges[0];
     assert_eq!(first_and_only_range.delta_steps_from_previous, 0);
-    assert_eq!(
-        first_and_only_range.required_step_count,
-        first_steps.len() as u8
-    );
+    assert_eq!(first_and_only_range.step_count, first_steps.len() as u8);
 
     let hash_map = &first_and_only_range
         .authoritative_steps

@@ -37,7 +37,7 @@ impl fmt::Display for ClientError {
 
 #[derive(Debug)]
 pub enum ClientErrorKind {
-    Unexpected,
+    Unexpected(String),
     IoErr(io::Error),
     WrongConnectResponseNonce(Nonce),
     WrongDownloadRequestId,
@@ -51,7 +51,7 @@ impl ClientErrorKind {
             Self::WrongConnectResponseNonce(_) => ErrorLevel::Info,
             Self::WrongDownloadRequestId => ErrorLevel::Warning,
             Self::DownloadResponseWasUnexpected => ErrorLevel::Info,
-            Self::Unexpected => ErrorLevel::Critical,
+            Self::Unexpected(_) => ErrorLevel::Critical,
         }
     }
 }
@@ -59,8 +59,8 @@ impl ClientErrorKind {
 impl fmt::Display for ClientErrorKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Unexpected => {
-                write!(f, "Unexpected")
+            Self::Unexpected(description) => {
+                write!(f, "Unexpected {}", description)
             }
             Self::IoErr(io_err) => {
                 write!(f, "io:err {:?}", io_err)
