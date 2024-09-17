@@ -74,6 +74,12 @@ impl<
         }
     }
 
+    pub fn debug_rectify(
+        &self,
+    ) -> &Rectify<Game, AuthoritativeCombinedStepForAllParticipants<StepT>> {
+        &self.rectify
+    }
+
     pub fn set_joining_player(&mut self, join_game_request: JoinGameRequest) {
         self.joining_player = Some(join_game_request);
     }

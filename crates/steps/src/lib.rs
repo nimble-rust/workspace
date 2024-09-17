@@ -106,7 +106,7 @@ impl<T: Deserialize> Deserialize for Step<T> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct StepInfo<T> {
     pub step: T,
     pub tick_id: TickId,
@@ -189,6 +189,10 @@ impl<StepType> Steps<StepType> {
         };
         self.steps.push_back(info);
         self.expected_write_id += 1;
+    }
+
+    pub fn debug_get(&self, index: usize) -> Option<&StepInfo<StepType>> {
+        self.steps.get(index)
     }
 
     pub fn pop(&mut self) -> Option<StepInfo<StepType>> {

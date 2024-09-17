@@ -18,8 +18,8 @@ use nimble_protocol::prelude::{ClientToHostCommands, HostToClientCommands};
 use nimble_rectify::RectifyCallback;
 use nimble_sample_step::{SampleGame, SampleStep};
 use nimble_seer::SeerCallback;
-use nimble_steps::Step;
-use nimble_steps::Step::Custom;
+use nimble_steps::Step::{Custom, Forced};
+use nimble_steps::{Step, StepInfo};
 use secure_random::GetRandom;
 use std::collections::HashMap;
 use std::fmt::Debug;
@@ -115,7 +115,7 @@ fn setup_sample_steps() -> AuthoritativeStepRanges<Step<SampleStep>> {
 
     let second_steps = vec![
         Custom(SampleStep::MoveLeft(42)),
-        Custom(SampleStep::Jump),
+        Forced,
         Custom(SampleStep::Jump),
     ];
     let second_participant_id = ParticipantId(1);
@@ -156,7 +156,41 @@ fn receive_authoritative_steps() -> Result<(), ClientError> {
     // Receive
     client_logic.receive(&[command])?;
 
-    // TODO: Verify
+    // Verify
+    let assent = &client_logic.debug_rectify().assent();
+    assert_eq!(
+        assent
+            .end_tick_id()
+            .expect("should have end_tick_id by now"),
+        TickId(2)
+    ); // Should have received TickId 0, 1, and 2.
+
+    let auth_steps = assent.debug_steps();
+    assert_eq!(auth_steps.len(), 3);
+
+    let first_participant_id = ParticipantId(255);
+    let second_participant_id = ParticipantId(1);
+
+    let mut expected_hash_map = HashMap::<ParticipantId, Step<SampleStep>>::new();
+    expected_hash_map.insert(first_participant_id, Custom(SampleStep::MoveLeft(-10)));
+    expected_hash_map.insert(second_participant_id, Forced);
+
+    let expected_step = AuthoritativeCombinedStepForAllParticipants::<Step<SampleStep>> {
+        authoritative_participants: expected_hash_map,
+    };
+
+    let expected_step_with_step_info =
+        StepInfo::<AuthoritativeCombinedStepForAllParticipants<Step<SampleStep>>> {
+            step: expected_step,
+            tick_id: TickId(1),
+        };
+
+    assert_eq!(
+        *auth_steps
+            .debug_get(1)
+            .expect("should be able to get index 1"),
+        expected_step_with_step_info
+    );
 
     Ok(())
 }

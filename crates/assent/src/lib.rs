@@ -60,6 +60,10 @@ where
         self.steps.back_tick_id()
     }
 
+    pub fn debug_steps(&self) -> &Steps<CombinedStepT> {
+        &self.steps
+    }
+
     pub fn update(&mut self, callback: &mut C) -> UpdateState {
         callback.on_pre_ticks();
         for combined_step_info in self.steps.iter() {
