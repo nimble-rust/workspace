@@ -273,7 +273,6 @@ impl<StepT: Deserialize + Serialize + Debug + Clone> AuthoritativeStepRange<Step
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.delta_steps_from_previous)?;
         stream.write_u8(self.required_step_count)?;
-        stream.write_u8(self.authoritative_steps.authoritative_participants.len() as u8)?;
 
         self.authoritative_steps
             .serialize_with_len(stream, self.required_step_count)?;
@@ -284,23 +283,12 @@ impl<StepT: Deserialize + Serialize + Debug + Clone> AuthoritativeStepRange<Step
     pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         let delta_steps = stream.read_u8()?;
         let required_step_count = stream.read_u8()?;
-        let required_participant_count_in_range = stream.read_u8()?;
 
         let authoritative_combined_step =
             AuthoritativeStepRangeForAllParticipants::deserialize_with_len(
                 stream,
-                required_participant_count_in_range,
                 required_step_count as usize,
             )?;
-
-        if authoritative_combined_step.authoritative_participants.len()
-            != required_participant_count_in_range as usize
-        {
-            return Err(io::Error::new(
-                ErrorKind::InvalidData,
-                "must have exact required_participant_count",
-            ));
-        }
 
         Ok(Self {
             required_step_count,

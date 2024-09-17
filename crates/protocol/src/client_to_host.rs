@@ -358,11 +358,12 @@ impl<StepT: Serialize + Deserialize> AuthoritativeStepRangeForAllParticipants<St
 
     pub fn deserialize_with_len(
         stream: &mut impl ReadOctetStream,
-        participant_count: u8,
         required_step_count_in_range: usize,
     ) -> io::Result<Self> {
-        let mut authoritative_participants = HashMap::with_capacity(participant_count as usize);
-        for _ in 0..participant_count {
+        let required_participant_count_in_range = stream.read_u8()?;
+        let mut authoritative_participants =
+            HashMap::with_capacity(required_participant_count_in_range as usize);
+        for _ in 0..required_participant_count_in_range {
             let participant_id = ParticipantId::from_stream(stream)?;
             let mut authoritative_steps_for_one_participant =
                 Vec::with_capacity(required_step_count_in_range);

@@ -6,13 +6,13 @@ edition = "2021"
 [dependencies]
 nimble-steps = { path = "../steps" }
 nimble-protocol = { path = "../protocol" }
-flood-rs = "0.0.9"
+flood-rs = "0.0.10"
 secure-random = { path = "../secure-random" }
 ordered-datagram = { path = "../ordered-datagram" }
 datagram-pinger = { path = "../datagram-pinger" }
 log = "0.4.22"
 nimble-client = { path = "../client" }
-connection-layer = { path = "../connection-layer" }
+nimble-connection-layer = { path = "../connection-layer" }
 udp-client = { path = "../udp-client" }
 udp-connections = { path = "../udp-connections" }
 datagram = { path = "../datagram" }

@@ -12,4 +12,4 @@ repository = "https://github.com/nimble-rust/seer"
 nimble-steps = { path = "../steps" }
 tick-id = "0.0.7"
 log = "0.4.22"
-flood-rs = "0.0.9"
+flood-rs = "0.0.10"

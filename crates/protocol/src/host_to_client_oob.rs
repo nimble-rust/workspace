@@ -3,8 +3,8 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 use crate::{Nonce, SessionConnectionSecret};
-use connection_layer::ConnectionId;
 use flood_rs::{ReadOctetStream, WriteOctetStream};
+use nimble_connection_layer::ConnectionId;
 use std::io;
 use std::io::ErrorKind;
 

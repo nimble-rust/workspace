@@ -2,8 +2,8 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-use connection_layer::prelude::*;
 use flood_rs::prelude::*;
+use nimble_connection_layer::prelude::*;
 
 #[test]
 fn test_header() {

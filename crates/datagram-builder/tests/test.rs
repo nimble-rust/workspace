@@ -4,7 +4,7 @@
  */
 use datagram::{DatagramBuilder, DatagramError, DatagramParser};
 use datagram_builder::deserialize::deserialize_datagrams;
-use datagram_builder::serialize_datagrams;
+use datagram_builder::serialize::serialize_datagrams;
 use flood_rs::prelude::*;
 use std::io;
 

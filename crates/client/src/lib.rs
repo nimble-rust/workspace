@@ -8,14 +8,14 @@ mod err;
 pub mod logic;
 
 use crate::logic::ClientLogic;
-use connection_layer::{
-    prepare_out_stream, verify_hash, write_to_stream, ConnectionId, ConnectionLayerMode,
-    ConnectionSecretSeed,
-};
 use datagram_pinger::{client_in_ping, client_out_ping, ClientTime};
 use flood_rs::prelude::*;
 use log::info;
 use nimble_assent::AssentCallback;
+use nimble_connection_layer::{
+    prepare_out_stream, verify_hash, write_to_stream, ConnectionId, ConnectionLayerMode,
+    ConnectionSecretSeed,
+};
 use nimble_protocol::client_to_host::{
     AuthoritativeCombinedStepForAllParticipants, JoinGameRequest, PredictedStep,
 };

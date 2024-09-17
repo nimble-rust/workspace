@@ -11,5 +11,5 @@ nimble-assent = { path = "../assent" }
 nimble-seer = { path = "../seer" }
 nimble-rectify = { path = "../rectify" }
 nimble-steps = { path = "../steps" }
-flood-rs = "0.0.9"
+flood-rs = "0.0.10"
 nimble-sample-step = { path = "../sample-step" }
