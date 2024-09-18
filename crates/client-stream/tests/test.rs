@@ -33,18 +33,19 @@ fn connect_stream() -> io::Result<()> {
     let mut stream: ClientStream<SampleGame, Step<SampleStep>> =
         ClientStream::new(Rc::new(RefCell::new(random)), &application_version);
 
-    /*
-       stream.write_u8(self.flags)?;
-       self.response_to_request.serialize(stream)?;
-       self.host_assigned_connection_id.serialize(stream)?;
-       self.host_assigned_connection_secret.to_stream(stream)?;
-    */
-
     let cmd = stream.send()?;
     assert_eq!(cmd.len(), 1);
+
     assert_eq!(
         cmd[0],
-        &[0, 5, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 1, 0, 2, 0, 1, 2, 3, 4, 5, 6, 7]
+        &[
+            0,    // ConnectionId == 0 (OOB)
+            0x05, // Connect Request: ClientToHostOobCommand::ConnectType = 0x05
+            0, 0, 0, 0, 0, 5, // Nimble version
+            0, // Flags (use debug stream)
+            0, 0, 0, 1, 0, 2, // Application version
+            0, 1, 2, 3, 4, 5, 6, 7 // Client Request Id (normally random u64)
+        ]
     );
 
     let connect_response_from_host = [
@@ -60,7 +61,6 @@ fn connect_stream() -> io::Result<()> {
     stream.receive(&connect_response_from_host)?;
 
     // Verify
-
     let phase = stream.debug_phase();
 
     println!("phase {phase:?}");

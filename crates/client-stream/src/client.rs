@@ -17,6 +17,7 @@ use std::io;
 use std::io::{Error, ErrorKind};
 use std::rc::Rc;
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
 pub enum ClientPhase<
     GameT: nimble_seer::SeerCallback<nimble_protocol::client_to_host::AuthoritativeStep<StepT>>
@@ -122,7 +123,8 @@ impl<
         let (datagram_type, mut in_stream) = self.datagram_parser.parse(payload, None)?;
         match datagram_type {
             DatagramType::Connection(connection_id, client_time) => {
-                info!("client time {client_time:?}");
+                // TODO: use connection_id from DatagramType::connection_id
+                info!("connection: connection_id {connection_id:?} client time {client_time:?}");
                 self.connected_receive(&mut in_stream)
             }
             _ => Err(Error::new(
