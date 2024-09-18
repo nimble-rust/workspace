@@ -6,7 +6,7 @@ use std::fmt;
 use std::fmt::Formatter;
 use std::io::Result;
 
-use flood_rs::{ReadOctetStream, WriteOctetStream};
+use flood_rs::{Deserialize, ReadOctetStream, Serialize, WriteOctetStream};
 
 pub mod client_to_host;
 pub mod client_to_host_oob;
@@ -68,6 +68,27 @@ impl Version {
             minor: stream.read_u16()?,
             patch: stream.read_u16()?,
         })
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct SessionConnectionId(pub u8);
+
+impl Serialize for SessionConnectionId {
+    fn serialize(&self, stream: &mut impl WriteOctetStream) -> Result<()>
+    where
+        Self: Sized,
+    {
+        stream.write_u8(self.0)
+    }
+}
+
+impl Deserialize for SessionConnectionId {
+    fn deserialize(stream: &mut impl ReadOctetStream) -> Result<Self>
+    where
+        Self: Sized,
+    {
+        Ok(Self(stream.read_u8()?))
     }
 }
 

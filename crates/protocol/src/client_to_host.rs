@@ -54,7 +54,7 @@ impl DownloadGameStateRequest {
 }
 
 #[derive(Debug, Clone)]
-pub enum ClientToHostCommands<StepT: std::clone::Clone + Debug + Serialize + Deserialize> {
+pub enum ClientToHostCommands<StepT: Clone + Debug + Serialize + Deserialize> {
     JoinGameType(JoinGameRequest),
     Steps(StepsRequest<StepT>),
     DownloadGameState(DownloadGameStateRequest),

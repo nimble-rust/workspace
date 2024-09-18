@@ -24,6 +24,7 @@ pub enum UpdateState {
 }
 
 // Define the Assent struct
+#[derive(Debug)]
 pub struct Assent<C, CombinedStepT>
 where
     C: AssentCallback<CombinedStepT>,

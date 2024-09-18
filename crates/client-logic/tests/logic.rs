@@ -4,8 +4,7 @@
  */
 use flood_rs::{Deserialize, Serialize};
 use nimble_assent::AssentCallback;
-use nimble_client::err::ClientError;
-use nimble_client::logic::ClientLogic;
+use nimble_client_logic::logic::ClientLogic;
 use nimble_participant::ParticipantId;
 use nimble_protocol::client_to_host::{
     AuthoritativeStep, AuthoritativeStepRangeForAllParticipants, PredictedStep,
@@ -25,6 +24,7 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use test_log::test;
 use tick_id::TickId;
+use nimble_client_logic::err::ClientError;
 
 #[test]
 fn basic_logic() {
@@ -37,13 +37,13 @@ fn basic_logic() {
         let commands = client_logic.send();
         assert_eq!(commands.len(), 1);
         if let ClientToHostCommands::Steps(StepsRequest {
-            ack:
-                StepsAck {
-                    latest_received_step_tick_id: 0,
-                    lost_steps_mask_after_last_received: 0b0,
-                },
-            combined_predicted_steps: PredictedStepsForAllPlayers { predicted_players },
-        }) = &commands[0]
+                                               ack:
+                                               StepsAck {
+                                                   latest_received_step_tick_id: 0,
+                                                   lost_steps_mask_after_last_received: 0b0,
+                                               },
+                                               combined_predicted_steps: PredictedStepsForAllPlayers { predicted_players },
+                                           }) = &commands[0]
         {
             assert_eq!(predicted_players.len(), 0);
         } else {
@@ -58,8 +58,8 @@ fn basic_logic() {
 
 fn setup_logic<
     GameT: SeerCallback<AuthoritativeStep<StepT>>
-        + AssentCallback<AuthoritativeStep<StepT>>
-        + RectifyCallback,
+    + AssentCallback<AuthoritativeStep<StepT>>
+    + RectifyCallback,
     StepT: Clone + Deserialize + Serialize + Debug,
 >() -> ClientLogic<GameT, StepT> {
     let random = GetRandom;
@@ -82,13 +82,13 @@ fn send_steps() {
         let commands = client_logic.send();
         assert_eq!(commands.len(), 1);
         if let ClientToHostCommands::Steps(StepsRequest {
-            ack:
-                StepsAck {
-                    latest_received_step_tick_id: 0,
-                    lost_steps_mask_after_last_received: 0b0,
-                },
-            combined_predicted_steps: PredictedStepsForAllPlayers { predicted_players },
-        }) = &commands[0]
+                                               ack:
+                                               StepsAck {
+                                                   latest_received_step_tick_id: 0,
+                                                   lost_steps_mask_after_last_received: 0b0,
+                                               },
+                                               combined_predicted_steps: PredictedStepsForAllPlayers { predicted_players },
+                                           }) = &commands[0]
         {
             assert_eq!(predicted_players.len(), 1);
         } else {

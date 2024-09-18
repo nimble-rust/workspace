@@ -1,143 +1,11 @@
+pub mod client;
+mod datagram_parse;
+
+use datagram::{DatagramBuilder, DatagramError, DatagramParser};
+use flood_rs::WriteOctetStream;
+
+
 /*
- * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
- * Licensed under the MIT License. See LICENSE in the project root for license information.
- */
-extern crate core;
-
-pub mod err;
-pub mod logic;
-
-use crate::logic::ClientLogic;
-use datagram_pinger::{client_in_ping, client_out_ping, ClientTime};
-use flood_rs::prelude::*;
-use log::info;
-use nimble_assent::AssentCallback;
-use nimble_connection_layer::{
-    prepare_out_stream, verify_hash, write_to_stream, ConnectionId, ConnectionLayerMode,
-    ConnectionSecretSeed,
-};
-use nimble_protocol::client_to_host::{AuthoritativeStep, JoinGameRequest, PredictedStep};
-use nimble_protocol::client_to_host_oob::ClientToHostOobCommands;
-use nimble_protocol::host_to_client::HostToClientCommands;
-use nimble_protocol::host_to_client_oob::HostToClientOobCommands;
-use nimble_protocol::prelude::{ConnectRequest, ConnectionAccepted};
-use nimble_protocol::{Nonce, Version};
-use nimble_rectify::RectifyCallback;
-use nimble_seer::SeerCallback;
-use ordered_datagram::{OrderedIn, OrderedOut};
-use secure_random::SecureRandom;
-use std::fmt::Debug;
-use std::io;
-use std::io::{Error, ErrorKind};
-
-#[derive(PartialEq, Debug)]
-enum ClientPhase {
-    Connecting(Nonce),
-    Connected(ConnectionId, ConnectionSecretSeed),
-}
-
-pub struct Client<
-    Game: SeerCallback<AuthoritativeStep<StepT>>
-        + AssentCallback<AuthoritativeStep<StepT>>
-        + RectifyCallback,
-    StepT: Clone + Deserialize + Serialize + Debug,
-> {
-    phase: ClientPhase,
-    logic: Option<ClientLogic<Game, StepT>>,
-    ordered_datagram_out: OrderedOut,
-    ordered_datagram_in: OrderedIn,
-    tick_id: u32,
-    debug_tick_id_to_send: u32,
-}
-
-impl<
-        Game: SeerCallback<AuthoritativeStep<StepT>>
-            + AssentCallback<AuthoritativeStep<StepT>>
-            + RectifyCallback,
-        StepT: Clone + Deserialize + Serialize + Debug,
-    > Client<Game, StepT>
-{
-    pub fn new(mut random: Box<dyn SecureRandom>) -> Client<Game, StepT> {
-        let nonce = Nonce(random.get_random_u64());
-        let phase = ClientPhase::Connecting(nonce);
-        Self {
-            phase,
-            //random,
-            logic: None,
-            ordered_datagram_out: OrderedOut::default(),
-            ordered_datagram_in: OrderedIn::default(),
-            tick_id: 0,
-            debug_tick_id_to_send: 0,
-        }
-    }
-
-    pub fn set_joining_player(&mut self, join_game_request: JoinGameRequest) -> Result<(), String> {
-        self.logic
-            .as_mut()
-            .ok_or("Logic is not initialized".to_string())
-            .map(|logic| logic.set_joining_player(join_game_request))
-    }
-
-    pub fn debug_set_tick_id(&mut self, tick_id: u32) {
-        self.tick_id = tick_id;
-        self.debug_tick_id_to_send = self.tick_id;
-    }
-
-    pub fn update(&mut self, game: &mut Game) -> Result<(), String> {
-        self.logic
-            .as_mut()
-            .ok_or("Logic is not initialized".to_string())
-            .map(|logic| logic.update(game))
-    }
-
-    pub fn add_predicted_step(&mut self, step: PredictedStep<StepT>) -> Result<(), String> {
-        self.logic
-            .as_mut()
-            .ok_or("Logic is not initialized".to_string())
-            .map(|logic| logic.add_predicted_step(step))
-    }
-
-    fn write_header(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
-        match self.phase {
-            ClientPhase::Connected(_, _) => {
-                prepare_out_stream(stream)?; // Add hash stream
-                self.ordered_datagram_out.to_stream(stream)?;
-                info!(
-                    "add connect header {}",
-                    self.ordered_datagram_out.sequence_to_send
-                );
-
-                let client_time = ClientTime::new(0);
-                client_out_ping(client_time, stream)
-            }
-            _ => {
-                info!("oob zero connection");
-                let zero_connection_id = ConnectionId { value: 0 }; // oob
-                zero_connection_id.to_stream(stream) // OOB
-            }
-        }
-    }
-
-    fn write_to_start_of_header(
-        &self,
-        connection_id: ConnectionId,
-        seed: ConnectionSecretSeed,
-        out_stream: &mut OutOctetStream,
-    ) -> io::Result<()> {
-        let mut payload = out_stream.octets();
-        let mut hash_stream = OutOctetStream::new();
-        let payload_to_calculate_on = &payload[5..];
-        info!("payload: {:?}", payload_to_calculate_on);
-        write_to_stream(
-            &mut hash_stream,
-            connection_id,
-            seed,
-            payload_to_calculate_on,
-        )?; // Write hash connection layer header
-        payload[..hash_stream.octets().len()].copy_from_slice(hash_stream.octets_ref());
-        Ok(())
-    }
-
     pub fn send(&mut self) -> io::Result<Vec<Vec<u8>>> {
         let mut out_stream = OutOctetStream::new();
         self.write_header(&mut out_stream)?;
@@ -171,9 +39,72 @@ impl<
                 self.write_to_start_of_header(connection_id, seed, &mut out_stream)?
             }
         }
+        
+        
+        pub struct Client<
+    Game: SeerCallback<AuthoritativeStep<StepT>>
+    + AssentCallback<AuthoritativeStep<StepT>>
+    + RectifyCallback,
+    StepT: Clone + Deserialize + Serialize + Debug,
+> {
+    logic: Option<ClientLogic<Game, StepT>>,
+    tick_id: u32,
+    debug_tick_id_to_send: u32,
+}
 
-        let datagrams = vec![out_stream.octets()];
-        Ok(datagrams)
+impl<
+    Game: SeerCallback<AuthoritativeStep<StepT>>
+    + AssentCallback<AuthoritativeStep<StepT>>
+    + RectifyCallback,
+    StepT: Clone + Deserialize + Serialize + Debug,
+> Client<Game, StepT>
+{
+    pub fn new(mut random: Box<dyn SecureRandom>) -> Client<Game, StepT> {
+        let nonce = Nonce(random.get_random_u64());
+        Self {
+            //random,
+            logic: None,
+            tick_id: 0,
+            debug_tick_id_to_send: 0,
+        }
+    }
+
+    pub fn set_joining_player(&mut self, join_game_request: JoinGameRequest) -> Result<(), String> {
+        self.logic
+            .as_mut()
+            .ok_or("Logic is not initialized".to_string())
+            .map(|logic| logic.set_joining_player(join_game_request))
+    }
+
+    pub fn debug_set_tick_id(&mut self, tick_id: u32) {
+        self.tick_id = tick_id;
+        self.debug_tick_id_to_send = self.tick_id;
+    }
+
+    pub fn update(&mut self, game: &mut Game) -> Result<(), String> {
+        self.logic
+            .as_mut()
+            .ok_or("Logic is not initialized".to_string())
+            .map(|logic| logic.update(game))
+    }
+
+    pub fn add_predicted_step(&mut self, step: PredictedStep<StepT>) -> Result<(), String> {
+        self.logic
+            .as_mut()
+            .ok_or("Logic is not initialized".to_string())
+            .map(|logic| logic.add_predicted_step(step))
+    }
+
+
+    pub fn send(&mut self) -> io::Result<Vec<Vec<u8>>> {
+                let client_commands_to_send = self.logic.as_mut().expect("reason").send();
+                for command_to_send in client_commands_to_send.iter() {
+                    info!("sending command {:?}", command_to_send);
+                    command_to_send.to_stream(&mut out_stream)?;
+                }
+                info!("writing connected header");
+                self.write_to_start_of_header(connection_id, seed, &mut out_stream)?
+            }
     }
 
     fn on_connect(&mut self, cmd: ConnectionAccepted) -> io::Result<()> {
@@ -215,12 +146,6 @@ impl<
         match connection_mode {
             ConnectionLayerMode::OOB => {
                 let command = HostToClientOobCommands::from_stream(&mut in_stream)?;
-                match command {
-                    HostToClientOobCommands::ConnectType(connect_command) => {
-                        self.on_connect(connect_command)?;
-                        Ok(())
-                    }
-                }
             }
             ConnectionLayerMode::Connection(connection_layer) => {
                 match self.phase {
@@ -278,3 +203,5 @@ impl<
         }
     }
 }
+
+ */

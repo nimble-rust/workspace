@@ -7,7 +7,7 @@ use std::time::Duration;
 
 use datagram::{DatagramCodec, DatagramCommunicator};
 use log::{error, info, warn};
-use nimble_client::Client;
+use nimble_client_logic::Client;
 use nimble_protocol::client_to_host::{
     JoinGameRequest, JoinGameType, JoinPlayerRequest, JoinPlayerRequests,
 };
@@ -17,6 +17,7 @@ use nimble_steps::Step;
 use secure_random::GetRandom;
 //use test_log::test;
 use udp_client::UdpClient;
+use udp_connections::Client;
 
 //#[test]
 #[allow(dead_code)]

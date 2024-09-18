@@ -6,8 +6,8 @@ pub use {
     crate::client_to_host::{
         ClientToHostCommands, JoinGameRequest, PredictedStepsForOnePlayer, StepsAck, StepsRequest,
     },
-    crate::client_to_host_oob::ConnectRequest,
+    crate::client_to_host_oob::{ClientToHostOobCommands, ConnectRequest},
     crate::host_to_client::{GameStepResponse, HostToClientCommands, JoinGameAccepted},
-    crate::host_to_client_oob::ConnectionAccepted,
-    crate::Version,
+    crate::host_to_client_oob::{ConnectionAccepted, HostToClientOobCommands},
+    crate::{Nonce, SessionConnectionId, SessionConnectionSecret, Version},
 };

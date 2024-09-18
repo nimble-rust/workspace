@@ -21,18 +21,14 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use tick_id::TickId;
 
-#[derive(PartialEq, Debug)]
-enum Phase {
-    InGame,
-}
 
+#[derive(Debug)]
 pub struct ClientLogic<
     Game: SeerCallback<AuthoritativeStep<StepT>>
-        + AssentCallback<AuthoritativeStep<StepT>>
-        + RectifyCallback,
+    + AssentCallback<AuthoritativeStep<StepT>>
+    + RectifyCallback,
     StepT: Clone + Deserialize + Serialize + Debug,
 > {
-    phase: Phase,
     joining_player: Option<JoinGameRequest>,
     #[allow(unused)]
     random: Box<dyn SecureRandom>,
@@ -49,16 +45,14 @@ pub struct ClientLogic<
 }
 
 impl<
-        Game: SeerCallback<AuthoritativeStep<StepT>>
-            + AssentCallback<AuthoritativeStep<StepT>>
-            + RectifyCallback,
-        StepT: Clone + Deserialize + Serialize + Debug,
-    > ClientLogic<Game, StepT>
+    Game: SeerCallback<AuthoritativeStep<StepT>>
+    + AssentCallback<AuthoritativeStep<StepT>>
+    + RectifyCallback,
+    StepT: Clone + Deserialize + Serialize + Debug,
+> ClientLogic<Game, StepT>
 {
     pub fn new(random: Box<dyn SecureRandom>) -> ClientLogic<Game, StepT> {
-        let phase = Phase::InGame;
         Self {
-            phase,
             random,
             joining_player: None,
             tick_id: 0,
@@ -96,49 +90,45 @@ impl<
         let mut commands: Vec<ClientToHostCommands<StepT>> = self.commands_to_send.clone();
         self.commands_to_send.clear();
 
-        match self.phase {
-            Phase::InGame => {
-                if let Some(joining_game) = &self.joining_player {
-                    info!("connected. send join_game_request {:?}", joining_game);
-                    commands.push(ClientToHostCommands::JoinGameType(joining_game.clone()));
-                }
+        if let Some(joining_game) = &self.joining_player {
+            info!("connected. send join_game_request {:?}", joining_game);
+            commands.push(ClientToHostCommands::JoinGameType(joining_game.clone()));
+        }
 
-                let mut predicted_steps_for_all: HashMap<u8, PredictedStepsForOnePlayer<StepT>> =
-                    HashMap::new();
-                for (index, step_queue) in self.outgoing_predicted_steps.iter() {
-                    if step_queue.is_empty() {
-                        continue;
-                    }
-                    let x: PredictedStepsForOnePlayer<StepT> = PredictedStepsForOnePlayer {
-                        first_tick_id: step_queue.front_tick_id().unwrap(),
-                        predicted_steps: step_queue
-                            .iter()
-                            .map(|step_info| step_info.step.clone())
-                            .collect(),
-                    };
-                    predicted_steps_for_all.insert(*index, x);
-                }
-
-                let steps_request = StepsRequest {
-                    ack: StepsAck {
-                        latest_received_step_tick_id: self.tick_id,
-                        lost_steps_mask_after_last_received: 0,
-                    },
-                    combined_predicted_steps: PredictedStepsForAllPlayers {
-                        predicted_players: predicted_steps_for_all,
-                    },
-                };
-
-                let steps_command = ClientToHostCommands::Steps(steps_request);
-                commands.push(steps_command);
-
-                if let Some(id) = self.download_state_request_id {
-                    let download_request = DownloadGameStateRequest { request_id: id };
-                    let cmd = ClientToHostCommands::DownloadGameState(download_request);
-                    commands.push(cmd);
-                }
+        let mut predicted_steps_for_all: HashMap<u8, PredictedStepsForOnePlayer<StepT>> =
+            HashMap::new();
+        for (index, step_queue) in self.outgoing_predicted_steps.iter() {
+            if step_queue.is_empty() {
+                continue;
             }
+            let x: PredictedStepsForOnePlayer<StepT> = PredictedStepsForOnePlayer {
+                first_tick_id: step_queue.front_tick_id().unwrap(),
+                predicted_steps: step_queue
+                    .iter()
+                    .map(|step_info| step_info.step.clone())
+                    .collect(),
+            };
+            predicted_steps_for_all.insert(*index, x);
+        }
+
+        let steps_request = StepsRequest {
+            ack: StepsAck {
+                latest_received_step_tick_id: self.tick_id,
+                lost_steps_mask_after_last_received: 0,
+            },
+            combined_predicted_steps: PredictedStepsForAllPlayers {
+                predicted_players: predicted_steps_for_all,
+            },
         };
+
+        let steps_command = ClientToHostCommands::Steps(steps_request);
+        commands.push(steps_command);
+
+        if let Some(id) = self.download_state_request_id {
+            let download_request = DownloadGameStateRequest { request_id: id };
+            let cmd = ClientToHostCommands::DownloadGameState(download_request);
+            commands.push(cmd);
+        }
 
         commands
     }
@@ -266,7 +256,7 @@ impl<
         Ok(())
     }
 
-    fn receive_cmd(
+    pub fn receive_cmd(
         &mut self,
         command: &HostToClientCommands<StepT>,
     ) -> Result<(), ClientErrorKind> {

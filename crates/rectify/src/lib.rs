@@ -15,6 +15,7 @@ pub trait RectifyCallback {
 
 /// The `Rectify` struct coordinates between the [`Assent`] and [`Seer`] components, managing
 /// authoritative and predicted game states.
+#[derive(Debug)]
 pub struct Rectify<Game: AssentCallback<StepT> + SeerCallback<StepT> + RectifyCallback, StepT> {
     assent: Assent<Game, StepT>,
     seer: Seer<Game, StepT>,

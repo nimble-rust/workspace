@@ -4,7 +4,7 @@ version = "0.0.1"
 edition = "2021"
 
 [dependencies]
-nimble-client = { path = "../client" }
+nimble-client = { path = "../client-stream" }
 nimble-host = { path = "../host" }
 nimble-assent = { path = "../assent" }
 nimble-seer = { path = "../seer" }

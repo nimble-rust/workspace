@@ -4,6 +4,7 @@
  */
 use flood_rs::prelude::*;
 
+#[derive(Debug)]
 pub struct ClientTime(u16);
 
 impl ClientTime {
