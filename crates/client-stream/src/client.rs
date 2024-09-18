@@ -1,4 +1,3 @@
-use crate::client::ClientPhase::Connected;
 use crate::datagram_build::{NimbleDatagramBuilder, NimbleOobDatagramBuilder};
 use crate::datagram_parse::{DatagramType, NimbleDatagramParser};
 use datagram::DatagramBuilder;
@@ -6,7 +5,7 @@ use datagram_builder::serialize::serialize_datagrams;
 use flood_rs::prelude::{InOctetStream, OutOctetStream};
 use flood_rs::ReadOctetStream;
 use log::info;
-use nimble_client_connecting::ConnectingClient;
+use nimble_client_connecting::{ConnectedInfo, ConnectingClient};
 use nimble_client_logic::logic::ClientLogic;
 use nimble_connection_layer::ConnectionSecretSeed;
 use nimble_protocol::prelude::{HostToClientCommands, HostToClientOobCommands};
@@ -39,6 +38,7 @@ pub struct ClientStream<
     oob_datagram_builder: NimbleOobDatagramBuilder,
     phase: ClientPhase<GameT, StepT>,
     random: Rc<RefCell<dyn SecureRandom>>,
+    connected_info: Option<ConnectedInfo>,
 }
 
 impl<
@@ -61,6 +61,7 @@ impl<
             datagram_parser: NimbleDatagramParser::new(),
             datagram_builder: NimbleDatagramBuilder::new(DATAGRAM_MAX_SIZE),
             oob_datagram_builder: NimbleOobDatagramBuilder::new(DATAGRAM_MAX_SIZE),
+            connected_info: None,
             phase: ClientPhase::Connecting(ConnectingClient::new(
                 client_request_id,
                 *application_version,
@@ -81,6 +82,7 @@ impl<
             .map_err(|err| Error::new(ErrorKind::InvalidData, err.to_string()))?;
         if let Some(connected_info) = connecting_client.connected_info() {
             info!("connected!");
+            self.connected_info = Some(*connected_info);
             let seed = ConnectionSecretSeed(connected_info.session_connection_secret.value as u32);
             self.datagram_builder.set_secrets(
                 nimble_connection_layer::ConnectionId {
@@ -89,12 +91,12 @@ impl<
                 seed,
             );
 
-            self.phase = Connected(ClientLogic::new(self.random.clone()));
+            self.phase = ClientPhase::Connected(ClientLogic::new(self.random.clone()));
         }
         Ok(())
     }
 
-    pub fn connecting_receive_front(&mut self, payload: &[u8]) -> io::Result<()> {
+    fn connecting_receive_front(&mut self, payload: &[u8]) -> io::Result<()> {
         let (datagram_type, in_stream) = self.datagram_parser.parse(payload, None)?;
         match datagram_type {
             DatagramType::Oob => self.connecting_receive(in_stream),
@@ -119,7 +121,7 @@ impl<
         Ok(())
     }
 
-    pub fn connected_receive_front(&mut self, payload: &[u8]) -> io::Result<()> {
+    fn connected_receive_front(&mut self, payload: &[u8]) -> io::Result<()> {
         let (datagram_type, mut in_stream) = self.datagram_parser.parse(payload, None)?;
         match datagram_type {
             DatagramType::Connection(connection_id, client_time) => {
@@ -174,5 +176,9 @@ impl<
 
     pub fn debug_phase(&self) -> &ClientPhase<GameT, StepT> {
         &self.phase
+    }
+
+    pub fn debug_connect_info(&self) -> Option<ConnectedInfo> {
+        self.connected_info
     }
 }

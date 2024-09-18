@@ -30,10 +30,6 @@ pub struct ConnectingClient {
     sent_at_least_once: bool,
 }
 
-/*
-
-*/
-
 impl ConnectingClient {
     #[must_use]
     pub const fn new(
