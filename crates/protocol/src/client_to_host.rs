@@ -54,28 +54,15 @@ impl DownloadGameStateRequest {
 }
 
 #[derive(Debug, Clone)]
-pub enum ClientToHostCommands<StepT: std::clone::Clone + Debug + Serialize + Deserialize> {
+pub enum ClientToHostCommands<StepT: Clone + Debug + Serialize + Deserialize> {
     JoinGameType(JoinGameRequest),
     Steps(StepsRequest<StepT>),
     DownloadGameState(DownloadGameStateRequest),
     BlobStreamChannel(ReceiverToSenderFrontCommands),
 }
 
-impl<StepT: std::clone::Clone + Debug + Serialize + Deserialize> ClientToHostCommands<StepT> {
-    pub fn to_octet(&self) -> u8 {
-        match self {
-            ClientToHostCommands::Steps(_) => ClientToHostCommand::Steps as u8,
-            ClientToHostCommands::JoinGameType(_) => ClientToHostCommand::JoinGame as u8,
-            ClientToHostCommands::DownloadGameState(_) => {
-                ClientToHostCommand::DownloadGameState as u8
-            }
-            ClientToHostCommands::BlobStreamChannel(_) => {
-                ClientToHostCommand::BlobStreamChannel as u8
-            }
-        }
-    }
-
-    pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
+impl<StepT: Clone + Debug + Serialize + Deserialize> Serialize for ClientToHostCommands<StepT> {
+    fn serialize(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.to_octet())?;
         match self {
             ClientToHostCommands::Steps(predicted_steps_and_ack) => {
@@ -92,8 +79,10 @@ impl<StepT: std::clone::Clone + Debug + Serialize + Deserialize> ClientToHostCom
             }
         }
     }
+}
 
-    pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
+impl<StepT: Clone + Debug + Serialize + Deserialize> Deserialize for ClientToHostCommands<StepT> {
+    fn deserialize(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         let command_value = stream.read_u8()?;
         let command = ClientToHostCommand::try_from(command_value)?;
         let x = match command {
@@ -111,6 +100,21 @@ impl<StepT: std::clone::Clone + Debug + Serialize + Deserialize> ClientToHostCom
             ),
         };
         Ok(x)
+    }
+}
+
+impl<StepT: std::clone::Clone + Debug + Serialize + Deserialize> ClientToHostCommands<StepT> {
+    pub fn to_octet(&self) -> u8 {
+        match self {
+            ClientToHostCommands::Steps(_) => ClientToHostCommand::Steps as u8,
+            ClientToHostCommands::JoinGameType(_) => ClientToHostCommand::JoinGame as u8,
+            ClientToHostCommands::DownloadGameState(_) => {
+                ClientToHostCommand::DownloadGameState as u8
+            }
+            ClientToHostCommands::BlobStreamChannel(_) => {
+                ClientToHostCommand::BlobStreamChannel as u8
+            }
+        }
     }
 }
 

@@ -6,13 +6,49 @@ use std::fmt;
 use std::fmt::Formatter;
 use std::io::Result;
 
-use flood_rs::{ReadOctetStream, WriteOctetStream};
+use flood_rs::{Deserialize, ReadOctetStream, Serialize, WriteOctetStream};
 
 pub mod client_to_host;
 pub mod client_to_host_oob;
 pub mod host_to_client;
 pub mod host_to_client_oob;
 pub mod prelude;
+
+// The reason for it being an u64, is that it should be
+// very, very unlikely that another client gets the
+// connection for the specified connection
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct ClientRequestId(pub u64);
+
+impl fmt::Display for ClientRequestId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "RequestId({:X})", self.0)
+    }
+}
+
+impl ClientRequestId {
+    pub fn new(value: u64) -> ClientRequestId {
+        Self(value)
+    }
+}
+
+impl Serialize for ClientRequestId {
+    fn serialize(&self, stream: &mut impl WriteOctetStream) -> Result<()>
+    where
+        Self: Sized,
+    {
+        stream.write_u64(self.0)
+    }
+}
+
+impl Deserialize for ClientRequestId {
+    fn deserialize(stream: &mut impl ReadOctetStream) -> Result<Self>
+    where
+        Self: Sized,
+    {
+        Ok(Self(stream.read_u64()?))
+    }
+}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Nonce(pub u64);
@@ -68,6 +104,27 @@ impl Version {
             minor: stream.read_u16()?,
             patch: stream.read_u16()?,
         })
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct SessionConnectionId(pub u8);
+
+impl Serialize for SessionConnectionId {
+    fn serialize(&self, stream: &mut impl WriteOctetStream) -> Result<()>
+    where
+        Self: Sized,
+    {
+        stream.write_u8(self.0)
+    }
+}
+
+impl Deserialize for SessionConnectionId {
+    fn deserialize(stream: &mut impl ReadOctetStream) -> Result<Self>
+    where
+        Self: Sized,
+    {
+        Ok(Self(stream.read_u8()?))
     }
 }
 

@@ -28,6 +28,7 @@ where
     }
 }
 
+#[derive(Debug)]
 pub struct Seer<Callback, CombinedStepT>
 where
     Callback: SeerCallback<CombinedStepT>,

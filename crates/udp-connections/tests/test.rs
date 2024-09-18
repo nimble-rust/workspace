@@ -7,6 +7,7 @@ use secure_random::SecureRandom;
 
 use udp_connections::Client;
 
+#[derive(Debug)]
 pub struct FakeRandom {
     pub counter: u64,
 }

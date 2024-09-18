@@ -136,11 +136,11 @@ pub trait DatagramBuilder {
     /// # Returns
     ///
     /// * `&[u8]` - The octets of the datagram.
-    fn finalize(&mut self) -> &[u8];
+    fn finalize(&mut self) -> io::Result<Vec<u8>>;
 
     // Checks if at least one push has happened after new() or clear()
     fn is_empty(&self) -> bool;
 
     /// Clears the buffer and writes a new header to be able to start a new datagram.
-    fn clear(&mut self);
+    fn clear(&mut self) -> io::Result<()>;
 }

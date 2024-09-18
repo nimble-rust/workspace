@@ -6,14 +6,16 @@ use datagram::{DatagramCodec, DatagramCommunicator};
 use flood_rs::{Deserialize, Serialize};
 use log::{error, info, warn};
 use nimble_assent::prelude::*;
-use nimble_client::Client;
+use nimble_client::client::ClientStream;
 use nimble_protocol::client_to_host::AuthoritativeStep;
-use nimble_protocol::hex_output;
+use nimble_protocol::{hex_output, Version};
 use nimble_rectify::RectifyCallback;
 use nimble_seer::prelude::*;
 use secure_random::GetRandom;
+use std::cell::RefCell;
 use std::fmt::Debug;
 use std::io;
+use std::rc::Rc;
 use udp_client::UdpClient;
 
 pub struct ExampleClient<
@@ -22,7 +24,7 @@ pub struct ExampleClient<
         + RectifyCallback,
     StepData: Clone + Deserialize + Serialize + Debug + Eq + PartialEq,
 > {
-    pub client: Client<Game, StepData>,
+    pub client: ClientStream<Game, StepData>,
     pub communicator: Box<dyn DatagramCommunicator>,
     pub codec: Box<dyn DatagramCodec>,
 }
@@ -38,8 +40,13 @@ impl<
 {
     pub fn new(url: &str) -> Self {
         let random = GetRandom;
-        let random_box = Box::new(random);
-        let client = Client::<Game, StepData>::new(random_box);
+        let random_box = Rc::new(RefCell::new(random));
+        let application_version = Version {
+            major: 0,
+            minor: 0,
+            patch: 0,
+        };
+        let client = ClientStream::<Game, StepData>::new(random_box, &application_version);
         let udp_client = UdpClient::new(url).unwrap();
         let communicator: Box<dyn DatagramCommunicator> = Box::new(udp_client);
         let random2 = GetRandom;

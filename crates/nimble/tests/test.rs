@@ -3,7 +3,7 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 use flood_rs::{Deserialize, Serialize};
-use nimble_client::logic::ClientLogic;
+use nimble_client_logic::logic::ClientLogic;
 use nimble_host::logic::{ConnectionId, HostLogic};
 use nimble_host::state::State;
 use nimble_protocol::client_to_host::{AuthoritativeStep, JoinGameType};
@@ -13,7 +13,9 @@ use nimble_protocol::Nonce;
 use nimble_sample_step::{SampleGame, SampleStep};
 use nimble_steps::Step;
 use secure_random::GetRandom;
+use std::cell::RefCell;
 use std::fmt::Debug;
+use std::rc::Rc;
 use std::time::Instant;
 use test_log::test;
 use tick_id::TickId;
@@ -61,7 +63,7 @@ fn client_host_integration() {
     let connection = host.create_connection().expect("should create connection");
 
     let random = GetRandom;
-    let random_box = Box::new(random);
+    let random_box = Rc::new(RefCell::new(random));
     let mut client = ClientLogic::<SampleGame, Step<SampleStep>>::new(random_box);
     let joining_player = JoinPlayerRequest { local_index: 0 };
 

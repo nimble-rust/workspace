@@ -65,6 +65,10 @@ impl OrderedOut {
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         self.sequence_to_send.to_stream(stream)
     }
+
+    pub fn commit(&mut self) {
+        self.sequence_to_send = DatagramId(self.sequence_to_send.0 + 1);
+    }
 }
 
 #[derive(Debug, Default, Clone, Copy)]

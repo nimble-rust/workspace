@@ -3,11 +3,13 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 use getrandom::getrandom;
+use std::fmt::Debug;
 
-pub trait SecureRandom {
+pub trait SecureRandom: Debug {
     fn get_random_u64(&mut self) -> u64;
 }
 
+#[derive(Debug, Clone)]
 pub struct GetRandom;
 
 impl SecureRandom for GetRandom {

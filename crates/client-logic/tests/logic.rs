@@ -4,8 +4,8 @@
  */
 use flood_rs::{Deserialize, Serialize};
 use nimble_assent::AssentCallback;
-use nimble_client::err::ClientError;
-use nimble_client::logic::ClientLogic;
+use nimble_client_logic::err::ClientError;
+use nimble_client_logic::logic::ClientLogic;
 use nimble_participant::ParticipantId;
 use nimble_protocol::client_to_host::{
     AuthoritativeStep, AuthoritativeStepRangeForAllParticipants, PredictedStep,
@@ -21,15 +21,17 @@ use nimble_seer::SeerCallback;
 use nimble_steps::Step::{Custom, Forced};
 use nimble_steps::{Step, StepInfo};
 use secure_random::GetRandom;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt::Debug;
+use std::rc::Rc;
 use test_log::test;
 use tick_id::TickId;
 
 #[test]
 fn basic_logic() {
     let random = GetRandom;
-    let random_box = Box::new(random);
+    let random_box = Rc::new(RefCell::new(random));
     let mut game = SampleGame::default();
     let mut client_logic = ClientLogic::<SampleGame, Step<SampleStep>>::new(random_box);
 
@@ -63,7 +65,7 @@ fn setup_logic<
     StepT: Clone + Deserialize + Serialize + Debug,
 >() -> ClientLogic<GameT, StepT> {
     let random = GetRandom;
-    let random_box = Box::new(random);
+    let random_box = Rc::new(RefCell::new(random));
 
     ClientLogic::<GameT, StepT>::new(random_box)
 }

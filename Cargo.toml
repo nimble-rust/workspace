@@ -2,7 +2,7 @@
 members = [
     "crates/nimble",
     "crates/assent",
-    "crates/client",
+    "crates/client-logic",
     "crates/host",
     "crates/blob-stream",
     "crates/participant",
@@ -23,6 +23,8 @@ members = [
     "crates/cli",
     "crates/example_client",
     "crates/sample-step",
-    "crates/datagram-builder"
+    "crates/datagram-builder",
+    "crates/client-stream",
+    "crates/client-connecting"
 ]
 resolver = "2"

@@ -9,7 +9,6 @@ repository = "https://github.com/nimble-rust/protocol"
 
 [dependencies]
 flood-rs = "0.0.10"
-nimble-connection-layer = { path = "../connection-layer" }
 blob-stream = { path = "../blob-stream" }
 nimble-participant = { path = "../participant" }
 tick-id = "0.0.7"
