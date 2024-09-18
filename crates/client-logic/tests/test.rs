@@ -2,29 +2,15 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-use std::thread;
-use std::time::Duration;
 
-use datagram::{DatagramCodec, DatagramCommunicator};
-use log::{error, info, warn};
-use nimble_client_logic::Client;
-use nimble_protocol::client_to_host::{
-    JoinGameRequest, JoinGameType, JoinPlayerRequest, JoinPlayerRequests,
-};
-use nimble_protocol::{hex_output, Nonce};
-use nimble_sample_step::{SampleGame, SampleStep};
-use nimble_steps::Step;
-use secure_random::GetRandom;
-//use test_log::test;
-use udp_client::UdpClient;
-use udp_connections::Client;
-
-//#[test]
+/*
+#[test]
 #[allow(dead_code)]
 fn send_to_host() {
+
     let random = GetRandom;
     let random_box = Box::new(random);
-    let mut client = Client::<SampleGame, Step<SampleStep>>::new(random_box);
+    let mut client = ClientL::<SampleGame, Step<SampleStep>>::new(random_box);
     let mut udp_client = UdpClient::new("127.0.0.1:23000").unwrap();
     let communicator: &mut dyn DatagramCommunicator = &mut udp_client;
     let random2 = GetRandom;
@@ -83,3 +69,4 @@ fn send_to_host() {
         thread::sleep(Duration::from_millis(16));
     }
 }
+*/

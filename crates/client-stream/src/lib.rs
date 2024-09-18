@@ -1,10 +1,6 @@
 pub mod client;
+mod datagram_build;
 mod datagram_parse;
-
-use datagram::{DatagramBuilder, DatagramError, DatagramParser};
-use flood_rs::WriteOctetStream;
-
-
 /*
     pub fn send(&mut self) -> io::Result<Vec<Vec<u8>>> {
         let mut out_stream = OutOctetStream::new();
@@ -39,8 +35,8 @@ use flood_rs::WriteOctetStream;
                 self.write_to_start_of_header(connection_id, seed, &mut out_stream)?
             }
         }
-        
-        
+
+
         pub struct Client<
     Game: SeerCallback<AuthoritativeStep<StepT>>
     + AssentCallback<AuthoritativeStep<StepT>>

@@ -2,8 +2,8 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-use crate::{Nonce, Version};
-use flood_rs::{ReadOctetStream, WriteOctetStream};
+use crate::{ClientRequestId, Version};
+use flood_rs::{Deserialize, ReadOctetStream, Serialize, WriteOctetStream};
 use std::io::ErrorKind;
 use std::{fmt, io};
 
@@ -31,7 +31,7 @@ pub struct ConnectRequest {
     pub nimble_version: Version,
     pub use_debug_stream: bool,
     pub application_version: Version,
-    pub nonce: Nonce,
+    pub client_request_id: ClientRequestId,
 }
 
 impl ConnectRequest {
@@ -39,7 +39,7 @@ impl ConnectRequest {
         self.nimble_version.to_stream(stream)?;
         stream.write_u8(if self.use_debug_stream { 0x01 } else { 0x00 })?;
         self.application_version.to_stream(stream)?;
-        self.nonce.to_stream(stream)?;
+        self.client_request_id.serialize(stream)?;
         Ok(())
     }
 
@@ -48,7 +48,7 @@ impl ConnectRequest {
             nimble_version: Version::from_stream(stream)?,
             use_debug_stream: stream.read_u8()? != 0,
             application_version: Version::from_stream(stream)?,
-            nonce: Nonce::from_stream(stream)?,
+            client_request_id: ClientRequestId::deserialize(stream)?,
         })
     }
 }

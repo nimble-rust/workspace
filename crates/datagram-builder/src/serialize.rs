@@ -35,6 +35,8 @@ where
 {
     let mut packets = Vec::new();
 
+    builder.clear()?;
+
     for item in items.as_ref() {
         // Serialize the item into the buffer
         let mut item_stream = OutOctetStream::new();
@@ -51,8 +53,8 @@ where
 
         match builder.push(item_octets) {
             Err(DatagramError::BufferFull) => {
-                packets.push(builder.finalize().to_vec());
-                builder.clear();
+                packets.push(builder.finalize()?.to_vec());
+                builder.clear()?;
                 builder
                     .push(item_octets)
                     .map_err(|err| io::Error::new(ErrorKind::InvalidData, err))?;
@@ -70,7 +72,7 @@ where
     }
 
     if !builder.is_empty() {
-        packets.push(builder.finalize().to_vec());
+        packets.push(builder.finalize()?.to_vec());
     }
 
     Ok(packets)

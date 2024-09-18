@@ -20,6 +20,9 @@ secure-random = { path = "../secure-random" }
 nimble-rectify = { path = "../rectify" }
 nimble-assent = { path = "../assent" }
 nimble-seer = { path = "../seer" }
+datagram-builder = { path = "../datagram-builder" }
+
+url = "2.5.2"
 
 [dev-dependencies]
 nimble-sample-step = { path = "../sample-step" }

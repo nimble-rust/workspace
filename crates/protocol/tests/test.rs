@@ -7,7 +7,7 @@ use nimble_participant::ParticipantId;
 use nimble_protocol::client_to_host::AuthoritativeStepRangeForAllParticipants;
 use nimble_protocol::client_to_host_oob::ConnectRequest;
 use nimble_protocol::host_to_client::{AuthoritativeStepRange, AuthoritativeStepRanges};
-use nimble_protocol::{Nonce, Version};
+use nimble_protocol::{ClientRequestId, Version};
 use nimble_sample_step::SampleStep;
 use std::collections::HashMap;
 use std::io;
@@ -41,7 +41,7 @@ fn check_connect() {
         nimble_version,
         use_debug_stream: false,
         application_version: version,
-        nonce: Nonce(0xff4411ff),
+        client_request_id: ClientRequestId(0xff4411ff),
     };
     connect.to_stream(&mut out_stream).unwrap();
 

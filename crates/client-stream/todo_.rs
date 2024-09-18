@@ -91,22 +91,3 @@ fn write_header(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
     }
 }
 
-fn write_to_start_of_header(
-    &self,
-    connection_id: ConnectionId,
-    seed: ConnectionSecretSeed,
-    out_stream: &mut OutOctetStream,
-) -> io::Result<()> {
-    let mut payload = out_stream.octets();
-    let mut hash_stream = OutOctetStream::new();
-    let payload_to_calculate_on = &payload[5..];
-    info!("payload: {:?}", payload_to_calculate_on);
-    write_to_stream(
-        &mut hash_stream,
-        connection_id,
-        seed,
-        payload_to_calculate_on,
-    )?; // Write hash connection layer header
-    payload[..hash_stream.octets().len()].copy_from_slice(hash_stream.octets_ref());
-    Ok(())
-}

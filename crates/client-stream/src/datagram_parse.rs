@@ -7,11 +7,6 @@ use std::io;
 use std::io::Error;
 use std::io::ErrorKind;
 
-pub trait CheckOob {
-    fn is_oob() -> bool;
-}
-
-
 pub struct NimbleDatagramParser {
     ordered_in: OrderedIn,
 }
@@ -25,11 +20,14 @@ impl NimbleDatagramParser {
     pub fn new() -> Self {
         Self {
             ordered_in: OrderedIn::default(),
-
         }
     }
 
-    pub fn parse(&mut self, datagram: &[u8], session_connection_secret: Option<ConnectionSecretSeed>) -> io::Result<(DatagramType, InOctetStream)> {
+    pub fn parse(
+        &mut self,
+        datagram: &[u8],
+        session_connection_secret: Option<ConnectionSecretSeed>,
+    ) -> io::Result<(DatagramType, InOctetStream)> {
         let mut in_stream = InOctetStream::new(datagram);
 
         let connection_mode = ConnectionLayerMode::from_stream(&mut in_stream)?;
@@ -52,7 +50,8 @@ impl NimbleDatagramParser {
 
                 let datagram_type = DatagramType::Connection(
                     SessionConnectionId(connection_layer.connection_id.value),
-                    client_time);
+                    client_time,
+                );
 
                 Ok((datagram_type, in_stream))
             }

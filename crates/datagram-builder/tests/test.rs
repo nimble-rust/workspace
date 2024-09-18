@@ -63,12 +63,10 @@ pub struct ExampleDatagramBuilder {
 
 impl ExampleDatagramBuilder {
     pub fn new(max_size: usize) -> Self {
-        let mut s = Self {
+        Self {
             buffer: Vec::with_capacity(max_size),
             max_size,
-        };
-        s.clear();
-        s
+        }
     }
 }
 
@@ -88,20 +86,21 @@ impl DatagramBuilder for ExampleDatagramBuilder {
         Ok(())
     }
 
-    fn finalize(&mut self) -> &[u8] {
+    fn finalize(&mut self) -> io::Result<Vec<u8>> {
         // Finalize header
         self.buffer.push(0x00); // Signals end of datagram
         self.buffer[0] = 0x02;
-        self.buffer.as_slice()
+        Ok(self.buffer.clone())
     }
 
     fn is_empty(&self) -> bool {
         self.buffer.is_empty()
     }
 
-    fn clear(&mut self) {
+    fn clear(&mut self) -> io::Result<()> {
         self.buffer.clear();
         self.buffer.extend_from_slice(&[0x01, 0x0ff]);
+        Ok(())
     }
 }
 
@@ -128,7 +127,8 @@ fn serialize_single_datagram() {
         },
     ];
     const EXPECTED_DATAGRAM: &[u8] = &[
-        0x02, 0xff, 0x01, 3, b'f', b'o', b'o', 0x02, 0x00, 42, 0x01, 3, b'b', b'a', b'r', 0x00,
+        0x02, 0xff, // Header
+        0x01, 3, b'f', b'o', b'o', 0x02, 0x00, 42, 0x01, 3, b'b', b'a', b'r', 0x00,
     ];
     let mut builder = ExampleDatagramBuilder::new(1024);
     let datagrams = serialize_datagrams(&items, &mut builder).expect("serialization failed");

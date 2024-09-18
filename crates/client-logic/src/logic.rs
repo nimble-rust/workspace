@@ -17,21 +17,22 @@ use nimble_rectify::prelude::*;
 use nimble_seer::prelude::*;
 use nimble_steps::Steps;
 use secure_random::SecureRandom;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt::Debug;
+use std::rc::Rc;
 use tick_id::TickId;
-
 
 #[derive(Debug)]
 pub struct ClientLogic<
     Game: SeerCallback<AuthoritativeStep<StepT>>
-    + AssentCallback<AuthoritativeStep<StepT>>
-    + RectifyCallback,
+        + AssentCallback<AuthoritativeStep<StepT>>
+        + RectifyCallback,
     StepT: Clone + Deserialize + Serialize + Debug,
 > {
     joining_player: Option<JoinGameRequest>,
     #[allow(unused)]
-    random: Box<dyn SecureRandom>,
+    random: Rc<RefCell<dyn SecureRandom>>,
     tick_id: u32,
     debug_tick_id_to_send: u32,
     rectify: Rectify<Game, AuthoritativeStep<StepT>>,
@@ -45,13 +46,13 @@ pub struct ClientLogic<
 }
 
 impl<
-    Game: SeerCallback<AuthoritativeStep<StepT>>
-    + AssentCallback<AuthoritativeStep<StepT>>
-    + RectifyCallback,
-    StepT: Clone + Deserialize + Serialize + Debug,
-> ClientLogic<Game, StepT>
+        Game: SeerCallback<AuthoritativeStep<StepT>>
+            + AssentCallback<AuthoritativeStep<StepT>>
+            + RectifyCallback,
+        StepT: Clone + Deserialize + Serialize + Debug,
+    > ClientLogic<Game, StepT>
 {
-    pub fn new(random: Box<dyn SecureRandom>) -> ClientLogic<Game, StepT> {
+    pub fn new(random: Rc<RefCell<dyn SecureRandom>>) -> ClientLogic<Game, StepT> {
         Self {
             random,
             joining_player: None,

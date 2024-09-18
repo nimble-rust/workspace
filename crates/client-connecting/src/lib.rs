@@ -1,8 +1,18 @@
 use nimble_protocol::prelude::*;
+use nimble_protocol::ClientRequestId;
+use std::fmt;
+use std::fmt::Formatter;
 
 #[derive(Debug)]
 pub enum ClientError {
-    WrongConnectResponseNonce(Nonce),
+    WrongConnectResponseRequestId(ClientRequestId),
+    ReceivedConnectResponseWithoutRequest,
+}
+
+impl fmt::Display for ClientError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "client_error {:?}", self)
+    }
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
@@ -13,24 +23,30 @@ pub struct ConnectedInfo {
 
 #[derive(Debug, PartialEq)]
 pub struct ConnectingClient {
-    nonce: Nonce,
+    client_request_id: ClientRequestId,
     application_version: Version,
     nimble_version: Version,
     connected_info: Option<ConnectedInfo>,
+    sent_at_least_once: bool,
 }
 
 /*
 
- */
+*/
 
 impl ConnectingClient {
     #[must_use]
-    pub const fn new(nonce: Nonce, application_version: Version, nimble_version: Version) -> Self {
+    pub const fn new(
+        client_request_id: ClientRequestId,
+        application_version: Version,
+        nimble_version: Version,
+    ) -> Self {
         Self {
             application_version,
             nimble_version,
-            nonce,
+            client_request_id,
             connected_info: None,
+            sent_at_least_once: false,
         }
     }
 
@@ -40,15 +56,23 @@ impl ConnectingClient {
             nimble_version: self.nimble_version,
             use_debug_stream: false,
             application_version: self.application_version,
-            nonce: self.nonce,
+            client_request_id: self.client_request_id,
         };
+
+        self.sent_at_least_once = true;
 
         ClientToHostOobCommands::ConnectType(connect_cmd)
     }
 
-    fn on_connect(&mut self, cmd: ConnectionAccepted) -> Result<(), ClientError> {
-        if cmd.response_to_nonce != self.nonce {
-            Err(ClientError::WrongConnectResponseNonce(cmd.response_to_nonce))?
+    fn on_connect(&mut self, cmd: &ConnectionAccepted) -> Result<(), ClientError> {
+        if !self.sent_at_least_once {
+            Err(ClientError::ReceivedConnectResponseWithoutRequest)?
+        }
+
+        if cmd.response_to_request != self.client_request_id {
+            Err(ClientError::WrongConnectResponseRequestId(
+                cmd.response_to_request,
+            ))?
         }
         self.connected_info = Some(ConnectedInfo {
             session_connection_secret: cmd.host_assigned_connection_secret,
@@ -58,7 +82,7 @@ impl ConnectingClient {
         Ok(())
     }
 
-    pub fn receive(&mut self, command: HostToClientOobCommands) -> Result<(), ClientError> {
+    pub fn receive(&mut self, command: &HostToClientOobCommands) -> Result<(), ClientError> {
         match command {
             HostToClientOobCommands::ConnectType(connect_command) => {
                 self.on_connect(connect_command)
@@ -66,8 +90,8 @@ impl ConnectingClient {
         }
     }
 
-    pub fn debug_nonce(&self) -> Nonce {
-        self.nonce
+    pub fn debug_client_request_id(&self) -> ClientRequestId {
+        self.client_request_id
     }
 
     pub fn connected_info(&self) -> &Option<ConnectedInfo> {
