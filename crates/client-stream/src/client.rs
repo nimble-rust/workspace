@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
+ * Licensed under the MIT License. See LICENSE in the project root for license information.
+ */
 use crate::datagram_build::{NimbleDatagramBuilder, NimbleOobDatagramBuilder};
 use crate::datagram_parse::{DatagramType, NimbleDatagramParser};
 use datagram::DatagramBuilder;
@@ -91,13 +95,15 @@ impl<
                 seed,
             );
 
+            self.datagram_parser.set_seed(seed);
+
             self.phase = ClientPhase::Connected(ClientLogic::new(self.random.clone()));
         }
         Ok(())
     }
 
     fn connecting_receive_front(&mut self, payload: &[u8]) -> io::Result<()> {
-        let (datagram_type, in_stream) = self.datagram_parser.parse(payload, None)?;
+        let (datagram_type, in_stream) = self.datagram_parser.parse(payload)?;
         match datagram_type {
             DatagramType::Oob => self.connecting_receive(in_stream),
             _ => Err(Error::new(
@@ -122,7 +128,7 @@ impl<
     }
 
     fn connected_receive_front(&mut self, payload: &[u8]) -> io::Result<()> {
-        let (datagram_type, mut in_stream) = self.datagram_parser.parse(payload, None)?;
+        let (datagram_type, mut in_stream) = self.datagram_parser.parse(payload)?;
         match datagram_type {
             DatagramType::Connection(connection_id, client_time) => {
                 // TODO: use connection_id from DatagramType::connection_id

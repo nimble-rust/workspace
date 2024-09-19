@@ -44,11 +44,10 @@ fn test_blob_stream() {
         let mut ack: Option<AckChunkData> = None;
 
         for set_chunk in set_chunks {
-            ack = Some(
-                in_logic
-                    .update(&set_chunk.data)
-                    .expect("should always be valid in test"),
-            );
+            in_logic
+                .receive(&set_chunk.data)
+                .expect("should always be valid in test");
+            ack = Some(in_logic.send());
         }
 
         if let Some(ack) = ack {

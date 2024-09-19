@@ -3,14 +3,32 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 use crate::in_logic::Logic;
+use crate::prelude::BlobError;
 use crate::protocol::TransferId;
 use crate::protocol_front::{
     AckChunkFrontData, ReceiverToSenderFrontCommands, SenderToReceiverFrontCommands,
 };
 use crate::ChunkIndex;
+use err_rs::{ErrorLevel, ErrorLevelProvider};
 use log::{debug, trace};
 use std::io;
-use std::io::ErrorKind;
+
+#[derive(Debug)]
+pub enum FrontLogicError {
+    IoError(io::Error),
+    BlobError(BlobError),
+    UnknownTransferId(TransferId),
+}
+
+impl ErrorLevelProvider for FrontLogicError {
+    fn error_level(&self) -> ErrorLevel {
+        match self {
+            FrontLogicError::IoError(_) => ErrorLevel::Info,
+            FrontLogicError::BlobError(_) => ErrorLevel::Info,
+            FrontLogicError::UnknownTransferId(_) => ErrorLevel::Info,
+        }
+    }
+}
 
 pub struct Info {
     pub transfer_id: TransferId,
@@ -32,6 +50,7 @@ pub struct State {
 #[derive(Debug, Default)]
 pub struct FrontLogic {
     state: Option<State>,
+    should_reply_ack: bool,
 }
 
 impl FrontLogic {
@@ -48,7 +67,10 @@ impl FrontLogic {
     ///
     #[must_use]
     pub const fn new() -> Self {
-        Self { state: None }
+        Self {
+            state: None,
+            should_reply_ack: false,
+        }
     }
 
     /// Updates the internal state based on a `SenderToReceiverFrontCommands` command.
@@ -95,13 +117,13 @@ impl FrontLogic {
     ///     chunk_size: 256,
     /// });
     ///
-    /// let response = logic_front.update(&start_command);
+    /// let response = logic_front.receive(&start_command);
     /// assert!(response.is_ok());
     /// ```
-    pub fn update(
+    pub fn receive(
         &mut self,
         command: &SenderToReceiverFrontCommands,
-    ) -> io::Result<ReceiverToSenderFrontCommands> {
+    ) -> Result<(), FrontLogicError> {
         match command {
             SenderToReceiverFrontCommands::StartTransfer(start_transfer_data) => {
                 if self
@@ -121,10 +143,9 @@ impl FrontLogic {
                             start_transfer_data.chunk_size as usize,
                         ),
                     });
+                    self.should_reply_ack = true;
                 }
-                Ok(ReceiverToSenderFrontCommands::AckStart(
-                    start_transfer_data.transfer_id,
-                ))
+                Ok(())
             }
             SenderToReceiverFrontCommands::SetChunk(chunk_data) => {
                 if let Some(ref mut state) = self.state {
@@ -133,21 +154,34 @@ impl FrontLogic {
                         chunk_data.data.chunk_index,
                         chunk_data.transfer_id.0
                     );
-                    let ack = state.logic.update(&chunk_data.data)?;
+                    state
+                        .logic
+                        .receive(&chunk_data.data)
+                        .map_err(|err| FrontLogicError::BlobError(err))?;
                     if state.logic.is_complete() {
                         trace!("received all chunks!")
                     }
-                    Ok(ReceiverToSenderFrontCommands::AckChunk(AckChunkFrontData {
-                        transfer_id: chunk_data.transfer_id,
-                        data: ack,
-                    }))
+                    Ok(())
                 } else {
-                    Err(io::Error::new(
-                        ErrorKind::InvalidData,
-                        format!("Unknown transfer_id {}", chunk_data.transfer_id.0),
-                    ))
+                    Err(FrontLogicError::UnknownTransferId(chunk_data.transfer_id))
                 }
             }
+        }
+    }
+
+    pub fn send(&mut self) -> Option<ReceiverToSenderFrontCommands> {
+        if self.should_reply_ack {
+            self.should_reply_ack = false;
+            let transfer_id = self.state.as_ref().unwrap().transfer_id.0;
+            Some(ReceiverToSenderFrontCommands::AckStart(transfer_id))
+        } else if let Some(state) = self.state.as_mut() {
+            let ack = &state.logic.send();
+            Some(ReceiverToSenderFrontCommands::AckChunk(AckChunkFrontData {
+                transfer_id: state.transfer_id,
+                data: *ack,
+            }))
+        } else {
+            None
         }
     }
 

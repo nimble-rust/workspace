@@ -79,11 +79,13 @@ fn game_state_download() {
 
     // The client receives the Start Transfer from the host
     // and returns a ReceiverToSenderFrontCommands::AckStart.
-    let probably_start_acks = in_stream
-        .update(&SenderToReceiverFrontCommands::StartTransfer(
+    in_stream
+        .receive(&SenderToReceiverFrontCommands::StartTransfer(
             start_transfer_data.clone(),
         ))
         .expect("Should start transfer");
+
+    let probably_start_acks = in_stream.send().expect("should work to send");
 
     // The host receives the AckStart
     // and returns a number of BlobStreamChannel(SetChunk).
@@ -117,9 +119,11 @@ fn game_state_download() {
 
         for x in first_set_converted_chunks {
             debug!("should be SetChunkFrontData: {:?}", x);
-            let resp = in_stream
-                .update(&SenderToReceiverFrontCommands::SetChunk(x.clone()))
+            in_stream
+                .receive(&SenderToReceiverFrontCommands::SetChunk(x.clone()))
                 .expect("should handle start transfer");
+
+            let resp = in_stream.send().expect("should work to send");
             ack = Some(resp);
         }
         ack

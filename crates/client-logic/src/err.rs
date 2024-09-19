@@ -2,15 +2,10 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
+use blob_stream::in_logic_front::FrontLogicError;
+use err_rs::{ErrorLevel, ErrorLevelProvider};
 use nimble_protocol::Nonce;
 use std::{fmt, io};
-
-#[derive(Eq, Debug, PartialEq)]
-pub enum ErrorLevel {
-    Info,     // Informative, can be ignored
-    Warning,  // Should be logged, but recoverable
-    Critical, // Requires immediate attention, unrecoverable
-}
 
 #[derive(Debug)]
 pub enum ClientError {
@@ -42,16 +37,20 @@ pub enum ClientErrorKind {
     WrongConnectResponseNonce(Nonce),
     WrongDownloadRequestId,
     DownloadResponseWasUnexpected,
+    UnexpectedBlobChannelCommand,
+    FrontLogicErr(FrontLogicError),
 }
 
-impl ClientErrorKind {
-    pub fn error_level(&self) -> ErrorLevel {
+impl ErrorLevelProvider for ClientErrorKind {
+    fn error_level(&self) -> ErrorLevel {
         match self {
             Self::IoErr(_) => ErrorLevel::Critical,
             Self::WrongConnectResponseNonce(_) => ErrorLevel::Info,
             Self::WrongDownloadRequestId => ErrorLevel::Warning,
             Self::DownloadResponseWasUnexpected => ErrorLevel::Info,
             Self::Unexpected(_) => ErrorLevel::Critical,
+            Self::UnexpectedBlobChannelCommand => ErrorLevel::Info,
+            Self::FrontLogicErr(err) => err.error_level(),
         }
     }
 }
@@ -74,6 +73,8 @@ impl fmt::Display for ClientErrorKind {
             Self::DownloadResponseWasUnexpected => {
                 write!(f, "DownloadResponseWasUnexpected")
             }
+            Self::UnexpectedBlobChannelCommand => write!(f, "UnexpectedBlobChannelCommand"),
+            Self::FrontLogicErr(err) => write!(f, "front logic err {err:?}"),
         }
     }
 }

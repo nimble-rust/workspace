@@ -2,8 +2,9 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-use crate::err::{ClientError, ClientErrorKind, ErrorLevel};
+use crate::err::{ClientError, ClientErrorKind};
 use blob_stream::prelude::{FrontLogic, SenderToReceiverFrontCommands};
+use err_rs::{ErrorLevel, ErrorLevelProvider};
 use flood_rs::{Deserialize, Serialize};
 use log::info;
 use nimble_assent::prelude::*;
@@ -24,6 +25,13 @@ use std::rc::Rc;
 use tick_id::TickId;
 
 #[derive(Debug)]
+pub enum ClientLogicPhase {
+    RequestDownloadState { download_state_request_id: u8 },
+    DownloadingState(TickId),
+    SendPredictedSteps,
+}
+
+#[derive(Debug)]
 pub struct ClientLogic<
     Game: SeerCallback<AuthoritativeStep<StepT>>
         + AssentCallback<AuthoritativeStep<StepT>>
@@ -38,10 +46,9 @@ pub struct ClientLogic<
     rectify: Rectify<Game, AuthoritativeStep<StepT>>,
     blob_stream_client: FrontLogic,
     commands_to_send: Vec<ClientToHostCommands<StepT>>,
-    downloading_game_state_tick_id: TickId,
-    download_state_request_id: Option<u8>,
     outgoing_predicted_steps: HashMap<u8, Steps<StepT>>,
     #[allow(unused)]
+    phase: ClientLogicPhase,
     last_download_state_request_id: u8,
 }
 
@@ -61,10 +68,11 @@ impl<
             rectify: Rectify::new(),
             blob_stream_client: FrontLogic::new(),
             commands_to_send: Vec::new(),
-            download_state_request_id: None,
-            last_download_state_request_id: 0,
-            downloading_game_state_tick_id: TickId(0),
+            last_download_state_request_id: 0x99,
             outgoing_predicted_steps: HashMap::new(),
+            phase: ClientLogicPhase::RequestDownloadState {
+                download_state_request_id: 0x99,
+            },
         }
     }
 
@@ -84,18 +92,19 @@ impl<
     #[allow(unused)]
     fn request_game_state(&mut self) {
         self.last_download_state_request_id += 1;
-        self.download_state_request_id = Some(self.last_download_state_request_id);
+        self.phase = ClientLogicPhase::RequestDownloadState {
+            download_state_request_id: self.last_download_state_request_id,
+        };
     }
 
-    pub fn send(&mut self) -> Vec<ClientToHostCommands<StepT>> {
-        let mut commands: Vec<ClientToHostCommands<StepT>> = self.commands_to_send.clone();
-        self.commands_to_send.clear();
+    fn download_state_request(&mut self, download_request_id: u8) -> ClientToHostCommands<StepT> {
+        let download_request = DownloadGameStateRequest {
+            request_id: download_request_id,
+        };
+        ClientToHostCommands::DownloadGameState(download_request)
+    }
 
-        if let Some(joining_game) = &self.joining_player {
-            info!("connected. send join_game_request {:?}", joining_game);
-            commands.push(ClientToHostCommands::JoinGameType(joining_game.clone()));
-        }
-
+    fn steps_request(&mut self) -> ClientToHostCommands<StepT> {
         let mut predicted_steps_for_all: HashMap<u8, PredictedStepsForOnePlayer<StepT>> =
             HashMap::new();
         for (index, step_queue) in self.outgoing_predicted_steps.iter() {
@@ -114,7 +123,7 @@ impl<
 
         let steps_request = StepsRequest {
             ack: StepsAck {
-                latest_received_step_tick_id: self.tick_id,
+                waiting_for_tick_id: self.tick_id,
                 lost_steps_mask_after_last_received: 0,
             },
             combined_predicted_steps: PredictedStepsForAllPlayers {
@@ -122,13 +131,33 @@ impl<
             },
         };
 
-        let steps_command = ClientToHostCommands::Steps(steps_request);
-        commands.push(steps_command);
+        ClientToHostCommands::Steps(steps_request)
+    }
 
-        if let Some(id) = self.download_state_request_id {
-            let download_request = DownloadGameStateRequest { request_id: id };
-            let cmd = ClientToHostCommands::DownloadGameState(download_request);
+    pub fn send(&mut self) -> Vec<ClientToHostCommands<StepT>> {
+        let mut commands: Vec<ClientToHostCommands<StepT>> = self.commands_to_send.clone();
+        self.commands_to_send.clear();
+
+        let normal_command_for_phase = match self.phase {
+            ClientLogicPhase::RequestDownloadState {
+                download_state_request_id,
+            } => Some(self.download_state_request(download_state_request_id)),
+            ClientLogicPhase::SendPredictedSteps => Some(self.steps_request()),
+            ClientLogicPhase::DownloadingState(_) => {
+                if let Some(x) = self.blob_stream_client.send() {
+                    Some(ClientToHostCommands::BlobStreamChannel(x))
+                } else {
+                    None
+                }
+            }
+        };
+        if let Some(cmd) = normal_command_for_phase {
             commands.push(cmd);
+        }
+
+        if let Some(joining_game) = &self.joining_player {
+            info!("connected. send join_game_request {:?}", joining_game);
+            commands.push(ClientToHostCommands::JoinGameType(joining_game.clone()));
         }
 
         commands
@@ -235,12 +264,19 @@ impl<
         &mut self,
         download_response: &DownloadGameStateResponse,
     ) -> Result<(), ClientErrorKind> {
-        if self.download_state_request_id.is_none() {
-            return Err(ClientErrorKind::DownloadResponseWasUnexpected);
-        } else if download_response.client_request != self.download_state_request_id.unwrap() {
-            return Err(ClientErrorKind::WrongDownloadRequestId);
+        match self.phase {
+            ClientLogicPhase::RequestDownloadState {
+                download_state_request_id,
+            } => {
+                if download_response.client_request != download_state_request_id {
+                    Err(ClientErrorKind::WrongDownloadRequestId)?;
+                }
+            }
+            _ => Err(ClientErrorKind::DownloadResponseWasUnexpected)?,
         }
-        self.downloading_game_state_tick_id = download_response.tick_id;
+
+        self.phase = ClientLogicPhase::DownloadingState(download_response.tick_id);
+
         Ok(())
     }
 
@@ -248,12 +284,14 @@ impl<
         &mut self,
         blob_stream_command: &SenderToReceiverFrontCommands,
     ) -> Result<(), ClientErrorKind> {
-        let answer = self
-            .blob_stream_client
-            .update(blob_stream_command)
-            .map_err(ClientErrorKind::IoErr)?;
-        self.commands_to_send
-            .push(ClientToHostCommands::BlobStreamChannel(answer));
+        match self.phase {
+            ClientLogicPhase::DownloadingState(_) => {
+                self.blob_stream_client
+                    .receive(blob_stream_command)
+                    .map_err(ClientErrorKind::FrontLogicErr)?;
+            }
+            _ => Err(ClientErrorKind::UnexpectedBlobChannelCommand)?,
+        }
         Ok(())
     }
 

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
+ * Licensed under the MIT License. See LICENSE in the project root for license information.
+ */
 use nimble_client_connecting::{ClientError, ConnectingClient};
 use nimble_protocol::prelude::*;
 use nimble_protocol::ClientRequestId;

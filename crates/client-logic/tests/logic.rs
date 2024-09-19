@@ -8,8 +8,8 @@ use nimble_client_logic::err::ClientError;
 use nimble_client_logic::logic::ClientLogic;
 use nimble_participant::ParticipantId;
 use nimble_protocol::client_to_host::{
-    AuthoritativeStep, AuthoritativeStepRangeForAllParticipants, PredictedStep,
-    PredictedStepsForAllPlayers, StepsAck, StepsRequest,
+    AuthoritativeStep, AuthoritativeStepRangeForAllParticipants, DownloadGameStateRequest,
+    PredictedStep, PredictedStepsForAllPlayers, StepsAck, StepsRequest,
 };
 use nimble_protocol::host_to_client::{
     AuthoritativeStepRange, AuthoritativeStepRanges, GameStepResponse, GameStepResponseHeader,
@@ -37,17 +37,12 @@ fn basic_logic() {
 
     {
         let commands = client_logic.send();
+        println!("commands: {commands:?}");
         assert_eq!(commands.len(), 1);
-        if let ClientToHostCommands::Steps(StepsRequest {
-            ack:
-                StepsAck {
-                    latest_received_step_tick_id: 0,
-                    lost_steps_mask_after_last_received: 0b0,
-                },
-            combined_predicted_steps: PredictedStepsForAllPlayers { predicted_players },
-        }) = &commands[0]
+        if let ClientToHostCommands::DownloadGameState(DownloadGameStateRequest { request_id }) =
+            &commands[0]
         {
-            assert_eq!(predicted_players.len(), 0);
+            assert_eq!(*request_id, 153);
         } else {
             panic!("Command did not match expected structure or pattern");
         }
@@ -83,16 +78,10 @@ fn send_steps() {
     {
         let commands = client_logic.send();
         assert_eq!(commands.len(), 1);
-        if let ClientToHostCommands::Steps(StepsRequest {
-            ack:
-                StepsAck {
-                    latest_received_step_tick_id: 0,
-                    lost_steps_mask_after_last_received: 0b0,
-                },
-            combined_predicted_steps: PredictedStepsForAllPlayers { predicted_players },
-        }) = &commands[0]
+        if let ClientToHostCommands::DownloadGameState(DownloadGameStateRequest { request_id }) =
+            &commands[0]
         {
-            assert_eq!(predicted_players.len(), 1);
+            assert_eq!(*request_id, 153);
         } else {
             panic!("Command did not match expected structure or pattern");
         }

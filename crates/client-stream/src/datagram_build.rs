@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
+ * Licensed under the MIT License. See LICENSE in the project root for license information.
+ */
 use datagram::{DatagramBuilder, DatagramError};
 use datagram_pinger::{client_out_ping, ClientTime};
 use flood_rs::prelude::OutOctetStream;

@@ -12,6 +12,8 @@ bit-array-rs = "0.0.3"
 flood-rs = "0.0.10"
 log = "0.4.22"
 test-log = "0.2.16"
+err-rs = { path = "../err-rs" }
+
 
 [dev-dependencies]
 rand = "0.8.5"

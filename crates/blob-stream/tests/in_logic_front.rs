@@ -14,9 +14,11 @@ fn start_transfer() {
 
     let mut logic = FrontLogic::new();
 
-    let answer = logic
-        .update(&start_transfer)
+    logic
+        .receive(&start_transfer)
         .expect("start transfer should work");
+
+    let answer = logic.send().expect("should work");
 
     let expected_answer = ReceiverToSenderFrontCommands::AckStart(1);
 
@@ -34,9 +36,11 @@ fn drop_previous_transfer() {
     let mut logic = FrontLogic::new();
 
     {
-        let answer = logic
-            .update(&start_transfer)
+        logic
+            .receive(&start_transfer)
             .expect("start transfer should work");
+
+        let answer = logic.send().expect("should be able to send");
 
         let expected_answer = ReceiverToSenderFrontCommands::AckStart(1);
 
@@ -50,9 +54,11 @@ fn drop_previous_transfer() {
             chunk_size: 2,
         });
 
-        let answer = logic
-            .update(&new_transfer)
+        logic
+            .receive(&new_transfer)
             .expect("it should accept new transfer");
+
+        let answer = logic.send().expect("should work");
 
         let expected_answer = ReceiverToSenderFrontCommands::AckStart(2);
 
@@ -78,9 +84,11 @@ fn set_chunk_and_check(
     };
     let set_chunk_command = SenderToReceiverFrontCommands::SetChunk(set_chunk_front);
 
-    let ack = logic
-        .update(&set_chunk_command)
+    logic
+        .receive(&set_chunk_command)
         .expect("update should work");
+
+    let ack = logic.send().expect("should work to send");
     match ack {
         ReceiverToSenderFrontCommands::AckChunk(ack) => {
             assert_eq!(ack.data.waiting_for_chunk_index, waiting);
@@ -103,9 +111,11 @@ fn complete_transfer() {
     let mut logic = FrontLogic::new();
 
     {
-        let answer = logic
-            .update(&start_transfer)
+        logic
+            .receive(&start_transfer)
             .expect("start transfer should work");
+
+        let answer = logic.send().expect("should work to send");
 
         let expected_answer = ReceiverToSenderFrontCommands::AckStart(TRANSFER_ID_VALUE);
 

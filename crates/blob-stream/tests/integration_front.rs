@@ -37,7 +37,8 @@ fn test_blob_stream_front() {
         for send_command in send_commands {
             // Intentionally drop commands (datagrams)
             if !drop_rng.gen_bool(0.2) {
-                let commands_from_receiver = in_logic.update(&send_command).expect("should work");
+                in_logic.receive(&send_command).expect("should work");
+                let commands_from_receiver = in_logic.send().expect("should work to send");
                 if !drop_rng.gen_bool(0.2) {
                     out_logic
                         .receive(&commands_from_receiver)

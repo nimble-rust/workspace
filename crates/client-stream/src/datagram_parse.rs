@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
+ * Licensed under the MIT License. See LICENSE in the project root for license information.
+ */
 use datagram_pinger::{client_in_ping, ClientTime};
 use flood_rs::prelude::InOctetStream;
 use nimble_connection_layer::{verify_hash, ConnectionLayerMode, ConnectionSecretSeed};
@@ -9,6 +13,7 @@ use std::io::ErrorKind;
 
 pub struct NimbleDatagramParser {
     ordered_in: OrderedIn,
+    seed: Option<ConnectionSecretSeed>,
 }
 
 pub enum DatagramType {
@@ -20,14 +25,15 @@ impl NimbleDatagramParser {
     pub fn new() -> Self {
         Self {
             ordered_in: OrderedIn::default(),
+            seed: None,
         }
     }
 
-    pub fn parse(
-        &mut self,
-        datagram: &[u8],
-        session_connection_secret: Option<ConnectionSecretSeed>,
-    ) -> io::Result<(DatagramType, InOctetStream)> {
+    pub(crate) fn set_seed(&mut self, seed: ConnectionSecretSeed) {
+        self.seed = Some(seed);
+    }
+
+    pub fn parse(&mut self, datagram: &[u8]) -> io::Result<(DatagramType, InOctetStream)> {
         let mut in_stream = InOctetStream::new(datagram);
 
         let connection_mode = ConnectionLayerMode::from_stream(&mut in_stream)?;
@@ -35,13 +41,13 @@ impl NimbleDatagramParser {
         match connection_mode {
             ConnectionLayerMode::OOB => Ok((DatagramType::Oob, in_stream)),
             ConnectionLayerMode::Connection(connection_layer) => {
-                if session_connection_secret.is_none() {
+                if self.seed.is_none() {
                     Err(Error::new(ErrorKind::InvalidData, "must have a session_connection_secret to receive connection layer datagrams"))?;
                 }
                 // First verify hash, so it is even "safe" to check the other values
                 verify_hash(
                     connection_layer.murmur3_hash,
-                    session_connection_secret.unwrap(),
+                    self.seed.unwrap(),
                     &datagram[5..],
                 )?;
 

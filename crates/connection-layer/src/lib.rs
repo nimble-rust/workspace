@@ -166,7 +166,7 @@ pub fn verify_hash(expected_hash: u32, seed: ConnectionSecretSeed, payload: &[u8
         Err(Error::new(
             ErrorKind::InvalidData,
             format!(
-                "hash mismatch: the data does not match the expected hash. {:x} vs {:x}",
+                "hash mismatch: the data does not match the expected hash. calculated {:x} but payload provided hash {:x}",
                 calculated_hash, expected_hash
             ),
         ))

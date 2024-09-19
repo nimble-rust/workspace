@@ -103,7 +103,7 @@ impl<StepT: Clone + Debug + Serialize + Deserialize> Deserialize for ClientToHos
     }
 }
 
-impl<StepT: std::clone::Clone + Debug + Serialize + Deserialize> ClientToHostCommands<StepT> {
+impl<StepT: Clone + Debug + Serialize + Deserialize> ClientToHostCommands<StepT> {
     pub fn to_octet(&self) -> u8 {
         match self {
             ClientToHostCommands::Steps(_) => ClientToHostCommand::Steps as u8,
@@ -298,20 +298,20 @@ impl JoinGameRequest {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct StepsAck {
-    pub latest_received_step_tick_id: u32,
+    pub waiting_for_tick_id: u32,
     pub lost_steps_mask_after_last_received: u64,
 }
 
 impl StepsAck {
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
-        stream.write_u32(self.latest_received_step_tick_id)?;
+        stream.write_u32(self.waiting_for_tick_id)?;
         stream.write_u64(self.lost_steps_mask_after_last_received)?;
         Ok(())
     }
 
     pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         Ok(Self {
-            latest_received_step_tick_id: stream.read_u32()?,
+            waiting_for_tick_id: stream.read_u32()?,
             lost_steps_mask_after_last_received: stream.read_u64()?,
         })
     }

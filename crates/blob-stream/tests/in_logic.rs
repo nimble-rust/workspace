@@ -14,9 +14,11 @@ fn check_receive() {
         payload: [0x8f, 0x23, 0x98, 0xfa, 0x99].into(),
     };
 
-    let answer = logic
-        .update(&set_chunk_data)
+    logic
+        .receive(&set_chunk_data)
         .expect("should be able to receive valid SetChunk");
+
+    let answer = logic.send();
 
     assert_eq!(answer.waiting_for_chunk_index, 0);
     assert_eq!(answer.receive_mask_after_last, 0b1); // Indicates that chunk_index 1 was received
@@ -31,9 +33,11 @@ fn multiple_not_received() {
         payload: [0x8f].into(),
     };
 
-    let ack = logic
-        .update(&set_chunk_data)
+    logic
+        .receive(&set_chunk_data)
         .expect("should be able to receive valid SetChunk");
+
+    let ack = logic.send();
 
     assert_eq!(ack.waiting_for_chunk_index, 0);
     assert_eq!(ack.receive_mask_after_last, 0b10); // Verifies that chunk_index 2 was received (bit 1 = index 2, bit 0 = index 1).
@@ -50,7 +54,8 @@ fn set_chunk_and_check(
         chunk_index,
         payload: payload.to_vec(),
     };
-    let ack = logic.update(&set_chunk_data).expect("update should work");
+    logic.receive(&set_chunk_data).expect("update should work");
+    let ack = logic.send();
     assert_eq!(ack.waiting_for_chunk_index, waiting);
     assert_eq!(ack.receive_mask_after_last, receive_mask);
 }

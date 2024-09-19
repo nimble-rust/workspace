@@ -2,10 +2,10 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
+use crate::err::BlobError;
 use crate::in_stream::BlobStreamIn;
 use crate::protocol::{AckChunkData, SetChunkData};
 use crate::ChunkIndex;
-use std::io;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Info {
@@ -88,13 +88,15 @@ impl Logic {
     ///   chunk_index: 1,
     ///   payload: [0x8f, 0x23, 0x98, 0xfa, 0x99].into(),
     /// };
-    /// in_logic.update(&chunk_data).unwrap();
+    /// in_logic.receive(&chunk_data).unwrap();
     /// ```
     #[allow(clippy::cast_possible_truncation)]
-    pub fn update(&mut self, chunk_data: &SetChunkData) -> io::Result<AckChunkData> {
+    pub fn receive(&mut self, chunk_data: &SetChunkData) -> Result<(), BlobError> {
         self.in_stream
-            .set_chunk(chunk_data.chunk_index as ChunkIndex, &chunk_data.payload)?;
+            .set_chunk(chunk_data.chunk_index as ChunkIndex, &chunk_data.payload)
+    }
 
+    pub fn send(&mut self) -> AckChunkData {
         let waiting_for_chunk_index = self
             .in_stream
             .bit_array
@@ -106,10 +108,10 @@ impl Logic {
             .bit_array
             .atom_from_index(waiting_for_chunk_index + 1);
 
-        Ok(AckChunkData {
+        AckChunkData {
             waiting_for_chunk_index: waiting_for_chunk_index as u32,
             receive_mask_after_last: receive_mask,
-        })
+        }
     }
 
     /// Retrieves the full blob data if all chunks have been received.
