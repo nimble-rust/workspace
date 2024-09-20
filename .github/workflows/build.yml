@@ -9,11 +9,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: rustup install stable
-      - run: RUSTFLAGS="-D warnings" cargo clippy --color=always  # -- -Wclippy::pedantic
+      - run: RUSTFLAGS="-D warnings" cargo clippy --color=always # -- -Wclippy::pedantic
       - run: RUSTFLAGS="-D warnings" cargo build --color=always --all-features
       - name: run tests with color
         env:
           RUST_LOG: trace
           CARGO_TERM_COLOR: always
-          TERM: xterm-256color
-        run: RUST_LOG=trace cargo test --color=always -- --nocapture --color=always
+        run:
+          RUST_LOG=trace cargo test --color=always -- --nocapture --color=always
