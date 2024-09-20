@@ -3,6 +3,7 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 use flood_rs::{Deserialize, Serialize};
+use log::trace;
 use nimble_client_logic::logic::ClientLogic;
 use nimble_host::logic::{ConnectionId, HostLogic};
 use nimble_host::state::State;
@@ -40,6 +41,9 @@ fn communicate<
     let now = Instant::now();
 
     let to_host = client.send();
+    for cmd in &to_host {
+        trace!("client >> host: {cmd:?}");
+    }
     let to_client: Vec<_> = to_host
         .iter()
         .flat_map(|to_host| {
@@ -47,6 +51,11 @@ fn communicate<
                 .expect("should work in test")
         })
         .collect();
+
+    for cmd in &to_client {
+        trace!("client << host: {cmd:?}");
+    }
+
     client
         .receive(to_client.as_slice())
         .expect("TODO: panic message");

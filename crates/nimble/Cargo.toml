@@ -20,6 +20,7 @@ tick-id = "0.0.7"
 secure-random = { path = "../secure-random" }
 nimble-protocol = { path = "../protocol" }
 nimble-sample-step = { path = "../sample-step" }
+log = "0.4.22"
 
 [dev-dependencies]
 test-log = "0.2.16"

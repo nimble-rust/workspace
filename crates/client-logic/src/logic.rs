@@ -6,7 +6,7 @@ use crate::err::{ClientError, ClientErrorKind};
 use blob_stream::prelude::{FrontLogic, SenderToReceiverFrontCommands};
 use err_rs::{ErrorLevel, ErrorLevelProvider};
 use flood_rs::{Deserialize, Serialize};
-use log::info;
+use log::{debug, info};
 use nimble_assent::prelude::*;
 use nimble_participant::ParticipantId;
 use nimble_protocol::client_to_host::{
@@ -165,7 +165,7 @@ impl<
         commands.extend(normal_commands);
 
         if let Some(joining_game) = &self.joining_player {
-            info!("connected. send join_game_request {:?}", joining_game);
+            debug!("connected. send join_game_request {:?}", joining_game);
             commands.push(ClientToHostCommands::JoinGameType(joining_game.clone()));
         }
 
@@ -198,7 +198,7 @@ impl<
     }
 
     fn on_join_game(&mut self, cmd: &JoinGameAccepted) -> Result<(), ClientErrorKind> {
-        info!("join game accepted: {:?}", cmd);
+        debug!("join game accepted: {:?}", cmd);
         Ok(())
     }
 
