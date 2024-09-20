@@ -5,7 +5,6 @@
 use hexify::format_hex;
 use log::info;
 use nimble_client::client::{ClientPhase, ClientStream};
-use nimble_protocol::host_to_client::HostToClientCommand::BlobStreamChannel;
 use nimble_protocol::Version;
 use nimble_sample_step::{SampleGame, SampleStep};
 use nimble_steps::Step;
@@ -185,8 +184,7 @@ fn connect_stream() -> io::Result<()> {
 
     stream.receive(feed_complete_download)?;
 
-    // -----------------
-
+    /* TODO
     let expected_steps_request_octets = &[
         EXPECTED_CONNECTION_ID,
         0x1A,
@@ -215,7 +213,8 @@ fn connect_stream() -> io::Result<()> {
         0x00, // Number of local participants
     ];
 
-    // assert_eq!(only_datagram, expected_steps_request_octets);
+    assert_eq!(only_datagram, expected_steps_request_octets);
+    */
 
     Ok(())
 }

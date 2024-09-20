@@ -7,7 +7,7 @@ use datagram_pinger::{client_out_ping, ClientTime};
 use flood_rs::prelude::OutOctetStream;
 use flood_rs::WriteOctetStream;
 use hexify::format_hex;
-use log::{info, trace};
+use log::trace;
 use nimble_connection_layer::{
     prepare_out_stream, write_to_stream, ConnectionId, ConnectionSecretSeed,
 };

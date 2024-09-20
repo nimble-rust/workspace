@@ -7,7 +7,7 @@ pub mod prelude;
 use std::io::{Error, ErrorKind, Result};
 
 use flood_rs::prelude::*;
-use hexify::{format_hex, format_hex_u32_be};
+use hexify::format_hex_u32_be;
 use mash_rs::murmur3_32;
 
 /// A seed used for generating a [Murmur3 hash](https://en.wikipedia.org/wiki/MurmurHash#MurmurHash3) for connection validation.

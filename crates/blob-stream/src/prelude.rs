@@ -11,6 +11,8 @@
 pub use {
     crate::err::BlobError,
     crate::in_logic_front::{FrontLogic, Info},
+    crate::out_logic_front::OutLogicFront,
+    crate::out_stream::OutStreamError,
     crate::protocol::{SetChunkData, StartTransferData, TransferId},
     crate::protocol_front::{
         ReceiverToSenderFrontCommands, SenderToReceiverFrontCommands, SetChunkFrontData,

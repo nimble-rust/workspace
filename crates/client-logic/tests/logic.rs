@@ -9,7 +9,7 @@ use nimble_client_logic::logic::ClientLogic;
 use nimble_participant::ParticipantId;
 use nimble_protocol::client_to_host::{
     AuthoritativeStep, AuthoritativeStepRangeForAllParticipants, DownloadGameStateRequest,
-    PredictedStep, PredictedStepsForAllPlayers, StepsAck, StepsRequest,
+    PredictedStep,
 };
 use nimble_protocol::host_to_client::{
     AuthoritativeStepRange, AuthoritativeStepRanges, GameStepResponse, GameStepResponseHeader,
