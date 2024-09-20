@@ -31,8 +31,8 @@ pub enum ClientLogicPhase {
 #[derive(Debug)]
 pub struct ClientLogic<
     Game: SeerCallback<AuthoritativeStep<StepT>>
-        + AssentCallback<AuthoritativeStep<StepT>>
-        + RectifyCallback,
+    + AssentCallback<AuthoritativeStep<StepT>>
+    + RectifyCallback,
     StepT: Clone + Deserialize + Serialize + Debug,
 > {
     joining_player: Option<JoinGameRequest>,
@@ -49,11 +49,22 @@ pub struct ClientLogic<
 }
 
 impl<
-        Game: SeerCallback<AuthoritativeStep<StepT>>
-            + AssentCallback<AuthoritativeStep<StepT>>
-            + RectifyCallback,
-        StepT: Clone + Deserialize + Serialize + Debug,
-    > ClientLogic<Game, StepT>
+    Game: SeerCallback<AuthoritativeStep<StepT>>
+    + AssentCallback<AuthoritativeStep<StepT>>
+    + RectifyCallback,
+    StepT: Clone + Deserialize + Serialize + Debug,
+> Default for ClientLogic<Game, StepT> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<
+    Game: SeerCallback<AuthoritativeStep<StepT>>
+    + AssentCallback<AuthoritativeStep<StepT>>
+    + RectifyCallback,
+    StepT: Clone + Deserialize + Serialize + Debug,
+> ClientLogic<Game, StepT>
 {
     pub fn new() -> ClientLogic<Game, StepT> {
         Self {
