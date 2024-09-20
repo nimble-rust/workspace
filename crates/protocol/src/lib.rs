@@ -14,11 +14,8 @@ pub mod host_to_client;
 pub mod host_to_client_oob;
 pub mod prelude;
 
-// The reason for it being an u64, is that it should be
-// very, very unlikely that another client gets the
-// connection for the specified connection
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct ClientRequestId(pub u64);
+pub struct ClientRequestId(pub u8);
 
 impl fmt::Display for ClientRequestId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -27,7 +24,7 @@ impl fmt::Display for ClientRequestId {
 }
 
 impl ClientRequestId {
-    pub fn new(value: u64) -> ClientRequestId {
+    pub fn new(value: u8) -> ClientRequestId {
         Self(value)
     }
 }
@@ -37,7 +34,7 @@ impl Serialize for ClientRequestId {
     where
         Self: Sized,
     {
-        stream.write_u64(self.0)
+        stream.write_u8(self.0)
     }
 }
 
@@ -46,31 +43,7 @@ impl Deserialize for ClientRequestId {
     where
         Self: Sized,
     {
-        Ok(Self(stream.read_u64()?))
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct Nonce(pub u64);
-
-impl fmt::Display for Nonce {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Nonce({:X})", self.0)
-    }
-}
-
-impl Nonce {
-    pub fn new(value: u64) -> Nonce {
-        Self(value)
-    }
-    pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> Result<()> {
-        stream.write_u64(self.0)?;
-        Ok(())
-    }
-
-    pub fn from_stream(stream: &mut impl ReadOctetStream) -> Result<Self> {
-        let x = stream.read_u64()?;
-        Ok(Self(x))
+        Ok(Self(stream.read_u8()?))
     }
 }
 

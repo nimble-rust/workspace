@@ -173,7 +173,7 @@ impl<StepT: std::clone::Clone + Eq + Debug + Deserialize + Serialize> HostLogic<
         debug!("on_join {:?}", request);
 
         let join_accepted = JoinGameAccepted {
-            nonce: request.nonce,
+            client_request_id: request.client_request_id,
             party_and_session_secret: PartyAndSessionSecret {
                 session_secret: SessionConnectionSecret { value: 0 },
                 party_id: 0,

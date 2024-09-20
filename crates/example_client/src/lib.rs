@@ -13,10 +13,8 @@ use nimble_protocol::Version;
 use nimble_rectify::RectifyCallback;
 use nimble_seer::prelude::*;
 use secure_random::GetRandom;
-use std::cell::RefCell;
 use std::fmt::Debug;
 use std::io;
-use std::rc::Rc;
 use udp_client::UdpClient;
 
 pub struct ExampleClient<
@@ -40,14 +38,12 @@ impl<
     > ExampleClient<Game, StepData>
 {
     pub fn new(url: &str) -> Self {
-        let random = GetRandom;
-        let random_box = Rc::new(RefCell::new(random));
         let application_version = Version {
             major: 0,
             minor: 0,
             patch: 0,
         };
-        let client = ClientStream::<Game, StepData>::new(random_box, &application_version);
+        let client = ClientStream::<Game, StepData>::new(&application_version);
         let udp_client = UdpClient::new(url).unwrap();
         let communicator: Box<dyn DatagramCommunicator> = Box::new(udp_client);
         let random2 = GetRandom;

@@ -4,7 +4,7 @@
  */
 use blob_stream::in_logic_front::FrontLogicError;
 use err_rs::{ErrorLevel, ErrorLevelProvider};
-use nimble_protocol::Nonce;
+use nimble_protocol::ClientRequestId;
 use std::{fmt, io};
 
 #[derive(Debug)]
@@ -34,7 +34,7 @@ impl fmt::Display for ClientError {
 pub enum ClientErrorKind {
     Unexpected(String),
     IoErr(io::Error),
-    WrongConnectResponseNonce(Nonce),
+    WrongConnectResponseRequestId(ClientRequestId),
     WrongDownloadRequestId,
     DownloadResponseWasUnexpected,
     UnexpectedBlobChannelCommand,
@@ -45,7 +45,7 @@ impl ErrorLevelProvider for ClientErrorKind {
     fn error_level(&self) -> ErrorLevel {
         match self {
             Self::IoErr(_) => ErrorLevel::Critical,
-            Self::WrongConnectResponseNonce(_) => ErrorLevel::Info,
+            Self::WrongConnectResponseRequestId(_) => ErrorLevel::Info,
             Self::WrongDownloadRequestId => ErrorLevel::Warning,
             Self::DownloadResponseWasUnexpected => ErrorLevel::Info,
             Self::Unexpected(_) => ErrorLevel::Critical,
@@ -64,7 +64,7 @@ impl fmt::Display for ClientErrorKind {
             Self::IoErr(io_err) => {
                 write!(f, "io:err {:?}", io_err)
             }
-            Self::WrongConnectResponseNonce(nonce) => {
+            Self::WrongConnectResponseRequestId(nonce) => {
                 write!(f, "wrong nonce in reply to connect {:?}", nonce)
             }
             Self::WrongDownloadRequestId => {

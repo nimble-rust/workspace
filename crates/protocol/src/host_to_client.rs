@@ -3,7 +3,7 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 use crate::client_to_host::AuthoritativeStepRangeForAllParticipants;
-use crate::{Nonce, SessionConnectionSecret};
+use crate::{ClientRequestId, SessionConnectionSecret};
 use blob_stream::prelude::SenderToReceiverFrontCommands;
 use flood_rs::{Deserialize, ReadOctetStream, Serialize, WriteOctetStream};
 use io::ErrorKind;
@@ -218,21 +218,21 @@ impl JoinGameParticipants {
 
 #[derive(Debug)]
 pub struct JoinGameAccepted {
-    pub nonce: Nonce,
+    pub client_request_id: ClientRequestId,
     pub party_and_session_secret: PartyAndSessionSecret,
     pub participants: JoinGameParticipants,
 }
 
 impl JoinGameAccepted {
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
-        self.nonce.to_stream(stream)?;
+        self.client_request_id.serialize(stream)?;
         self.party_and_session_secret.to_stream(stream)?;
         self.participants.to_stream(stream)
     }
 
     pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         Ok(Self {
-            nonce: Nonce::from_stream(stream)?,
+            client_request_id: ClientRequestId::deserialize(stream)?,
             party_and_session_secret: PartyAndSessionSecret::from_stream(stream)?,
             participants: JoinGameParticipants::from_stream(stream)?,
         })

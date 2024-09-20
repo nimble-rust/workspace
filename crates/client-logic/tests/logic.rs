@@ -20,19 +20,14 @@ use nimble_sample_step::{SampleGame, SampleStep};
 use nimble_seer::SeerCallback;
 use nimble_steps::Step::{Custom, Forced};
 use nimble_steps::{Step, StepInfo};
-use secure_random::GetRandom;
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt::Debug;
-use std::rc::Rc;
 use tick_id::TickId;
 
 #[test_log::test]
 fn basic_logic() {
-    let random = GetRandom;
-    let random_box = Rc::new(RefCell::new(random));
     let mut game = SampleGame::default();
-    let mut client_logic = ClientLogic::<SampleGame, Step<SampleStep>>::new(random_box);
+    let mut client_logic = ClientLogic::<SampleGame, Step<SampleStep>>::new();
 
     {
         let commands = client_logic.send();
@@ -57,10 +52,7 @@ fn setup_logic<
         + RectifyCallback,
     StepT: Clone + Deserialize + Serialize + Debug,
 >() -> ClientLogic<GameT, StepT> {
-    let random = GetRandom;
-    let random_box = Rc::new(RefCell::new(random));
-
-    ClientLogic::<GameT, StepT>::new(random_box)
+    ClientLogic::<GameT, StepT>::new()
 }
 
 #[test_log::test]

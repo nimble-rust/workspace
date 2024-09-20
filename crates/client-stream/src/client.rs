@@ -13,11 +13,8 @@ use nimble_client_connecting::{ConnectedInfo, ConnectingClient};
 use nimble_client_logic::logic::ClientLogic;
 use nimble_protocol::prelude::{HostToClientCommands, HostToClientOobCommands};
 use nimble_protocol::{ClientRequestId, Version};
-use secure_random::SecureRandom;
-use std::cell::RefCell;
 use std::io;
 use std::io::{Error, ErrorKind};
-use std::rc::Rc;
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
@@ -39,7 +36,6 @@ pub struct ClientStream<
     datagram_parser: NimbleDatagramParser,
     datagram_builder: NimbleDatagramBuilder,
     phase: ClientPhase<GameT, StepT>,
-    random: Rc<RefCell<dyn SecureRandom>>,
     connected_info: Option<ConnectedInfo>,
 }
 
@@ -50,16 +46,15 @@ impl<
         StepT: Clone + flood_rs::Deserialize + flood_rs::Serialize + std::fmt::Debug,
     > ClientStream<GameT, StepT>
 {
-    pub fn new(random: Rc<RefCell<dyn SecureRandom>>, application_version: &Version) -> Self {
+    pub fn new(application_version: &Version) -> Self {
         let nimble_protocol_version = Version {
             major: 0,
             minor: 0,
             patch: 5,
         };
-        let client_request_id = ClientRequestId(random.borrow_mut().get_random_u64());
+        let client_request_id = ClientRequestId(0);
         const DATAGRAM_MAX_SIZE: usize = 1024;
         Self {
-            random,
             datagram_parser: NimbleDatagramParser::new(),
             datagram_builder: NimbleDatagramBuilder::new(DATAGRAM_MAX_SIZE),
             connected_info: None,
@@ -85,7 +80,7 @@ impl<
             debug!("connected! {connected_info:?}");
             self.connected_info = Some(*connected_info);
 
-            self.phase = ClientPhase::Connected(ClientLogic::new(self.random.clone()));
+            self.phase = ClientPhase::Connected(ClientLogic::new());
         }
         Ok(())
     }

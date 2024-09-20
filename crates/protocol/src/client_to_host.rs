@@ -3,7 +3,7 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 use crate::host_to_client::TickIdUtil;
-use crate::{Nonce, SessionConnectionSecret};
+use crate::{ClientRequestId, SessionConnectionSecret};
 use blob_stream::prelude::ReceiverToSenderFrontCommands;
 use flood_rs::{Deserialize, ReadOctetStream, Serialize, WriteOctetStream};
 use io::ErrorKind;
@@ -273,14 +273,14 @@ impl JoinPlayerRequests {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct JoinGameRequest {
-    pub nonce: Nonce,
+    pub client_request_id: ClientRequestId,
     pub join_game_type: JoinGameType,
     pub player_requests: JoinPlayerRequests,
 }
 
 impl JoinGameRequest {
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
-        self.nonce.to_stream(stream)?;
+        self.client_request_id.serialize(stream)?;
         self.join_game_type.to_stream(stream)?;
         // TODO: Add more for other join game types.
         self.player_requests.to_stream(stream)?;
@@ -289,7 +289,7 @@ impl JoinGameRequest {
 
     pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         Ok(Self {
-            nonce: Nonce::from_stream(stream)?,
+            client_request_id: ClientRequestId::deserialize(stream)?,
             join_game_type: JoinGameType::from_stream(stream)?,
             player_requests: JoinPlayerRequests::from_stream(stream)?,
         })

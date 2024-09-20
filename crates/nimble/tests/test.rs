@@ -10,13 +10,10 @@ use nimble_host::state::State;
 use nimble_protocol::client_to_host::{AuthoritativeStep, JoinGameType};
 use nimble_protocol::client_to_host::{JoinPlayerRequest, JoinPlayerRequests};
 use nimble_protocol::prelude::*;
-use nimble_protocol::Nonce;
+use nimble_protocol::ClientRequestId;
 use nimble_sample_step::{SampleGame, SampleStep};
 use nimble_steps::Step;
-use secure_random::GetRandom;
-use std::cell::RefCell;
 use std::fmt::Debug;
-use std::rc::Rc;
 use std::time::Instant;
 use tick_id::TickId;
 
@@ -70,13 +67,11 @@ fn client_host_integration() {
     let mut host = HostLogic::<Step<SampleStep>>::new(state);
     let connection = host.create_connection().expect("should create connection");
 
-    let random = GetRandom;
-    let random_box = Rc::new(RefCell::new(random));
-    let mut client = ClientLogic::<SampleGame, Step<SampleStep>>::new(random_box);
+    let mut client = ClientLogic::<SampleGame, Step<SampleStep>>::new();
     let joining_player = JoinPlayerRequest { local_index: 0 };
 
     let join_game_request = JoinGameRequest {
-        nonce: Nonce(0),
+        client_request_id: ClientRequestId(0),
         join_game_type: JoinGameType::NoSecret,
         player_requests: JoinPlayerRequests {
             players: vec![joining_player],

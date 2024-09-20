@@ -14,7 +14,6 @@ flood-rs = "0.0.10"
 log = "0.4.22"
 nimble-steps = { path = "../steps" }
 nimble-protocol = { path = "../protocol" }
-secure-random = { path = "../secure-random" }
 nimble-participant-steps = { path = "../participant-steps" }
 nimble-participant = { path = "../participant" }
 nimble-rectify = { path = "../rectify" }

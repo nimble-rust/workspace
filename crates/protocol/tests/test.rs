@@ -41,7 +41,7 @@ fn check_connect() {
         nimble_version,
         use_debug_stream: false,
         application_version: version,
-        client_request_id: ClientRequestId(0xff4411ff),
+        client_request_id: ClientRequestId(0xff),
     };
     connect.to_stream(&mut out_stream).unwrap();
 

@@ -78,7 +78,7 @@ fn receive_valid_connection_accepted() {
 #[test_log::test]
 fn receive_invalid_connection_accepted_nonce() {
     let mut client = create_connecting_client(None, None);
-    let wrong_request_id = ClientRequestId(999);
+    let wrong_request_id = ClientRequestId(99);
     let connection_secret = SessionConnectionSecret { value: 12345 };
     let accepted = ConnectionAccepted {
         flags: 0,
@@ -102,7 +102,7 @@ fn receive_invalid_connection_accepted_nonce() {
 #[test_log::test]
 fn receive_response_without_request() {
     let mut client = create_connecting_client(None, None);
-    let wrong_request_id = ClientRequestId(999);
+    let wrong_request_id = ClientRequestId(99);
     let connection_secret = SessionConnectionSecret { value: 12345 };
     let accepted = ConnectionAccepted {
         flags: 0,

@@ -16,7 +16,6 @@ ordered-datagram = { path = "../ordered-datagram" }
 datagram-pinger = { path = "../datagram-pinger" }
 datagram = { path = "../datagram" }
 nimble-protocol = { path = "../protocol" }
-secure-random = { path = "../secure-random" }
 nimble-rectify = { path = "../rectify" }
 nimble-assent = { path = "../assent" }
 nimble-seer = { path = "../seer" }
