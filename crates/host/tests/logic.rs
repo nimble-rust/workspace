@@ -11,7 +11,6 @@ use nimble_protocol::client_to_host::DownloadGameStateRequest;
 use nimble_protocol::prelude::{ClientToHostCommands, HostToClientCommands};
 use nimble_sample_step::SampleStep;
 use std::time::Instant;
-use test_log::test;
 use tick_id::TickId;
 
 #[test_log::test]

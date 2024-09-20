@@ -5,7 +5,6 @@
 use nimble_client_connecting::{ClientError, ConnectingClient};
 use nimble_protocol::prelude::*;
 use nimble_protocol::ClientRequestId;
-use test_log::test;
 
 fn create_connecting_client(
     application_version: Option<Version>,

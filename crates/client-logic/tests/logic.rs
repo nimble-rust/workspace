@@ -25,7 +25,6 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::rc::Rc;
-use test_log::test;
 use tick_id::TickId;
 
 #[test_log::test]

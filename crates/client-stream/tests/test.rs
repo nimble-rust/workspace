@@ -12,7 +12,6 @@ use secure_random::SecureRandom;
 use std::cell::RefCell;
 use std::io;
 use std::rc::Rc;
-use test_log::test;
 
 #[derive(Debug)]
 pub struct FakeRandom {

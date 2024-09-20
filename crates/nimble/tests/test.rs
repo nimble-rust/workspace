@@ -18,7 +18,6 @@ use std::cell::RefCell;
 use std::fmt::Debug;
 use std::rc::Rc;
 use std::time::Instant;
-use test_log::test;
 use tick_id::TickId;
 
 mod types;
