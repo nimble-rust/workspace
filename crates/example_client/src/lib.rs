@@ -21,8 +21,8 @@ use udp_client::UdpClient;
 
 pub struct ExampleClient<
     Game: SeerCallback<AuthoritativeStep<StepData>>
-    + AssentCallback<AuthoritativeStep<StepData>>
-    + RectifyCallback,
+        + AssentCallback<AuthoritativeStep<StepData>>
+        + RectifyCallback,
     StepData: Clone + Deserialize + Serialize + Debug + Eq + PartialEq,
 > {
     pub client: ClientStream<Game, StepData>,
@@ -33,11 +33,11 @@ pub struct ExampleClient<
 //"127.0.0.1:23000"
 
 impl<
-    Game: SeerCallback<AuthoritativeStep<StepData>>
-    + AssentCallback<AuthoritativeStep<StepData>>
-    + RectifyCallback,
-    StepData: Clone + Deserialize + Serialize + Debug + Eq + PartialEq,
-> ExampleClient<Game, StepData>
+        Game: SeerCallback<AuthoritativeStep<StepData>>
+            + AssentCallback<AuthoritativeStep<StepData>>
+            + RectifyCallback,
+        StepData: Clone + Deserialize + Serialize + Debug + Eq + PartialEq,
+    > ExampleClient<Game, StepData>
 {
     pub fn new(url: &str) -> Self {
         let random = GetRandom;

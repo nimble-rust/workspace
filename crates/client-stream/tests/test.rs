@@ -29,6 +29,7 @@ impl SecureRandom for FakeRandom {
 }
 
 #[test]
+#[rustfmt::skip] 
 fn connect_stream() -> io::Result<()> {
     let random = FakeRandom {
         counter: 0x0001020304050607,

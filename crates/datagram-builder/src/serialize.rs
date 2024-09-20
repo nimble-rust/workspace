@@ -2,12 +2,12 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-use std::fmt::Debug;
 use datagram::{DatagramBuilder, DatagramError};
 use flood_rs::{out_stream::OutOctetStream, Serialize};
+use log::trace;
+use std::fmt::Debug;
 use std::io;
 use std::io::ErrorKind;
-use log::trace;
 
 /// Serializes a list of items into datagrams.
 ///

@@ -74,8 +74,6 @@ impl Nonce {
     }
 }
 
-
-
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Version {
     pub major: u16,

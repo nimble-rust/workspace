@@ -24,8 +24,8 @@ use std::rc::Rc;
 #[derive(Debug)]
 pub enum ClientPhase<
     GameT: nimble_seer::SeerCallback<nimble_protocol::client_to_host::AuthoritativeStep<StepT>>
-    + nimble_assent::AssentCallback<nimble_protocol::client_to_host::AuthoritativeStep<StepT>>
-    + nimble_rectify::RectifyCallback,
+        + nimble_assent::AssentCallback<nimble_protocol::client_to_host::AuthoritativeStep<StepT>>
+        + nimble_rectify::RectifyCallback,
     StepT: std::clone::Clone + flood_rs::Deserialize + flood_rs::Serialize + std::fmt::Debug,
 > {
     Connecting(ConnectingClient),
@@ -33,8 +33,8 @@ pub enum ClientPhase<
 }
 pub struct ClientStream<
     GameT: nimble_seer::SeerCallback<nimble_protocol::client_to_host::AuthoritativeStep<StepT>>
-    + nimble_assent::AssentCallback<nimble_protocol::client_to_host::AuthoritativeStep<StepT>>
-    + nimble_rectify::RectifyCallback,
+        + nimble_assent::AssentCallback<nimble_protocol::client_to_host::AuthoritativeStep<StepT>>
+        + nimble_rectify::RectifyCallback,
     StepT: std::clone::Clone + flood_rs::Deserialize + flood_rs::Serialize + std::fmt::Debug,
 > {
     datagram_parser: NimbleDatagramParser,
@@ -46,11 +46,11 @@ pub struct ClientStream<
 }
 
 impl<
-    GameT: nimble_seer::SeerCallback<nimble_protocol::client_to_host::AuthoritativeStep<StepT>>
-    + nimble_assent::AssentCallback<nimble_protocol::client_to_host::AuthoritativeStep<StepT>>
-    + nimble_rectify::RectifyCallback,
-    StepT: std::clone::Clone + flood_rs::Deserialize + flood_rs::Serialize + std::fmt::Debug,
-> ClientStream<GameT, StepT>
+        GameT: nimble_seer::SeerCallback<nimble_protocol::client_to_host::AuthoritativeStep<StepT>>
+            + nimble_assent::AssentCallback<nimble_protocol::client_to_host::AuthoritativeStep<StepT>>
+            + nimble_rectify::RectifyCallback,
+        StepT: std::clone::Clone + flood_rs::Deserialize + flood_rs::Serialize + std::fmt::Debug,
+    > ClientStream<GameT, StepT>
 {
     pub fn new(random: Rc<RefCell<dyn SecureRandom>>, application_version: &Version) -> Self {
         let nimble_protocol_version = Version {

@@ -34,8 +34,8 @@ pub enum ClientLogicPhase {
 #[derive(Debug)]
 pub struct ClientLogic<
     Game: SeerCallback<AuthoritativeStep<StepT>>
-    + AssentCallback<AuthoritativeStep<StepT>>
-    + RectifyCallback,
+        + AssentCallback<AuthoritativeStep<StepT>>
+        + RectifyCallback,
     StepT: Clone + Deserialize + Serialize + Debug,
 > {
     joining_player: Option<JoinGameRequest>,
@@ -53,11 +53,11 @@ pub struct ClientLogic<
 }
 
 impl<
-    Game: SeerCallback<AuthoritativeStep<StepT>>
-    + AssentCallback<AuthoritativeStep<StepT>>
-    + RectifyCallback,
-    StepT: Clone + Deserialize + Serialize + Debug,
-> ClientLogic<Game, StepT>
+        Game: SeerCallback<AuthoritativeStep<StepT>>
+            + AssentCallback<AuthoritativeStep<StepT>>
+            + RectifyCallback,
+        StepT: Clone + Deserialize + Serialize + Debug,
+    > ClientLogic<Game, StepT>
 {
     pub fn new(random: Rc<RefCell<dyn SecureRandom>>) -> ClientLogic<Game, StepT> {
         Self {
@@ -97,7 +97,10 @@ impl<
         };
     }
 
-    fn download_state_request(&mut self, download_request_id: u8) -> Vec<ClientToHostCommands<StepT>> {
+    fn download_state_request(
+        &mut self,
+        download_request_id: u8,
+    ) -> Vec<ClientToHostCommands<StepT>> {
         let mut vec = vec![];
         let download_request = DownloadGameStateRequest {
             request_id: download_request_id,

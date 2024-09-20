@@ -6,13 +6,13 @@ use datagram::{DatagramBuilder, DatagramError};
 use datagram_pinger::{client_out_ping, ClientTime};
 use flood_rs::prelude::OutOctetStream;
 use flood_rs::WriteOctetStream;
+use hexify::format_hex;
 use log::{info, trace};
 use nimble_connection_layer::{
     prepare_out_stream, write_to_stream, ConnectionId, ConnectionSecretSeed,
 };
 use ordered_datagram::OrderedOut;
 use std::io;
-use hexify::format_hex;
 
 pub struct NimbleDatagramBuilder {
     ordered_datagram_out: OrderedOut,
@@ -45,7 +45,10 @@ impl NimbleDatagramBuilder {
         seed: ConnectionSecretSeed,
     ) -> io::Result<Vec<u8>> {
         let mut payload = self.stream.octets();
-        trace!("datagram. finalize: original payload: {}", format_hex(&payload));
+        trace!(
+            "datagram. finalize: original payload: {}",
+            format_hex(&payload)
+        );
         let mut hash_stream = OutOctetStream::new();
         let payload_to_calculate_on = &payload[5..];
         write_to_stream(
@@ -55,7 +58,10 @@ impl NimbleDatagramBuilder {
             payload_to_calculate_on,
         )?; // Write hash connection layer header
         payload[..hash_stream.octets().len()].copy_from_slice(hash_stream.octets_ref());
-        trace!("datagram. finalize: total    payload: {}", format_hex(&payload));
+        trace!(
+            "datagram. finalize: total    payload: {}",
+            format_hex(&payload)
+        );
         Ok(payload)
     }
 }

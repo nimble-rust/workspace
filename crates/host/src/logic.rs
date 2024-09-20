@@ -274,7 +274,7 @@ impl<StepT: std::clone::Clone + Eq + Debug + Deserialize + Serialize> HostLogic<
                 self.session.state().data.as_slice(),
             ));
         }
-  
+
         let response = DownloadGameStateResponse {
             client_request: request.request_id,
             tick_id: TickId(state.tick_id.0),

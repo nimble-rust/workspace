@@ -51,9 +51,9 @@ pub fn format_hex(bytes: &[u8]) -> String {
     format_hex_with_prefix_and_separator(bytes, "", " ")
 }
 
-
 pub fn format_hex_with_prefix_and_separator(bytes: &[u8], prefix: &str, separator: &str) -> String {
-    bytes.iter()
+    bytes
+        .iter()
         .map(|b| format!("{prefix}{:02X}", b))
         .collect::<Vec<String>>()
         .join(separator)
