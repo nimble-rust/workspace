@@ -14,6 +14,7 @@ jobs:
       - name: run tests with color
         env:
           RUST_LOG: trace
+          RUST_LOG_STYLE: always
           CARGO_TERM_COLOR: always
         run:
           RUST_LOG=trace cargo test --color=always -- --nocapture --color=always
