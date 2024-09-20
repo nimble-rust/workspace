@@ -18,6 +18,7 @@ pub enum FrontLogicError {
     IoError(io::Error),
     BlobError(BlobError),
     UnknownTransferId(TransferId),
+    ChunkSizeCanNotBeZero,
 }
 
 impl ErrorLevelProvider for FrontLogicError {
@@ -26,6 +27,7 @@ impl ErrorLevelProvider for FrontLogicError {
             FrontLogicError::IoError(_) => ErrorLevel::Info,
             FrontLogicError::BlobError(_) => ErrorLevel::Info,
             FrontLogicError::UnknownTransferId(_) => ErrorLevel::Info,
+            FrontLogicError::ChunkSizeCanNotBeZero => ErrorLevel::Info,
         }
     }
 }
@@ -135,6 +137,10 @@ impl FrontLogic {
                         "received a start transfer for {}. sending ack.",
                         start_transfer_data.transfer_id
                     );
+
+                    if start_transfer_data.chunk_size == 0 {
+                        Err(FrontLogicError::ChunkSizeCanNotBeZero)?;
+                    }
                     // Either logic is not set or the transfer_id is different, so we start with a fresh InLogic.
                     self.state = Some(State {
                         transfer_id: TransferId(start_transfer_data.transfer_id),

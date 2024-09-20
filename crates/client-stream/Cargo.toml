@@ -21,9 +21,11 @@ nimble-rectify = { path = "../rectify" }
 nimble-assent = { path = "../assent" }
 nimble-seer = { path = "../seer" }
 datagram-builder = { path = "../datagram-builder" }
-
+hexify = { path = "../hexify" }
 url = "2.5.2"
 
 [dev-dependencies]
 nimble-sample-step = { path = "../sample-step" }
 nimble-steps = { path = "../steps" }
+test-log = "0.2.16"
+

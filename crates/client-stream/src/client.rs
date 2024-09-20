@@ -8,7 +8,7 @@ use datagram::DatagramBuilder;
 use datagram_builder::serialize::serialize_datagrams;
 use flood_rs::prelude::{InOctetStream, OutOctetStream};
 use flood_rs::ReadOctetStream;
-use log::info;
+use log::{info, trace};
 use nimble_client_connecting::{ConnectedInfo, ConnectingClient};
 use nimble_client_logic::logic::ClientLogic;
 use nimble_connection_layer::ConnectionSecretSeed;
@@ -24,8 +24,8 @@ use std::rc::Rc;
 #[derive(Debug)]
 pub enum ClientPhase<
     GameT: nimble_seer::SeerCallback<nimble_protocol::client_to_host::AuthoritativeStep<StepT>>
-        + nimble_assent::AssentCallback<nimble_protocol::client_to_host::AuthoritativeStep<StepT>>
-        + nimble_rectify::RectifyCallback,
+    + nimble_assent::AssentCallback<nimble_protocol::client_to_host::AuthoritativeStep<StepT>>
+    + nimble_rectify::RectifyCallback,
     StepT: std::clone::Clone + flood_rs::Deserialize + flood_rs::Serialize + std::fmt::Debug,
 > {
     Connecting(ConnectingClient),
@@ -33,8 +33,8 @@ pub enum ClientPhase<
 }
 pub struct ClientStream<
     GameT: nimble_seer::SeerCallback<nimble_protocol::client_to_host::AuthoritativeStep<StepT>>
-        + nimble_assent::AssentCallback<nimble_protocol::client_to_host::AuthoritativeStep<StepT>>
-        + nimble_rectify::RectifyCallback,
+    + nimble_assent::AssentCallback<nimble_protocol::client_to_host::AuthoritativeStep<StepT>>
+    + nimble_rectify::RectifyCallback,
     StepT: std::clone::Clone + flood_rs::Deserialize + flood_rs::Serialize + std::fmt::Debug,
 > {
     datagram_parser: NimbleDatagramParser,
@@ -46,11 +46,11 @@ pub struct ClientStream<
 }
 
 impl<
-        GameT: nimble_seer::SeerCallback<nimble_protocol::client_to_host::AuthoritativeStep<StepT>>
-            + nimble_assent::AssentCallback<nimble_protocol::client_to_host::AuthoritativeStep<StepT>>
-            + nimble_rectify::RectifyCallback,
-        StepT: std::clone::Clone + flood_rs::Deserialize + flood_rs::Serialize + std::fmt::Debug,
-    > ClientStream<GameT, StepT>
+    GameT: nimble_seer::SeerCallback<nimble_protocol::client_to_host::AuthoritativeStep<StepT>>
+    + nimble_assent::AssentCallback<nimble_protocol::client_to_host::AuthoritativeStep<StepT>>
+    + nimble_rectify::RectifyCallback,
+    StepT: std::clone::Clone + flood_rs::Deserialize + flood_rs::Serialize + std::fmt::Debug,
+> ClientStream<GameT, StepT>
 {
     pub fn new(random: Rc<RefCell<dyn SecureRandom>>, application_version: &Version) -> Self {
         let nimble_protocol_version = Version {
@@ -85,7 +85,7 @@ impl<
             .receive(&command)
             .map_err(|err| Error::new(ErrorKind::InvalidData, err.to_string()))?;
         if let Some(connected_info) = connecting_client.connected_info() {
-            info!("connected!");
+            info!("connected! {connected_info:?}");
             self.connected_info = Some(*connected_info);
             let seed = ConnectionSecretSeed(connected_info.session_connection_secret.value as u32);
             self.datagram_builder.set_secrets(
@@ -120,6 +120,7 @@ impl<
         };
         while !in_stream.has_reached_end() {
             let cmd = HostToClientCommands::from_stream(in_stream)?;
+            trace!("connected_receive {cmd:?}");
             logic
                 .receive_cmd(&cmd)
                 .map_err(|err| Error::new(ErrorKind::InvalidData, err.to_string()))?;
@@ -132,7 +133,7 @@ impl<
         match datagram_type {
             DatagramType::Connection(connection_id, client_time) => {
                 // TODO: use connection_id from DatagramType::connection_id
-                info!("connection: connection_id {connection_id:?} client time {client_time:?}");
+                trace!("connection: connection_id {connection_id:?} client time {client_time:?}");
                 self.connected_receive(&mut in_stream)
             }
             _ => Err(Error::new(

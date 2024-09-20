@@ -2,10 +2,12 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
+use std::fmt::Debug;
 use datagram::{DatagramBuilder, DatagramError};
 use flood_rs::{out_stream::OutOctetStream, Serialize};
 use std::io;
 use std::io::ErrorKind;
+use log::trace;
 
 /// Serializes a list of items into datagrams.
 ///
@@ -30,7 +32,7 @@ pub fn serialize_datagrams<T, I>(
     builder: &mut impl DatagramBuilder,
 ) -> io::Result<Vec<Vec<u8>>>
 where
-    T: Serialize,
+    T: Serialize + Debug,
     I: AsRef<[T]>,
 {
     let mut packets = Vec::new();
@@ -38,6 +40,8 @@ where
     builder.clear()?;
 
     for item in items.as_ref() {
+        trace!("serializing item {item:?}");
+
         // Serialize the item into the buffer
         let mut item_stream = OutOctetStream::new();
         item.serialize(&mut item_stream)?;

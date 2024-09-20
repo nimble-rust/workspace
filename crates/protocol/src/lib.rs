@@ -74,13 +74,7 @@ impl Nonce {
     }
 }
 
-pub fn hex_output(data: &[u8]) -> String {
-    let mut hex_string = String::new();
-    for byte in data {
-        hex_string.push_str(&format!("{:02X} ", byte));
-    }
-    hex_string.trim_end().to_string() // Remove the trailing space and convert to String
-}
+
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Version {

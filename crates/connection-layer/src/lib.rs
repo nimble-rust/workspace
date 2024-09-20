@@ -8,6 +8,7 @@ use std::io::{Error, ErrorKind, Result};
 
 use flood_rs::prelude::*;
 use mash_rs::murmur3_32;
+use hexify::{format_hex, format_hex_u32_be};
 
 /// A seed used for generating a [Murmur3 hash](https://en.wikipedia.org/wiki/MurmurHash#MurmurHash3) for connection validation.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -166,8 +167,8 @@ pub fn verify_hash(expected_hash: u32, seed: ConnectionSecretSeed, payload: &[u8
         Err(Error::new(
             ErrorKind::InvalidData,
             format!(
-                "hash mismatch: the data does not match the expected hash. calculated {:x} but payload provided hash {:x}",
-                calculated_hash, expected_hash
+                "hash mismatch: the data does not match the expected hash. calculated {} but payload provided hash {}",
+                format_hex_u32_be(calculated_hash), format_hex_u32_be(expected_hash),
             ),
         ))
     } else {

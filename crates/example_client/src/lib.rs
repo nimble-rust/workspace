@@ -4,11 +4,12 @@
  */
 use datagram::{DatagramCodec, DatagramCommunicator};
 use flood_rs::{Deserialize, Serialize};
+use hexify::format_hex;
 use log::{error, info, warn};
 use nimble_assent::prelude::*;
 use nimble_client::client::ClientStream;
 use nimble_protocol::client_to_host::AuthoritativeStep;
-use nimble_protocol::{hex_output, Version};
+use nimble_protocol::Version;
 use nimble_rectify::RectifyCallback;
 use nimble_seer::prelude::*;
 use secure_random::GetRandom;
@@ -20,8 +21,8 @@ use udp_client::UdpClient;
 
 pub struct ExampleClient<
     Game: SeerCallback<AuthoritativeStep<StepData>>
-        + AssentCallback<AuthoritativeStep<StepData>>
-        + RectifyCallback,
+    + AssentCallback<AuthoritativeStep<StepData>>
+    + RectifyCallback,
     StepData: Clone + Deserialize + Serialize + Debug + Eq + PartialEq,
 > {
     pub client: ClientStream<Game, StepData>,
@@ -32,11 +33,11 @@ pub struct ExampleClient<
 //"127.0.0.1:23000"
 
 impl<
-        Game: SeerCallback<AuthoritativeStep<StepData>>
-            + AssentCallback<AuthoritativeStep<StepData>>
-            + RectifyCallback,
-        StepData: Clone + Deserialize + Serialize + Debug + Eq + PartialEq,
-    > ExampleClient<Game, StepData>
+    Game: SeerCallback<AuthoritativeStep<StepData>>
+    + AssentCallback<AuthoritativeStep<StepData>>
+    + RectifyCallback,
+    StepData: Clone + Deserialize + Serialize + Debug + Eq + PartialEq,
+> ExampleClient<Game, StepData>
 {
     pub fn new(url: &str) -> Self {
         let random = GetRandom;
@@ -83,7 +84,7 @@ impl<
                 info!(
                     "send nimble datagram of size: {} payload: {}",
                     datagram_to_send.len(),
-                    hex_output(datagram_to_send.as_slice())
+                    format_hex(datagram_to_send.as_slice())
                 );
                 let processed = self.codec.encode(datagram_to_send.as_slice())?;
                 self.communicator.send(processed.as_slice())?;
@@ -93,14 +94,14 @@ impl<
                 info!(
                     "received datagram of size: {} payload: {}",
                     size,
-                    hex_output(received_buf)
+                    format_hex(received_buf)
                 );
                 match self.codec.decode(received_buf) {
                     Ok(datagram_for_client) => {
                         if !datagram_for_client.is_empty() {
                             info!(
                                 "received datagram to client: {}",
-                                hex_output(&datagram_for_client)
+                                format_hex(&datagram_for_client)
                             );
                             if let Err(e) = self.client.receive(datagram_for_client.as_slice()) {
                                 warn!("receive error {}", e);

@@ -20,6 +20,7 @@ nimble-seer = { path = "../seer" }
 nimble-assent = { path = "../assent" }
 nimble-rectify = { path = "../rectify" }
 nimble-sample-step = { path = "../sample-step" }
+hexify = { path = "../hexify" }
 
 [dev-dependencies]
 env_logger = "0.11.3"

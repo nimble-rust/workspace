@@ -34,8 +34,8 @@ pub enum ClientLogicPhase {
 #[derive(Debug)]
 pub struct ClientLogic<
     Game: SeerCallback<AuthoritativeStep<StepT>>
-        + AssentCallback<AuthoritativeStep<StepT>>
-        + RectifyCallback,
+    + AssentCallback<AuthoritativeStep<StepT>>
+    + RectifyCallback,
     StepT: Clone + Deserialize + Serialize + Debug,
 > {
     joining_player: Option<JoinGameRequest>,
@@ -53,11 +53,11 @@ pub struct ClientLogic<
 }
 
 impl<
-        Game: SeerCallback<AuthoritativeStep<StepT>>
-            + AssentCallback<AuthoritativeStep<StepT>>
-            + RectifyCallback,
-        StepT: Clone + Deserialize + Serialize + Debug,
-    > ClientLogic<Game, StepT>
+    Game: SeerCallback<AuthoritativeStep<StepT>>
+    + AssentCallback<AuthoritativeStep<StepT>>
+    + RectifyCallback,
+    StepT: Clone + Deserialize + Serialize + Debug,
+> ClientLogic<Game, StepT>
 {
     pub fn new(random: Rc<RefCell<dyn SecureRandom>>) -> ClientLogic<Game, StepT> {
         Self {
@@ -97,11 +97,18 @@ impl<
         };
     }
 
-    fn download_state_request(&mut self, download_request_id: u8) -> ClientToHostCommands<StepT> {
+    fn download_state_request(&mut self, download_request_id: u8) -> Vec<ClientToHostCommands<StepT>> {
+        let mut vec = vec![];
         let download_request = DownloadGameStateRequest {
             request_id: download_request_id,
         };
-        ClientToHostCommands::DownloadGameState(download_request)
+        vec.push(ClientToHostCommands::DownloadGameState(download_request));
+
+        if let Some(cmd) = self.blob_stream_client.send() {
+            vec.push(ClientToHostCommands::BlobStreamChannel(cmd))
+        }
+
+        vec
     }
 
     fn steps_request(&mut self) -> ClientToHostCommands<StepT> {
@@ -138,22 +145,21 @@ impl<
         let mut commands: Vec<ClientToHostCommands<StepT>> = self.commands_to_send.clone();
         self.commands_to_send.clear();
 
-        let normal_command_for_phase = match self.phase {
+        let normal_commands: Vec<ClientToHostCommands<StepT>> = match self.phase {
             ClientLogicPhase::RequestDownloadState {
                 download_state_request_id,
-            } => Some(self.download_state_request(download_state_request_id)),
-            ClientLogicPhase::SendPredictedSteps => Some(self.steps_request()),
+            } => self.download_state_request(download_state_request_id),
+            ClientLogicPhase::SendPredictedSteps => [self.steps_request()].to_vec(),
             ClientLogicPhase::DownloadingState(_) => {
                 if let Some(x) = self.blob_stream_client.send() {
-                    Some(ClientToHostCommands::BlobStreamChannel(x))
+                    [ClientToHostCommands::BlobStreamChannel(x)].to_vec()
                 } else {
-                    None
+                    vec![]
                 }
             }
         };
-        if let Some(cmd) = normal_command_for_phase {
-            commands.push(cmd);
-        }
+
+        commands.extend(normal_commands);
 
         if let Some(joining_game) = &self.joining_player {
             info!("connected. send join_game_request {:?}", joining_game);

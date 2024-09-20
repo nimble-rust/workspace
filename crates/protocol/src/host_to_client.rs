@@ -23,7 +23,7 @@ pub enum HostToClientCommand {
     GameStep = 0x08,
     JoinGame = 0x09,
     DownloadGameState = 0x0B,
-    BlobStreamChannel = 0x0c,
+    BlobStreamChannel = 0x0C,
 }
 
 impl TryFrom<u8> for HostToClientCommand {

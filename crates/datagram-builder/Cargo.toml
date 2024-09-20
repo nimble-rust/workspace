@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 flood-rs = "0.0.10"
 datagram = { path = "../datagram" }
+log = "0.4.22"

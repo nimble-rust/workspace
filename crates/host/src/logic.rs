@@ -6,7 +6,7 @@ use crate::combinator::Combinator;
 use crate::state::State;
 use blob_stream::out_logic_front::OutLogicFront;
 use blob_stream::out_stream::OutStreamError;
-use blob_stream::prelude::{ReceiverToSenderFrontCommands, TransferId};
+use blob_stream::prelude::{ReceiverToSenderFrontCommands, StartTransferData, TransferId};
 use flood_rs::{Deserialize, Serialize};
 use freelist::FreeList;
 use log::{debug, info, trace};
@@ -274,7 +274,7 @@ impl<StepT: std::clone::Clone + Eq + Debug + Deserialize + Serialize> HostLogic<
                 self.session.state().data.as_slice(),
             ));
         }
-
+  
         let response = DownloadGameStateResponse {
             client_request: request.request_id,
             tick_id: TickId(state.tick_id.0),

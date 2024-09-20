@@ -110,8 +110,7 @@ impl StartTransferData {
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u16(self.transfer_id)?;
         stream.write_u32(self.total_octet_size)?;
-        stream.write_u16(self.chunk_size)?;
-        Ok(())
+        stream.write_u16(self.chunk_size)
     }
 
     /// # Errors

@@ -26,5 +26,5 @@ members = [
     "crates/datagram-builder",
     "crates/client-stream",
     "crates/client-connecting"
-, "crates/err-rs"]
+, "crates/err-rs", "crates/hexify"]
 resolver = "2"
