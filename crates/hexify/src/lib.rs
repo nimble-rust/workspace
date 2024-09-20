@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
+ * Licensed under the MIT License. See LICENSE in the project root for license information.
+ */
 //! # hexify
 //!
 //! `hexify` is a Rust library for formatting byte slices (`[u8]`) into hexadecimal (`hex`) strings.
