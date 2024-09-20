@@ -4,7 +4,7 @@
  */
 
 /*
-#[test]
+#[test_log::test]
 #[allow(dead_code)]
 fn send_to_host() {
 

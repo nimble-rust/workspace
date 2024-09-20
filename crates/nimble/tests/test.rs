@@ -61,7 +61,7 @@ fn communicate<
         .expect("TODO: panic message");
 }
 
-#[test]
+#[test_log::test]
 fn client_host_integration() {
     let game = SampleGame::default();
     let state_octets = game

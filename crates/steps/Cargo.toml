@@ -12,3 +12,6 @@ repository = "https://github.com/piot/nimble-steps-rs"
 discoid = "0.0.3"
 tick-id = "0.0.7"
 flood-rs = "0.0.10"
+
+[dev-dependencies]
+test-log = "0.2.16"

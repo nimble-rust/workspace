@@ -115,7 +115,7 @@ impl DatagramParser for ExampleDatagramParser {
     }
 }
 
-#[test]
+#[test_log::test]
 fn serialize_single_datagram() {
     let items = [
         TestItem::Name {
@@ -142,7 +142,7 @@ fn serialize_single_datagram() {
     assert_eq!(*deserialized_items, items);
 }
 
-#[test]
+#[test_log::test]
 fn serialize_and_deserialize_multiple_datagrams() {
     const MAX_PACKET_SIZE: usize = 8;
     let items = [
@@ -187,7 +187,7 @@ fn serialize_and_deserialize_multiple_datagrams() {
     assert_eq!(items.len(), deserialized_items.len());
 }
 
-#[test]
+#[test_log::test]
 fn too_big_item_size() {
     const MAX_PACKET_SIZE: usize = 4;
     let items = [

@@ -19,7 +19,7 @@ impl SecureRandom for FakeRandom {
     }
 }
 
-#[test]
+#[test_log::test]
 fn simple_connection() {
     let random = FakeRandom { counter: 2 };
 

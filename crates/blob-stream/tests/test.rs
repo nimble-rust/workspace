@@ -5,7 +5,7 @@
 use blob_stream::in_stream::BlobStreamIn;
 pub mod helper;
 
-#[test]
+#[test_log::test]
 fn chunks_out_of_order() {
     const CHUNK_SIZE: usize = 4;
     const CHUNK_COUNT: usize = 3;

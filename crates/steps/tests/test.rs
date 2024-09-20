@@ -8,7 +8,7 @@ use tick_id::TickId;
 
 mod types;
 
-#[test]
+#[test_log::test]
 fn add_step() {
     let mut steps = Steps::<GameInput>::new_with_initial_tick(TickId(23));
     steps.push(GameInput::MoveHorizontal(-2));
@@ -16,7 +16,7 @@ fn add_step() {
     assert_eq!(steps.front_tick_id().unwrap().value(), 23)
 }
 
-#[test]
+#[test_log::test]
 fn push_and_pop_step() {
     let mut steps = Steps::<GameInput>::new_with_initial_tick(TickId(23));
     steps.push(GameInput::Jumping(true));
@@ -27,7 +27,7 @@ fn push_and_pop_step() {
     assert_eq!(steps.front_tick_id().unwrap().value(), 24);
 }
 
-#[test]
+#[test_log::test]
 fn push_and_pop_count() {
     let mut steps = Steps::<GameInput>::new_with_initial_tick(TickId(23));
     steps.push(GameInput::Jumping(true));
@@ -37,7 +37,7 @@ fn push_and_pop_count() {
     assert_eq!(steps.len(), 0);
 }
 
-#[test]
+#[test_log::test]
 fn push_and_pop_up_to_lower() {
     let mut steps = Steps::<GameInput>::new_with_initial_tick(TickId(23));
     steps.push(GameInput::Jumping(true));
@@ -47,7 +47,7 @@ fn push_and_pop_up_to_lower() {
     assert_eq!(steps.len(), 2);
 }
 
-#[test]
+#[test_log::test]
 fn push_and_pop_up_to_equal() {
     let mut steps = Steps::<GameInput>::new_with_initial_tick(TickId(23));
     steps.push(GameInput::Jumping(true));

@@ -53,7 +53,7 @@ impl SeerCallback<TestGameStep> for TestGame {
     fn on_post_ticks(&mut self) {}
 }
 
-#[test]
+#[test_log::test]
 fn test_seer() {
     let mut game = TestGame { position_x: -44 };
     let mut seer: Seer<TestGame, TestGameStep> = Seer::new();

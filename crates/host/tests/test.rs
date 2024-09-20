@@ -13,7 +13,7 @@ enum TestStep {
     SelectTeam(u16),
 }
 
-#[test]
+#[test_log::test]
 fn test_combinator_add() {
     let mut combinator = Combinator::<TestStep>::new(TickId(0));
     combinator.create_buffer(ParticipantId(1));

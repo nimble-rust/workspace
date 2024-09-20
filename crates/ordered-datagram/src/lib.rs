@@ -18,6 +18,10 @@ impl DatagramId {
         self.0
     }
 
+    pub fn next(self) -> Self {
+        Self(self.0 + 1)
+    }
+
     fn to_stream(self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u16(self.0)
     }
@@ -84,7 +88,7 @@ impl OrderedIn {
             .expected_sequence
             .is_equal_or_successor(potential_expected_or_successor)
         {
-            self.expected_sequence = potential_expected_or_successor;
+            self.expected_sequence = potential_expected_or_successor.next();
             Ok(())
         } else {
             Err(io::Error::new(

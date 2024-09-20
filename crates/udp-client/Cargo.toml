@@ -5,3 +5,6 @@ edition = "2021"
 
 [dependencies]
 datagram = { path = "../datagram" }
+
+[dev-dependencies]
+test-log = "0.2.16"

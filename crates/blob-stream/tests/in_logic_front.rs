@@ -4,7 +4,7 @@
  */
 use blob_stream::prelude::*;
 
-#[test]
+#[test_log::test]
 fn start_transfer() {
     let start_transfer = SenderToReceiverFrontCommands::StartTransfer(StartTransferData {
         transfer_id: 1,
@@ -25,7 +25,7 @@ fn start_transfer() {
     assert_eq!(answer, expected_answer);
 }
 
-#[test]
+#[test_log::test]
 fn drop_previous_transfer() {
     let start_transfer = SenderToReceiverFrontCommands::StartTransfer(StartTransferData {
         transfer_id: 1,
@@ -98,7 +98,7 @@ fn set_chunk_and_check(
     }
 }
 
-#[test]
+#[test_log::test]
 fn complete_transfer() {
     const TRANSFER_ID_VALUE: u16 = 0x3211;
     const TRANSFER_ID: TransferId = TransferId(TRANSFER_ID_VALUE);

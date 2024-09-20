@@ -21,16 +21,3 @@ impl SecureRandom for GetRandom {
         u64::from_le_bytes(buf)
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use crate::{GetRandom, SecureRandom};
-    use log::info;
-
-    #[test]
-    fn check_random() {
-        let mut random = GetRandom;
-        let result = random.get_random_u64();
-        info!("result: {}", result)
-    }
-}

@@ -5,7 +5,7 @@
 use blob_stream::in_logic::Logic;
 use blob_stream::prelude::*;
 
-#[test]
+#[test_log::test]
 fn check_receive() {
     let mut logic = Logic::new(10, 5);
 
@@ -24,7 +24,7 @@ fn check_receive() {
     assert_eq!(answer.receive_mask_after_last, 0b1); // Indicates that chunk_index 1 was received
 }
 
-#[test]
+#[test_log::test]
 fn multiple_not_received() {
     let mut logic = Logic::new(11, 5);
 
@@ -60,7 +60,7 @@ fn set_chunk_and_check(
     assert_eq!(ack.receive_mask_after_last, receive_mask);
 }
 
-#[test]
+#[test_log::test]
 fn all_received() {
     let mut logic = Logic::new(11, 5);
 

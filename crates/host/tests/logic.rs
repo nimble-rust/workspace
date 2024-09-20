@@ -14,21 +14,21 @@ use std::time::Instant;
 use test_log::test;
 use tick_id::TickId;
 
-#[test]
+#[test_log::test]
 fn game_state_download() {
     const TICK_ID: TickId = TickId(42);
     const EXPECTED_PAYLOAD: &[u8] = &[0xff, 0x33];
     let state = State::new(TICK_ID, EXPECTED_PAYLOAD);
-    let mut logic = HostLogic::<SampleStep>::new(state);
+    let mut host = HostLogic::<SampleStep>::new(state);
 
-    let connection_id = logic.create_connection().expect("it should work");
+    let connection_id = host.create_connection().expect("it should work");
     assert_eq!(connection_id.0, 0);
     let now = Instant::now();
 
     // Send a Download Game State request to the host.
     // This is usually done by the client, but we do it manually here.
     let download_request = DownloadGameStateRequest { request_id: 99 };
-    let answers = logic
+    let answers = host
         .update(
             connection_id,
             now,
@@ -89,7 +89,7 @@ fn game_state_download() {
 
     // The host receives the AckStart
     // and returns a number of BlobStreamChannel(SetChunk).
-    let probably_set_chunks = logic
+    let probably_set_chunks = host
         .update(
             connection_id,
             now,
@@ -137,21 +137,19 @@ fn game_state_download() {
         EXPECTED_PAYLOAD
     );
 
-    logic
-        .update(
-            connection_id,
-            now,
-            &ClientToHostCommands::BlobStreamChannel(last_ack.unwrap()),
-        )
-        .expect("Should download game state");
+    host.update(
+        connection_id,
+        now,
+        &ClientToHostCommands::BlobStreamChannel(last_ack.unwrap()),
+    )
+    .expect("Should download game state");
 
-    assert!(logic
+    assert!(host
         .get(connection_id)
         .as_ref()
         .expect("connection should exist")
         .is_state_received_by_remote());
 
-    logic
-        .destroy_connection(connection_id)
+    host.destroy_connection(connection_id)
         .expect("Should destroy connection");
 }

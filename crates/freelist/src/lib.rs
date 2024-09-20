@@ -34,7 +34,7 @@ impl FreeList {
 mod tests {
     use crate::FreeList;
 
-    #[test]
+    #[test_log::test]
     fn it_works() {
         let mut free_list = FreeList::new(4);
         assert_eq!(free_list.allocate(), Some(0));

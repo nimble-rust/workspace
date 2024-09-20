@@ -4,7 +4,7 @@
  */
 use udp_client::UdpClient;
 
-#[test]
+#[test_log::test]
 fn it_works() {
     let client = UdpClient::new("localhost:23000").unwrap();
     client.send_datagram(&[0x18, 0x28]).unwrap();

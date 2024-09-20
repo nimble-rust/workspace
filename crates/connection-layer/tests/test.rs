@@ -5,7 +5,7 @@
 use flood_rs::prelude::*;
 use nimble_connection_layer::prelude::*;
 
-#[test]
+#[test_log::test]
 fn test_header() {
     let connection = ConnectionLayerMode::Connection(ConnectionLayer {
         connection_id: ConnectionId { value: 42 },

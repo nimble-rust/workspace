@@ -8,7 +8,7 @@ use tick_id::TickId;
 
 mod types;
 
-#[test]
+#[test_log::test]
 fn add_step() {
     let mut steps = PendingSteps::<GameInput>::new(32, TickId(10));
     let first_tick_id = TickId(12);

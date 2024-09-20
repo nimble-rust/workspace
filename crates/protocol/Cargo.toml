@@ -15,3 +15,4 @@ tick-id = "0.0.7"
 
 [dev-dependencies]
 nimble-sample-step = { path = "../sample-step" }
+test-log = "0.2.16"

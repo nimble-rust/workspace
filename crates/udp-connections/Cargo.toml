@@ -8,3 +8,6 @@ flood-rs = "0.0.10"
 datagram = { path = "../datagram" }
 secure-random = { path = "../secure-random" }
 log = "0.4.22"
+
+[dev-dependencies]
+test-log = "0.2.16"

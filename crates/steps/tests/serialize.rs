@@ -50,7 +50,7 @@ impl Deserialize for SerializableGameInput {
     }
 }
 
-#[test]
+#[test_log::test]
 fn serialize() -> io::Result<()> {
     let mut out_stream = OutOctetStream::new();
 
@@ -67,7 +67,7 @@ fn serialize() -> io::Result<()> {
     Ok(())
 }
 
-#[test]
+#[test_log::test]
 fn serialize_custom() -> io::Result<()> {
     let mut out_stream = OutOctetStream::new();
 

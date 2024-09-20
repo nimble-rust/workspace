@@ -13,3 +13,6 @@ nimble-steps = { path = "../steps" }
 tick-id = "0.0.7"
 log = "0.4.22"
 flood-rs = "0.0.10"
+
+[dev-dependencies]
+test-log = "0.2.16"

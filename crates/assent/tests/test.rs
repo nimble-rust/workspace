@@ -23,7 +23,7 @@ impl AssentCallback<TestGameStep> for TestGame {
     }
 }
 
-#[test]
+#[test_log::test]
 fn test_assent() {
     let mut game = TestGame { position_x: -44 };
     let mut assent: Assent<TestGame, TestGameStep> = Assent::new();
@@ -33,7 +33,7 @@ fn test_assent() {
     assert_eq!(game.position_x, -45);
 }
 
-#[test]
+#[test_log::test]
 fn test_assent_right() {
     let mut game = TestGame { position_x: -44 };
     let mut assent: Assent<TestGame, TestGameStep> = Assent::new();

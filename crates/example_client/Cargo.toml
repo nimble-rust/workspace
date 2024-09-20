@@ -4,13 +4,14 @@ version = "0.0.1"
 edition = "2021"
 
 [dependencies]
+log = "0.4.22"
+flood-rs = "0.0.10"
+
 nimble-steps = { path = "../steps" }
 nimble-protocol = { path = "../protocol" }
-flood-rs = "0.0.10"
 secure-random = { path = "../secure-random" }
 ordered-datagram = { path = "../ordered-datagram" }
 datagram-pinger = { path = "../datagram-pinger" }
-log = "0.4.22"
 nimble-client = { path = "../client-stream" }
 nimble-connection-layer = { path = "../connection-layer" }
 udp-client = { path = "../udp-client" }
@@ -23,5 +24,4 @@ nimble-sample-step = { path = "../sample-step" }
 hexify = { path = "../hexify" }
 
 [dev-dependencies]
-env_logger = "0.11.3"
 test-log = "0.2.16"

@@ -6,7 +6,7 @@ use crate::err::{ClientError, ClientErrorKind};
 use blob_stream::prelude::{FrontLogic, SenderToReceiverFrontCommands};
 use err_rs::{ErrorLevel, ErrorLevelProvider};
 use flood_rs::{Deserialize, Serialize};
-use log::{debug, info};
+use log::{debug, trace};
 use nimble_assent::prelude::*;
 use nimble_participant::ParticipantId;
 use nimble_protocol::client_to_host::{
@@ -203,7 +203,7 @@ impl<
     }
 
     fn on_game_step(&mut self, cmd: &GameStepResponse<StepT>) -> Result<(), ClientErrorKind> {
-        info!("game step response: {:?}", cmd);
+        trace!("game step response: {:?}", cmd);
         let mut current_authoritative_tick_id = cmd.authoritative_steps.start_tick_id;
 
         for authoritative_step_range in &cmd.authoritative_steps.ranges {

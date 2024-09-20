@@ -24,7 +24,7 @@ fn create_connecting_client(
     ConnectingClient::new(ClientRequestId(42), app_version, nimble_ver)
 }
 
-#[test]
+#[test_log::test]
 fn test_send_connect_command() {
     let mut client = create_connecting_client(None, None);
     let commands = client.send();
@@ -53,7 +53,7 @@ fn test_send_connect_command() {
     );
 }
 
-#[test]
+#[test_log::test]
 fn receive_valid_connection_accepted() {
     let mut client = create_connecting_client(None, None);
     let response_nonce = client.debug_client_request_id();
@@ -76,7 +76,7 @@ fn receive_valid_connection_accepted() {
     assert_eq!(connected_info.session_connection_secret, connection_secret);
 }
 
-#[test]
+#[test_log::test]
 fn receive_invalid_connection_accepted_nonce() {
     let mut client = create_connecting_client(None, None);
     let wrong_request_id = ClientRequestId(999);
@@ -100,7 +100,7 @@ fn receive_invalid_connection_accepted_nonce() {
     }
 }
 
-#[test]
+#[test_log::test]
 fn receive_response_without_request() {
     let mut client = create_connecting_client(None, None);
     let wrong_request_id = ClientRequestId(999);

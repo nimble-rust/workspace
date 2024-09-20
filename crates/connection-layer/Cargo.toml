@@ -11,3 +11,6 @@ flood-rs = "0.0.10"
 log = "0.4.22"
 mash-rs = "0.0.1"
 hexify = { path = "../hexify" }
+
+[dev-dependencies]
+test-log = "0.2.16"

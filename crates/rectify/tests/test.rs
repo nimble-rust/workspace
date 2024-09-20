@@ -87,7 +87,7 @@ impl AssentCallback<ParticipantSteps<TestGameStep>> for CombinedGame {
     }
 }
 
-#[test]
+#[test_log::test]
 fn one_prediction() {
     let authoritative_game = TestGame { position_x: -44 };
     let predicted_game = TestGame { position_x: -44 };

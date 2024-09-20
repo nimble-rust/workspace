@@ -28,7 +28,7 @@ use std::rc::Rc;
 use test_log::test;
 use tick_id::TickId;
 
-#[test]
+#[test_log::test]
 fn basic_logic() {
     let random = GetRandom;
     let random_box = Rc::new(RefCell::new(random));
@@ -64,7 +64,7 @@ fn setup_logic<
     ClientLogic::<GameT, StepT>::new(random_box)
 }
 
-#[test]
+#[test_log::test]
 fn send_steps() {
     let mut game = SampleGame::default();
 
@@ -127,7 +127,7 @@ fn setup_sample_steps() -> AuthoritativeStepRanges<Step<SampleStep>> {
 
     ranges_to_send
 }
-#[test]
+#[test_log::test]
 fn receive_authoritative_steps() -> Result<(), ClientError> {
     let mut client_logic = setup_logic::<SampleGame, Step<SampleStep>>();
 

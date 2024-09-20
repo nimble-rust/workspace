@@ -13,7 +13,7 @@ use std::collections::HashMap;
 use std::io;
 use tick_id::TickId;
 
-#[test]
+#[test_log::test]
 fn check_version() {
     let mut out_stream = OutOctetStream::new();
     let version = Version {
@@ -24,7 +24,7 @@ fn check_version() {
     version.to_stream(&mut out_stream).unwrap()
 }
 
-#[test]
+#[test_log::test]
 fn check_connect() {
     let mut out_stream = OutOctetStream::new();
     let version = Version {
@@ -52,7 +52,7 @@ fn check_connect() {
     assert_eq!(received_connect, connect);
 }
 
-#[test]
+#[test_log::test]
 fn check_authoritative() -> io::Result<()> {
     // Prepare all steps
     let mut range_for_all_participants = HashMap::<ParticipantId, Vec<SampleStep>>::new();

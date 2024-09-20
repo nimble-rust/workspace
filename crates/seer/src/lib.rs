@@ -4,7 +4,7 @@
  */
 pub mod prelude;
 
-use log::info;
+use log::trace;
 use std::marker::PhantomData;
 
 use nimble_steps::Steps;
@@ -57,7 +57,7 @@ where
     pub fn update(&mut self, callback: &mut Callback) {
         callback.on_pre_ticks();
 
-        info!("combined steps len:{}", self.combined_steps.len());
+        trace!("combined steps len:{}", self.combined_steps.len());
         for combined_step_info in self.combined_steps.iter() {
             callback.on_tick(&combined_step_info.step);
         }

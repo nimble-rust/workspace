@@ -2,7 +2,7 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-use hexify::format_hex_dump_comparison_width;
+use hexify::assert_eq_slices;
 use log::info;
 use nimble_client::client::{ClientPhase, ClientStream};
 use nimble_protocol::Version;
@@ -27,7 +27,7 @@ impl SecureRandom for FakeRandom {
     }
 }
 
-#[test]
+#[test_log::test]
 #[rustfmt::skip]
 fn connect_stream() -> io::Result<()> {
     let random = FakeRandom {
@@ -108,15 +108,15 @@ fn connect_stream() -> io::Result<()> {
         0x03, // Download Game State
         0x99, // Download Request id, //TODO: Hardcoded, but should not be
     ];
-    assert_eq!(
+    assert_eq_slices(
         datagram_request_download_state,
         expected_request_download_state_octets
     );
 
 
-    let request_download_response = &[
+    let feed_request_download_response = &[
         // Header
-        0x00, 0x00, // Ordered datagram
+        0x00, 0x01, // Ordered datagram
         0x00, 0x00, // Client Time
 
         // Commands
@@ -135,7 +135,7 @@ fn connect_stream() -> io::Result<()> {
         0x00, 0x10, // Chunk Size (can not be zero)
     ];
 
-    stream.receive(request_download_response)?;
+    stream.receive(feed_request_download_response)?;
 
     let datagrams_request_step = stream.send()?;
 
@@ -153,7 +153,7 @@ fn connect_stream() -> io::Result<()> {
         0x03, // Ack Start. Client acknowledges that the transfer has started
         0x00, 0x00, // Transfer ID
     ];
-    assert_eq!(start_transfer_octets, expected_start_transfer);
+    assert_eq_slices(start_transfer_octets, expected_start_transfer);
 
     let feed_complete_download = &[
         // Header
@@ -173,7 +173,7 @@ fn connect_stream() -> io::Result<()> {
     
     let hopefully_ack_blob = stream.send()?;
 
-    let ack_blob_stream = &[
+    let expected_ack_blob_stream = &[
         // Header
         0x00, 0x03, // Sequence
         0x00, 0x00, // Client Time
@@ -186,8 +186,7 @@ fn connect_stream() -> io::Result<()> {
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Receive Mask
     ];
     
-    info!("compare:\n{}", format_hex_dump_comparison_width(hopefully_ack_blob[0].as_slice(), ack_blob_stream, 16));
-    assert_eq!(hopefully_ack_blob[0], ack_blob_stream);
+    assert_eq_slices(&hopefully_ack_blob[0], expected_ack_blob_stream);
     
         /*
                 self.transfer_id.to_stream(stream)?;

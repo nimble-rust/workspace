@@ -27,6 +27,8 @@
 //! println!("{}", output); // Outputs: 42 A4 AE 09 AF 00 01 00 00 04 03 00 00
 //! ```
 
+use log::trace;
+
 /// Formats a octet slice into an uppercase, space-separated hexadecimal string.
 ///
 /// This is a convenience function that formats the input octets into an uppercase
@@ -361,4 +363,32 @@ fn format_ascii(buf: &[u8]) -> String {
             }
         })
         .collect()
+}
+
+/// Asserts that two octet slices are equal. If not, panics and displays a formatted hex dump comparison.
+///
+/// # Parameters
+///
+/// - `buf_to_test`: The first octet slice to compare.
+/// - `expected_buf`: The second octet slice to compare.
+///
+/// # Panics
+///
+/// Panics with a detailed hex dump comparison if `buf_to_test` and `expected_buf` are not equal.
+pub fn assert_eq_slices(buf_to_test: &[u8], expected_buf: &[u8]) {
+    if buf_to_test == expected_buf {
+        #[cfg(feature = "log_equal")]
+        {
+            trace!("assert: slices are equal: {}", format_hex(buf_to_test));
+        }
+        return;
+    }
+
+    let formatted_dump = format_hex_dump_comparison_width(buf_to_test, expected_buf, 16);
+
+    // Panic with the formatted comparison
+    panic!(
+        "octet slices are not equal!\n\nComparison:\n{}",
+        formatted_dump
+    );
 }
