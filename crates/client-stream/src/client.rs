@@ -2,8 +2,8 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-use crate::datagram_build::{NimbleDatagramBuilder, NimbleOobDatagramBuilder};
-use crate::datagram_parse::{DatagramType, NimbleDatagramParser};
+use crate::datagram_build::NimbleDatagramBuilder;
+use crate::datagram_parse::NimbleDatagramParser;
 use datagram::DatagramBuilder;
 use datagram_builder::serialize::serialize_datagrams;
 use flood_rs::prelude::{InOctetStream, OutOctetStream};
@@ -11,7 +11,6 @@ use flood_rs::ReadOctetStream;
 use log::{debug, trace};
 use nimble_client_connecting::{ConnectedInfo, ConnectingClient};
 use nimble_client_logic::logic::ClientLogic;
-use nimble_connection_layer::ConnectionSecretSeed;
 use nimble_protocol::prelude::{HostToClientCommands, HostToClientOobCommands};
 use nimble_protocol::{ClientRequestId, Version};
 use secure_random::SecureRandom;
@@ -39,7 +38,6 @@ pub struct ClientStream<
 > {
     datagram_parser: NimbleDatagramParser,
     datagram_builder: NimbleDatagramBuilder,
-    oob_datagram_builder: NimbleOobDatagramBuilder,
     phase: ClientPhase<GameT, StepT>,
     random: Rc<RefCell<dyn SecureRandom>>,
     connected_info: Option<ConnectedInfo>,
@@ -64,7 +62,6 @@ impl<
             random,
             datagram_parser: NimbleDatagramParser::new(),
             datagram_builder: NimbleDatagramBuilder::new(DATAGRAM_MAX_SIZE),
-            oob_datagram_builder: NimbleOobDatagramBuilder::new(DATAGRAM_MAX_SIZE),
             connected_info: None,
             phase: ClientPhase::Connecting(ConnectingClient::new(
                 client_request_id,
@@ -87,15 +84,6 @@ impl<
         if let Some(connected_info) = connecting_client.connected_info() {
             debug!("connected! {connected_info:?}");
             self.connected_info = Some(*connected_info);
-            let seed = ConnectionSecretSeed(connected_info.session_connection_secret.value as u32);
-            self.datagram_builder.set_secrets(
-                nimble_connection_layer::ConnectionId {
-                    value: connected_info.connection_id.0,
-                },
-                seed,
-            );
-
-            self.datagram_parser.set_seed(seed);
 
             self.phase = ClientPhase::Connected(ClientLogic::new(self.random.clone()));
         }
@@ -103,14 +91,8 @@ impl<
     }
 
     fn connecting_receive_front(&mut self, payload: &[u8]) -> io::Result<()> {
-        let (datagram_type, in_stream) = self.datagram_parser.parse(payload)?;
-        match datagram_type {
-            DatagramType::Oob => self.connecting_receive(in_stream),
-            _ => Err(Error::new(
-                ErrorKind::InvalidData,
-                "can only receive Oob until connected",
-            )),
-        }
+        let (_, in_stream) = self.datagram_parser.parse(payload)?;
+        self.connecting_receive(in_stream)
     }
 
     fn connected_receive(&mut self, in_stream: &mut InOctetStream) -> io::Result<()> {
@@ -129,19 +111,13 @@ impl<
     }
 
     fn connected_receive_front(&mut self, payload: &[u8]) -> io::Result<()> {
-        let (datagram_type, mut in_stream) = self.datagram_parser.parse(payload)?;
-        match datagram_type {
-            DatagramType::Connection(connection_id, client_time) => {
-                // TODO: use connection_id from DatagramType::connection_id
-                trace!("connection: connection_id {connection_id:?} client time {client_time:?}");
-                self.connected_receive(&mut in_stream)
-            }
-            _ => Err(Error::new(
-                ErrorKind::InvalidData,
-                "can only receive connection datagrams when connected",
-            )),
-        }
+        let (datagram_header, mut in_stream) = self.datagram_parser.parse(payload)?;
+
+        // TODO: use connection_id from DatagramType::connection_id
+        trace!("connection: client time {:?}", datagram_header.client_time);
+        self.connected_receive(&mut in_stream)
     }
+
     pub fn receive(&mut self, payload: &[u8]) -> io::Result<()> {
         match &mut self.phase {
             ClientPhase::Connecting(_) => self.connecting_receive_front(payload),
@@ -158,11 +134,11 @@ impl<
         let mut out_stream = OutOctetStream::new();
         request.to_stream(&mut out_stream)?;
 
-        self.oob_datagram_builder.clear()?;
-        self.oob_datagram_builder
+        self.datagram_builder.clear()?;
+        self.datagram_builder
             .push(out_stream.octets().as_slice())
             .map_err(|err| Error::new(ErrorKind::InvalidData, err.to_string()))?;
-        Ok(self.oob_datagram_builder.finalize()?.to_vec())
+        Ok(self.datagram_builder.finalize()?.to_vec())
     }
 
     fn connected_send_front(&mut self) -> io::Result<Vec<Vec<u8>>> {

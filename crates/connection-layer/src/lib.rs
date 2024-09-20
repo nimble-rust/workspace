@@ -11,8 +11,6 @@ use hexify::format_hex_u32_be;
 use mash_rs::murmur3_32;
 
 /// A seed used for generating a [Murmur3 hash](https://en.wikipedia.org/wiki/MurmurHash#MurmurHash3) for connection validation.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct ConnectionSecretSeed(pub u32);
 
 /// Represents a unique connection identifier for the session.
 #[derive(Eq, PartialEq, Copy, Clone, Default, Debug)]
@@ -123,6 +121,8 @@ impl ConnectionLayerMode {
         Ok(mode)
     }
 }
+
+pub struct ConnectionSecretSeed(u32);
 
 /// Writes a connection header and a payload to the provided stream, including a Murmur3 hash for validation.
 ///

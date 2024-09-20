@@ -139,8 +139,7 @@ impl AckChunkFrontData {
     /// This could happen if the stream is closed or if there are underlying I/O errors during the write operation.
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         self.transfer_id.to_stream(stream)?;
-        self.data.to_stream(stream)?;
-        Ok(())
+        self.data.to_stream(stream)
     }
 
     /// # Errors

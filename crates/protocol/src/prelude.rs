@@ -9,5 +9,5 @@ pub use {
     crate::client_to_host_oob::{ClientToHostOobCommands, ConnectRequest},
     crate::host_to_client::{GameStepResponse, HostToClientCommands, JoinGameAccepted},
     crate::host_to_client_oob::{ConnectionAccepted, HostToClientOobCommands},
-    crate::{Nonce, SessionConnectionId, SessionConnectionSecret, Version},
+    crate::{Nonce, SessionConnectionSecret, Version},
 };

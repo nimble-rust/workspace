@@ -58,12 +58,10 @@ fn receive_valid_connection_accepted() {
     let mut client = create_connecting_client(None, None);
     let response_nonce = client.debug_client_request_id();
     let connection_secret = SessionConnectionSecret { value: 12345 };
-    let connection_id = SessionConnectionId(101);
 
     let accepted = ConnectionAccepted {
         flags: 0,
         response_to_request: response_nonce,
-        host_assigned_connection_id: connection_id,
         host_assigned_connection_secret: connection_secret.clone(),
     };
     let command = HostToClientOobCommands::ConnectType(accepted);
@@ -76,7 +74,6 @@ fn receive_valid_connection_accepted() {
     let connected_info = client.connected_info().expect("should be set by this time");
 
     assert_eq!(connected_info.session_connection_secret, connection_secret);
-    assert_eq!(connected_info.connection_id, connection_id);
 }
 
 #[test]
@@ -87,7 +84,6 @@ fn receive_invalid_connection_accepted_nonce() {
     let accepted = ConnectionAccepted {
         flags: 0,
         response_to_request: wrong_request_id,
-        host_assigned_connection_id: SessionConnectionId(99),
         host_assigned_connection_secret: connection_secret,
     };
     let command = HostToClientOobCommands::ConnectType(accepted);
@@ -112,7 +108,6 @@ fn receive_response_without_request() {
     let accepted = ConnectionAccepted {
         flags: 0,
         response_to_request: wrong_request_id,
-        host_assigned_connection_id: SessionConnectionId(99),
         host_assigned_connection_secret: connection_secret,
     };
     let command = HostToClientOobCommands::ConnectType(accepted);

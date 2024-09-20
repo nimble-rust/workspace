@@ -2,6 +2,7 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
+use hexify::format_hex_dump_comparison_width;
 use log::info;
 use nimble_client::client::{ClientPhase, ClientStream};
 use nimble_protocol::Version;
@@ -47,10 +48,10 @@ fn connect_stream() -> io::Result<()> {
     assert_eq!(
         octet_vector[0],
         &[
-            // Header
-            0x00,    // ConnectionId == 0 (OOB)
-
             // OOB Commands
+            0x00, 0x00, // Datagram sequence
+            0x00, 0x00, // Client Time
+            
             0x05, // Connect Request: ClientToHostOobCommand::ConnectType = 0x05
             0, 0, 0, 0, 0, 5, // Nimble version
             0, // Flags (use debug stream)
@@ -64,19 +65,17 @@ fn connect_stream() -> io::Result<()> {
     info!("phase {phase:?}");
 
     assert!(matches!(phase, &ClientPhase::Connecting(_)));
-    const EXPECTED_CONNECTION_ID: u8 = 0x42;
 
     let connect_response_from_host = [
         // Header
-        0x00, // ConnectionId == 0 (OOB)
+        0x00, 0x00, // Datagram sequence
+        0x00, 0x00, // Client Time
 
         // OOB Commands
         0x0D, // Connect Response
         0x00, // Flags
         // Client Request ID. This is normally random,
         0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-        // but we know the expected value due to using FakeRandom.
-        EXPECTED_CONNECTION_ID, // Connection ID
         // Connection Secret
         0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
     ];
@@ -94,7 +93,6 @@ fn connect_stream() -> io::Result<()> {
         .debug_connect_info()
         .expect("connect info should be available when connected");
 
-    assert_eq!(connected_info.connection_id.0, 0x42);
     assert_eq!(
         connected_info.session_connection_secret.value,
         0x0001020304050607
@@ -105,9 +103,7 @@ fn connect_stream() -> io::Result<()> {
     let datagram_request_download_state = &datagrams_request_download_state[0];
 
     let expected_request_download_state_octets = &[
-        EXPECTED_CONNECTION_ID,
-        0x7B, 0xC5, 0x52, 0xD8, // HASH
-        0x00, 0x00, // Ordered datagram Sequence number
+        0x00, 0x01, // Ordered datagram Sequence number
         0x00, 0x00,  // Client Time
         0x03, // Download Game State
         0x99, // Download Request id, //TODO: Hardcoded, but should not be
@@ -120,8 +116,6 @@ fn connect_stream() -> io::Result<()> {
 
     let request_download_response = &[
         // Header
-        EXPECTED_CONNECTION_ID,
-        0x52, 0x40, 0x48, 0x85, // HASH
         0x00, 0x00, // Ordered datagram
         0x00, 0x00, // Client Time
 
@@ -151,9 +145,7 @@ fn connect_stream() -> io::Result<()> {
 
     let expected_start_transfer = &[
         // Header
-        EXPECTED_CONNECTION_ID,
-        0xA4, 0xAE, 0x09, 0xAF, // HASH
-        0x00, 0x01, // Datagram sequence number
+        0x00, 0x02, // Datagram sequence number
         0x00, 0x00,    // Client Time
 
         // Commands
@@ -165,9 +157,7 @@ fn connect_stream() -> io::Result<()> {
 
     let feed_complete_download = &[
         // Header
-        EXPECTED_CONNECTION_ID,
-        0xF4, 0x1D, 0x76, 0x24, // Hash
-        0x00, 0x01, // Sequence
+        0x00, 0x02, // Sequence
         0x00, 0x00, // Client Time
 
         // Commands
@@ -180,6 +170,29 @@ fn connect_stream() -> io::Result<()> {
     ];
 
     stream.receive(feed_complete_download)?;
+    
+    let hopefully_ack_blob = stream.send()?;
+
+    let ack_blob_stream = &[
+        // Header
+        0x00, 0x03, // Sequence
+        0x00, 0x00, // Client Time
+        
+        // Commands
+        0x04, // BlobStream client to host
+        0x02, // AckChunk
+        0x00, 0x00, // Transfer ID
+        0x00, 0x00, 0x00, 0x01, // Waiting for this chunk index
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Receive Mask
+    ];
+    
+    info!("compare:\n{}", format_hex_dump_comparison_width(hopefully_ack_blob[0].as_slice(), ack_blob_stream, 16));
+    assert_eq!(hopefully_ack_blob[0], ack_blob_stream);
+    
+        /*
+                self.transfer_id.to_stream(stream)?;
+        self.data.to_stream(stream)?;
+         */
 
     /* TODO
     let expected_steps_request_octets = &[

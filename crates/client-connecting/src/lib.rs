@@ -22,7 +22,6 @@ impl fmt::Display for ClientError {
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct ConnectedInfo {
     pub session_connection_secret: SessionConnectionSecret,
-    pub connection_id: SessionConnectionId,
 }
 
 #[derive(Debug, PartialEq)]
@@ -76,7 +75,6 @@ impl ConnectingClient {
         }
         self.connected_info = Some(ConnectedInfo {
             session_connection_secret: cmd.host_assigned_connection_secret,
-            connection_id: cmd.host_assigned_connection_id,
         });
         //info!("connected: session_secret: {:?}", self.connected_info.unwrap());
         Ok(())

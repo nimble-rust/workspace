@@ -15,7 +15,6 @@ datagram-pinger = { path = "../datagram-pinger" }
 flood-rs = "0.0.10"
 datagram = { path = "../datagram" }
 nimble-protocol = { path = "../protocol" }
-nimble-connection-layer = { path = "../connection-layer" }
 secure-random = { path = "../secure-random" }
 nimble-rectify = { path = "../rectify" }
 nimble-assent = { path = "../assent" }

@@ -99,27 +99,6 @@ impl Version {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct SessionConnectionId(pub u8);
-
-impl Serialize for SessionConnectionId {
-    fn serialize(&self, stream: &mut impl WriteOctetStream) -> Result<()>
-    where
-        Self: Sized,
-    {
-        stream.write_u8(self.0)
-    }
-}
-
-impl Deserialize for SessionConnectionId {
-    fn deserialize(stream: &mut impl ReadOctetStream) -> Result<Self>
-    where
-        Self: Sized,
-    {
-        Ok(Self(stream.read_u8()?))
-    }
-}
-
 #[derive(PartialEq, Copy, Clone, Eq)]
 pub struct SessionConnectionSecret {
     pub value: u64,
