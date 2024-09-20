@@ -163,7 +163,7 @@ impl FrontLogic {
                     state
                         .logic
                         .receive(&chunk_data.data)
-                        .map_err(|err| FrontLogicError::BlobError(err))?;
+                        .map_err(FrontLogicError::BlobError)?;
                     if state.logic.is_complete() {
                         trace!("received all chunks!")
                     }
