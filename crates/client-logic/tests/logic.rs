@@ -37,7 +37,6 @@ fn basic_logic() {
 
     {
         let commands = client_logic.send();
-        println!("commands: {commands:?}");
         assert_eq!(commands.len(), 1);
         if let ClientToHostCommands::DownloadGameState(DownloadGameStateRequest { request_id }) =
             &commands[0]

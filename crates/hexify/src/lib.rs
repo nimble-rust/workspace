@@ -4,8 +4,8 @@
  */
 //! # hexify
 //!
-//! `hexify` is a Rust library for formatting byte slices (`[u8]`) into hexadecimal (`hex`) strings.
-//! It provides utilities to convert bytes into hex strings.
+//! `hexify` is a Rust library for formatting octet slices (`[u8]`) into hexadecimal (`hex`) strings.
+//! It provides utilities to convert octets into hex strings.
 //!
 //! ## Installation
 //!
@@ -21,22 +21,20 @@
 //! ```rust
 //! use hexify::{format_hex};
 //!
-//! fn main() {
-//!     let data = [0x42, 0xA4, 0xAE, 0x09, 0xAF, 0x00, 0x01, 0x00, 0x00, 0x04, 0x03, 0x00, 0x00];
+//! let data = [0x42, 0xA4, 0xAE, 0x09, 0xAF, 0x00, 0x01, 0x00, 0x00, 0x04, 0x03, 0x00, 0x00];
 //!
-//!     let output = format_hex(&data);
-//!     println!("{}", output); // Outputs: 42 A4 AE 09 AF 00 01 00 00 04 03 00 00
-//! }
+//! let output = format_hex(&data);
+//! println!("{}", output); // Outputs: 42 A4 AE 09 AF 00 01 00 00 04 03 00 00
 //! ```
 
-/// Formats a byte slice into an uppercase, space-separated hexadecimal string.
+/// Formats a octet slice into an uppercase, space-separated hexadecimal string.
 ///
-/// This is a convenience function that formats the input bytes into an uppercase
-/// hexadecimal string with spaces separating each byte.
+/// This is a convenience function that formats the input octets into an uppercase
+/// hexadecimal string with spaces separating each octet.
 ///
 /// # Parameters
 ///
-/// - `bytes`: A slice of bytes (`[u8]`) to format.
+/// - `buf`: A slice of octets (`[u8]`) to format.
 ///
 /// # Returns
 ///
@@ -51,13 +49,12 @@
 /// let hex = format_hex(&data);
 /// assert_eq!(hex, "42 A4 AE");
 /// ```
-pub fn format_hex(bytes: &[u8]) -> String {
-    format_hex_with_prefix_and_separator(bytes, "", " ")
+pub fn format_hex(buf: &[u8]) -> String {
+    format_hex_with_prefix_and_separator(buf, "", " ")
 }
 
-pub fn format_hex_with_prefix_and_separator(bytes: &[u8], prefix: &str, separator: &str) -> String {
-    bytes
-        .iter()
+pub fn format_hex_with_prefix_and_separator(buf: &[u8], prefix: &str, separator: &str) -> String {
+    buf.iter()
         .map(|b| format!("{prefix}{:02X}", b))
         .collect::<Vec<String>>()
         .join(separator)

@@ -2,7 +2,6 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-use hexify::format_hex;
 use log::info;
 use nimble_client::client::{ClientPhase, ClientStream};
 use nimble_protocol::Version;
@@ -28,7 +27,7 @@ impl SecureRandom for FakeRandom {
 }
 
 #[test]
-#[rustfmt::skip] 
+#[rustfmt::skip]
 fn connect_stream() -> io::Result<()> {
     let random = FakeRandom {
         counter: 0x0001020304050607,
@@ -148,9 +147,7 @@ fn connect_stream() -> io::Result<()> {
 
     assert_eq!(datagrams_request_step.len(), 1);
 
-    let only_datagram = &datagrams_request_step[0];
-    println!("{}", format_hex(only_datagram));
-
+    let start_transfer_octets = &datagrams_request_step[0];
 
     let expected_start_transfer = &[
         // Header
@@ -164,7 +161,7 @@ fn connect_stream() -> io::Result<()> {
         0x03, // Ack Start. Client acknowledges that the transfer has started
         0x00, 0x00, // Transfer ID
     ];
-    assert_eq!(only_datagram, expected_start_transfer);
+    assert_eq!(start_transfer_octets, expected_start_transfer);
 
     let feed_complete_download = &[
         // Header

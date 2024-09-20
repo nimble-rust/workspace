@@ -8,7 +8,7 @@ use datagram::DatagramBuilder;
 use datagram_builder::serialize::serialize_datagrams;
 use flood_rs::prelude::{InOctetStream, OutOctetStream};
 use flood_rs::ReadOctetStream;
-use log::{info, trace};
+use log::{debug, trace};
 use nimble_client_connecting::{ConnectedInfo, ConnectingClient};
 use nimble_client_logic::logic::ClientLogic;
 use nimble_connection_layer::ConnectionSecretSeed;
@@ -26,7 +26,7 @@ pub enum ClientPhase<
     GameT: nimble_seer::SeerCallback<nimble_protocol::client_to_host::AuthoritativeStep<StepT>>
         + nimble_assent::AssentCallback<nimble_protocol::client_to_host::AuthoritativeStep<StepT>>
         + nimble_rectify::RectifyCallback,
-    StepT: std::clone::Clone + flood_rs::Deserialize + flood_rs::Serialize + std::fmt::Debug,
+    StepT: Clone + flood_rs::Deserialize + flood_rs::Serialize + std::fmt::Debug,
 > {
     Connecting(ConnectingClient),
     Connected(ClientLogic<GameT, StepT>),
@@ -35,7 +35,7 @@ pub struct ClientStream<
     GameT: nimble_seer::SeerCallback<nimble_protocol::client_to_host::AuthoritativeStep<StepT>>
         + nimble_assent::AssentCallback<nimble_protocol::client_to_host::AuthoritativeStep<StepT>>
         + nimble_rectify::RectifyCallback,
-    StepT: std::clone::Clone + flood_rs::Deserialize + flood_rs::Serialize + std::fmt::Debug,
+    StepT: Clone + flood_rs::Deserialize + flood_rs::Serialize + std::fmt::Debug,
 > {
     datagram_parser: NimbleDatagramParser,
     datagram_builder: NimbleDatagramBuilder,
@@ -49,7 +49,7 @@ impl<
         GameT: nimble_seer::SeerCallback<nimble_protocol::client_to_host::AuthoritativeStep<StepT>>
             + nimble_assent::AssentCallback<nimble_protocol::client_to_host::AuthoritativeStep<StepT>>
             + nimble_rectify::RectifyCallback,
-        StepT: std::clone::Clone + flood_rs::Deserialize + flood_rs::Serialize + std::fmt::Debug,
+        StepT: Clone + flood_rs::Deserialize + flood_rs::Serialize + std::fmt::Debug,
     > ClientStream<GameT, StepT>
 {
     pub fn new(random: Rc<RefCell<dyn SecureRandom>>, application_version: &Version) -> Self {
@@ -85,7 +85,7 @@ impl<
             .receive(&command)
             .map_err(|err| Error::new(ErrorKind::InvalidData, err.to_string()))?;
         if let Some(connected_info) = connecting_client.connected_info() {
-            info!("connected! {connected_info:?}");
+            debug!("connected! {connected_info:?}");
             self.connected_info = Some(*connected_info);
             let seed = ConnectionSecretSeed(connected_info.session_connection_secret.value as u32);
             self.datagram_builder.set_secrets(
