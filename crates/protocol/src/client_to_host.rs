@@ -408,10 +408,11 @@ pub struct CombinedPredictedSteps<StepT> {
 }
 
 impl<StepT: Serialize + Deserialize + Clone> Deserialize for CombinedPredictedSteps<StepT> {
-    fn deserialize(stream: &mut impl ReadOctetStream) -> io::Result<Self>
+    fn deserialize(_: &mut impl ReadOctetStream) -> io::Result<Self>
     where
         Self: Sized,
     {
+        // TODO: Deserialize
         Ok(Self {
             first_tick: Default::default(),
             steps: vec![],
@@ -420,10 +421,11 @@ impl<StepT: Serialize + Deserialize + Clone> Deserialize for CombinedPredictedSt
 }
 
 impl<StepT: Serialize + Deserialize + Clone> Serialize for CombinedPredictedSteps<StepT> {
-    fn serialize(&self, stream: &mut impl WriteOctetStream) -> io::Result<()>
+    fn serialize(&self, _: &mut impl WriteOctetStream) -> io::Result<()>
     where
         Self: Sized,
     {
+        // TODO: Serialize
         let mut unique_keys: HashSet<u8> = HashSet::new();
 
         for map in &self.steps {
@@ -445,9 +447,9 @@ impl<StepT: Serialize + Deserialize + Clone> Serialize for CombinedPredictedStep
 
         let mut current_tick_id = self.first_tick;
 
-        for (_, combined_step) in self.steps.iter().enumerate() {
+        for combined_step in &self.steps {
             for (local_index, predicted_step) in &combined_step.predicted_players {
-                let vector_for_one_player = root_hash_map.get_mut(&local_index).unwrap();
+                let vector_for_one_player = root_hash_map.get_mut(local_index).unwrap();
                 if vector_for_one_player.predicted_steps.is_empty() {
                     vector_for_one_player.first_tick_id = current_tick_id;
                 }

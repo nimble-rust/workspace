@@ -216,9 +216,9 @@ impl<StepT: std::clone::Clone + Eq + Debug + Deserialize + Serialize> HostLogic<
             .ok_or(HostLogicError::UnknownConnectionId(connection_id))?;
 
         for combined_predicted_step in &request.combined_predicted_steps.steps {
-            for (local_index, _) in &combined_predicted_step.predicted_players {
+            for local_index in combined_predicted_step.predicted_players.keys() {
                 // TODO:
-                if let Some(participant) = connection.participant_lookup.get(&local_index) {
+                if let Some(participant) = connection.participant_lookup.get(local_index) {
                     // TODO: ADD to participant queue
                     info!("participant {participant:?}");
                 } else {

@@ -52,6 +52,18 @@ impl<
             + AssentCallback<AuthoritativeStep<StepT>>
             + RectifyCallback,
         StepT: Clone + Deserialize + Serialize + Debug,
+    > Default for ClientLogic<Game, StepT>
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<
+        Game: SeerCallback<AuthoritativeStep<StepT>>
+            + AssentCallback<AuthoritativeStep<StepT>>
+            + RectifyCallback,
+        StepT: Clone + Deserialize + Serialize + Debug,
     > ClientLogic<Game, StepT>
 {
     pub fn new() -> ClientLogic<Game, StepT> {
