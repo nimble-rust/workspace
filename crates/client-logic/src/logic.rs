@@ -10,13 +10,12 @@ use log::{debug, trace};
 use nimble_assent::prelude::*;
 use nimble_participant::ParticipantId;
 use nimble_protocol::client_to_host::{
-    AuthoritativeStep, DownloadGameStateRequest, PredictedStep, PredictedStepsForAllPlayers,
+    AuthoritativeStep, CombinedPredictedSteps, DownloadGameStateRequest, PredictedStep,
 };
 use nimble_protocol::host_to_client::DownloadGameStateResponse;
 use nimble_protocol::prelude::*;
 use nimble_rectify::prelude::*;
 use nimble_seer::prelude::*;
-use nimble_steps::Steps;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use tick_id::TickId;
@@ -31,8 +30,8 @@ pub enum ClientLogicPhase {
 #[derive(Debug)]
 pub struct ClientLogic<
     Game: SeerCallback<AuthoritativeStep<StepT>>
-    + AssentCallback<AuthoritativeStep<StepT>>
-    + RectifyCallback,
+        + AssentCallback<AuthoritativeStep<StepT>>
+        + RectifyCallback,
     StepT: Clone + Deserialize + Serialize + Debug,
 > {
     joining_player: Option<JoinGameRequest>,
@@ -42,29 +41,18 @@ pub struct ClientLogic<
     rectify: Rectify<Game, AuthoritativeStep<StepT>>,
     blob_stream_client: FrontLogic,
     commands_to_send: Vec<ClientToHostCommands<StepT>>,
-    outgoing_predicted_steps: HashMap<u8, Steps<StepT>>,
+    outgoing_predicted_steps: Vec<PredictedStep<StepT>>,
     #[allow(unused)]
     phase: ClientLogicPhase,
     last_download_state_request_id: u8,
 }
 
 impl<
-    Game: SeerCallback<AuthoritativeStep<StepT>>
-    + AssentCallback<AuthoritativeStep<StepT>>
-    + RectifyCallback,
-    StepT: Clone + Deserialize + Serialize + Debug,
-> Default for ClientLogic<Game, StepT> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl<
-    Game: SeerCallback<AuthoritativeStep<StepT>>
-    + AssentCallback<AuthoritativeStep<StepT>>
-    + RectifyCallback,
-    StepT: Clone + Deserialize + Serialize + Debug,
-> ClientLogic<Game, StepT>
+        Game: SeerCallback<AuthoritativeStep<StepT>>
+            + AssentCallback<AuthoritativeStep<StepT>>
+            + RectifyCallback,
+        StepT: Clone + Deserialize + Serialize + Debug,
+    > ClientLogic<Game, StepT>
 {
     pub fn new() -> ClientLogic<Game, StepT> {
         Self {
@@ -75,7 +63,7 @@ impl<
             blob_stream_client: FrontLogic::new(),
             commands_to_send: Vec::new(),
             last_download_state_request_id: 0x99,
-            outgoing_predicted_steps: HashMap::new(),
+            outgoing_predicted_steps: Vec::new(),
             phase: ClientLogicPhase::RequestDownloadState {
                 download_state_request_id: 0x99,
             },
@@ -120,30 +108,15 @@ impl<
         vec
     }
 
-    fn steps_request(&mut self) -> ClientToHostCommands<StepT> {
-        let mut predicted_steps_for_all: HashMap<u8, PredictedStepsForOnePlayer<StepT>> =
-            HashMap::new();
-        for (index, step_queue) in self.outgoing_predicted_steps.iter() {
-            if step_queue.is_empty() {
-                continue;
-            }
-            let x: PredictedStepsForOnePlayer<StepT> = PredictedStepsForOnePlayer {
-                first_tick_id: step_queue.front_tick_id().unwrap(),
-                predicted_steps: step_queue
-                    .iter()
-                    .map(|step_info| step_info.step.clone())
-                    .collect(),
-            };
-            predicted_steps_for_all.insert(*index, x);
-        }
-
+    fn send_steps_request(&mut self) -> ClientToHostCommands<StepT> {
         let steps_request = StepsRequest {
             ack: StepsAck {
                 waiting_for_tick_id: self.tick_id,
                 lost_steps_mask_after_last_received: 0,
             },
-            combined_predicted_steps: PredictedStepsForAllPlayers {
-                predicted_players: predicted_steps_for_all,
+            combined_predicted_steps: CombinedPredictedSteps {
+                first_tick: Default::default(),
+                steps: self.outgoing_predicted_steps.clone(),
             },
         };
 
@@ -158,7 +131,7 @@ impl<
             ClientLogicPhase::RequestDownloadState {
                 download_state_request_id,
             } => self.download_state_request(download_state_request_id),
-            ClientLogicPhase::SendPredictedSteps => [self.steps_request()].to_vec(),
+            ClientLogicPhase::SendPredictedSteps => [self.send_steps_request()].to_vec(),
             ClientLogicPhase::DownloadingState(_) => {
                 if let Some(x) = self.blob_stream_client.send() {
                     [ClientToHostCommands::BlobStreamChannel(x)].to_vec()
@@ -192,15 +165,7 @@ impl<
             authoritative_participants: predicted_authenticated_combined_step,
         });
 
-        for (index, step) in &step.predicted_players {
-            if !self.outgoing_predicted_steps.contains_key(index) {
-                self.outgoing_predicted_steps.insert(*index, Steps::new());
-            }
-            self.outgoing_predicted_steps
-                .get_mut(index)
-                .unwrap()
-                .push(step.clone());
-        }
+        self.outgoing_predicted_steps.push(step);
     }
 
     fn on_join_game(&mut self, cmd: &JoinGameAccepted) -> Result<(), ClientErrorKind> {
@@ -210,68 +175,25 @@ impl<
 
     fn on_game_step(&mut self, cmd: &GameStepResponse<StepT>) -> Result<(), ClientErrorKind> {
         trace!("game step response: {:?}", cmd);
-        let mut current_authoritative_tick_id = cmd.authoritative_steps.start_tick_id;
+        if cmd.authoritative_steps.ranges.is_empty() {
+            return Ok(());
+        }
 
-        for authoritative_step_range in &cmd.authoritative_steps.ranges {
-            current_authoritative_tick_id +=
-                authoritative_step_range.delta_steps_from_previous as u32;
-            let skip_count = self
-                .rectify
-                .waiting_for_authoritative_tick_id()
-                .map_or(0, |tick_id| tick_id - current_authoritative_tick_id);
-
-            if skip_count >= authoritative_step_range.step_count as i64 {
-                continue;
-            }
-
-            if skip_count + authoritative_step_range.step_count as i64 <= 0 {
-                continue;
-            }
-
-            let actual_skip_count = if skip_count < 0 {
-                0
-            } else {
-                skip_count as usize
-            };
-
-            let remaining_step_count =
-                authoritative_step_range.step_count as usize - actual_skip_count;
-
-            let mut vector_for_range: Vec<HashMap<ParticipantId, StepT>> =
-                Vec::with_capacity(remaining_step_count);
-            for _ in 0..remaining_step_count {
-                vector_for_range.push(HashMap::new());
-            }
-
-            for (participant_id, authoritative_steps_vector_for_each_participant) in
-                &authoritative_step_range
-                    .authoritative_steps
-                    .authoritative_participants
-            {
-                for (index, authoritative_step_for_one_participant) in
-                    authoritative_steps_vector_for_each_participant
-                        .iter()
-                        .skip(actual_skip_count)
-                        .enumerate()
-                {
-                    let x = vector_for_range.get_mut(index).unwrap();
-                    x.insert(
-                        *participant_id,
-                        authoritative_step_for_one_participant.clone(),
-                    );
-                }
-            }
-            for (index, combined_authoritative) in vector_for_range.iter().enumerate() {
+        for range in &cmd.authoritative_steps.ranges {
+            let mut current_authoritative_tick_id = range.tick_id;
+            for combined_auth_step in &range.authoritative_steps {
                 self.rectify
                     .push_authoritative_with_check(
-                        current_authoritative_tick_id + actual_skip_count as u32 + index as u32,
-                        AuthoritativeStep {
-                            authoritative_participants: combined_authoritative.clone(),
-                        },
+                        current_authoritative_tick_id,
+                        combined_auth_step.clone(),
                     )
                     .map_err(ClientErrorKind::Unexpected)?;
+                current_authoritative_tick_id += 1;
             }
+
+            current_authoritative_tick_id += range.authoritative_steps.len() as u32;
         }
+
         Ok(())
     }
 

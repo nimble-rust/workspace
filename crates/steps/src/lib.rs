@@ -152,12 +152,6 @@ impl<StepType: Clone> Iterator for FromIndexIterator<'_, StepType> {
     }
 }
 
-impl<T> Default for Steps<T> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 pub const TICK_ID_MAX: u32 = u32::MAX;
 
 impl<StepType> Steps<StepType> {

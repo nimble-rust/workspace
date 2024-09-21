@@ -7,10 +7,7 @@ use nimble_assent::AssentCallback;
 use nimble_client_logic::err::ClientError;
 use nimble_client_logic::logic::ClientLogic;
 use nimble_participant::ParticipantId;
-use nimble_protocol::client_to_host::{
-    AuthoritativeStep, AuthoritativeStepRangeForAllParticipants, DownloadGameStateRequest,
-    PredictedStep,
-};
+use nimble_protocol::client_to_host::{AuthoritativeStep, DownloadGameStateRequest, PredictedStep};
 use nimble_protocol::host_to_client::{
     AuthoritativeStepRange, AuthoritativeStepRanges, GameStepResponse, GameStepResponseHeader,
 };
@@ -62,7 +59,7 @@ fn send_steps() {
     let mut client_logic = setup_logic::<SampleGame, Step<SampleStep>>();
 
     client_logic.add_predicted_step(PredictedStep {
-        predicted_players: [(0, Step::Custom(SampleStep::MoveRight(3)))].into(),
+        predicted_players: [(0, Custom(SampleStep::MoveRight(3)))].into(),
     });
 
     {
@@ -84,15 +81,12 @@ fn send_steps() {
 }
 
 fn setup_sample_steps() -> AuthoritativeStepRanges<Step<SampleStep>> {
-    let mut range_for_all_participants = HashMap::<ParticipantId, Vec<Step<SampleStep>>>::new();
-
     let first_steps = vec![
         Custom(SampleStep::Jump),
         Custom(SampleStep::MoveLeft(-10)),
         Custom(SampleStep::MoveRight(32000)),
     ];
     let first_participant_id = ParticipantId(255);
-    range_for_all_participants.insert(first_participant_id, first_steps.clone());
 
     let second_steps = vec![
         Custom(SampleStep::MoveLeft(42)),
@@ -100,19 +94,24 @@ fn setup_sample_steps() -> AuthoritativeStepRanges<Step<SampleStep>> {
         Custom(SampleStep::Jump),
     ];
     let second_participant_id = ParticipantId(1);
-    range_for_all_participants.insert(second_participant_id, second_steps.clone());
 
-    let range_to_send = AuthoritativeStepRange::<Step<SampleStep>> {
-        delta_steps_from_previous: 0,
-        step_count: first_steps.len() as u8,
-        authoritative_steps: AuthoritativeStepRangeForAllParticipants {
-            authoritative_participants: range_for_all_participants,
-        },
-    };
+    let mut auth_steps = Vec::<AuthoritativeStep<Step<SampleStep>>>::new();
+    for index in 0..3 {
+        let mut hash_map = HashMap::<ParticipantId, Step<SampleStep>>::new();
+        hash_map.insert(first_participant_id, first_steps[index].clone());
+        hash_map.insert(second_participant_id, second_steps[index].clone());
+        auth_steps.push(AuthoritativeStep {
+            authoritative_participants: hash_map,
+        });
+    }
 
     const EXPECTED_TICK_ID: TickId = TickId(0);
+    let range_to_send = AuthoritativeStepRange::<Step<SampleStep>> {
+        tick_id: EXPECTED_TICK_ID,
+        authoritative_steps: auth_steps,
+    };
+
     let ranges_to_send = AuthoritativeStepRanges {
-        start_tick_id: EXPECTED_TICK_ID,
         ranges: vec![range_to_send],
     };
 

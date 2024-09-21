@@ -9,7 +9,6 @@ use nimble_steps::Steps;
 use tick_id::TickId;
 
 #[allow(unused)]
-#[derive(Default)]
 pub struct HostCombinator<T> {
     combinator: Combinator<T>,
     authoritative_steps: Steps<ParticipantSteps<T>>,

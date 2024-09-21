@@ -81,6 +81,7 @@ pub struct Connection {
     pub out_blob_stream: Option<OutLogicFront>,
     pub blob_stream_for_client_request: Option<u8>,
     last_transfer_id: u16,
+    #[allow(unused)]
     debug_counter: u16,
 }
 
@@ -214,16 +215,15 @@ impl<StepT: std::clone::Clone + Eq + Debug + Deserialize + Serialize> HostLogic<
             .get_mut(&connection_id.0)
             .ok_or(HostLogicError::UnknownConnectionId(connection_id))?;
 
-        for (local_index, predicted_step_for_player) in
-            &request.combined_predicted_steps.predicted_players
-        {
-            if let Some(participant) = connection.participant_lookup.get(local_index) {
-                for _ in &predicted_step_for_player.predicted_steps {
-                    connection.debug_counter += participant.borrow().client_local_index as u16;
-                    info!("connection: {connection:?}");
+        for combined_predicted_step in &request.combined_predicted_steps.steps {
+            for (local_index, _) in &combined_predicted_step.predicted_players {
+                // TODO:
+                if let Some(participant) = connection.participant_lookup.get(&local_index) {
+                    // TODO: ADD to participant queue
+                    info!("participant {participant:?}");
+                } else {
+                    return Err(HostLogicError::UnknownPartyMemberIndex(*local_index));
                 }
-            } else {
-                return Err(HostLogicError::UnknownPartyMemberIndex(*local_index));
             }
         }
 
@@ -233,10 +233,7 @@ impl<StepT: std::clone::Clone + Eq + Debug + Deserialize + Serialize> HostLogic<
                 delta_buffer: 0,
                 last_step_received_from_client: 0,
             },
-            authoritative_steps: AuthoritativeStepRanges {
-                start_tick_id: TickId(0),
-                ranges: vec![],
-            },
+            authoritative_steps: AuthoritativeStepRanges { ranges: vec![] },
         };
         Ok(HostToClientCommands::GameStep(game_step_response))
     }

@@ -4,9 +4,14 @@
  */
 use flood_rs::prelude::*;
 use nimble_participant::ParticipantId;
-use nimble_protocol::client_to_host::AuthoritativeStepRangeForAllParticipants;
+use nimble_protocol::client_to_host::{
+    SerializeAuthoritativeStepRangeForAllParticipants,
+    SerializeAuthoritativeStepVectorForOneParticipants,
+};
 use nimble_protocol::client_to_host_oob::ConnectRequest;
-use nimble_protocol::host_to_client::{AuthoritativeStepRange, AuthoritativeStepRanges};
+use nimble_protocol::host_to_client::{
+    SerializeAuthoritativeStepRange, SerializeAuthoritativeStepRanges,
+};
 use nimble_protocol::{ClientRequestId, Version};
 use nimble_sample_step::SampleStep;
 use std::collections::HashMap;
@@ -55,7 +60,10 @@ fn check_connect() {
 #[test_log::test]
 fn check_authoritative() -> io::Result<()> {
     // Prepare all steps
-    let mut range_for_all_participants = HashMap::<ParticipantId, Vec<SampleStep>>::new();
+    let mut range_for_all_participants = HashMap::<
+        ParticipantId,
+        SerializeAuthoritativeStepVectorForOneParticipants<SampleStep>,
+    >::new();
 
     const PARTICIPANT_COUNT: usize = 2;
     let first_steps = vec![
@@ -64,23 +72,32 @@ fn check_authoritative() -> io::Result<()> {
         SampleStep::MoveRight(32000),
     ];
     let first_participant_id = ParticipantId(255);
-    range_for_all_participants.insert(first_participant_id, first_steps.clone());
+    let first_vector = SerializeAuthoritativeStepVectorForOneParticipants::<SampleStep> {
+        delta_tick_id_from_range: 0,
+        steps: first_steps.clone(),
+    };
+
+    range_for_all_participants.insert(first_participant_id, first_vector);
 
     let second_steps = vec![SampleStep::MoveLeft(40), SampleStep::Jump, SampleStep::Jump];
     let second_participant_id = ParticipantId(1);
-    range_for_all_participants.insert(second_participant_id, second_steps.clone());
+    let second_vector = SerializeAuthoritativeStepVectorForOneParticipants::<SampleStep> {
+        delta_tick_id_from_range: 0,
+        steps: second_steps.clone(),
+    };
 
-    let range_to_send = AuthoritativeStepRange::<SampleStep> {
+    range_for_all_participants.insert(second_participant_id, second_vector);
+
+    let range_to_send = SerializeAuthoritativeStepRange::<SampleStep> {
         delta_steps_from_previous: 0,
-        step_count: first_steps.len() as u8,
-        authoritative_steps: AuthoritativeStepRangeForAllParticipants {
+        authoritative_steps: SerializeAuthoritativeStepRangeForAllParticipants {
             authoritative_participants: range_for_all_participants,
         },
     };
 
     const EXPECTED_TICK_ID: TickId = TickId(909);
-    let ranges_to_send = AuthoritativeStepRanges {
-        start_tick_id: EXPECTED_TICK_ID,
+    let ranges_to_send = SerializeAuthoritativeStepRanges {
+        root_tick_id: EXPECTED_TICK_ID,
         ranges: vec![range_to_send],
     };
 
@@ -91,15 +108,22 @@ fn check_authoritative() -> io::Result<()> {
 
     // Read back the stream
     let mut in_stream = OctetRefReader::new(out_stream.octets_ref());
-    let received_ranges = AuthoritativeStepRanges::<SampleStep>::from_stream(&mut in_stream)?;
+    let received_ranges =
+        SerializeAuthoritativeStepRanges::<SampleStep>::from_stream(&mut in_stream)?;
 
     // Verify the deserialized data
     assert_eq!(received_ranges.ranges.len(), ranges_to_send.ranges.len());
-    assert_eq!(received_ranges.start_tick_id, EXPECTED_TICK_ID);
+    assert_eq!(received_ranges.root_tick_id, EXPECTED_TICK_ID);
 
     let first_and_only_range = &received_ranges.ranges[0];
     assert_eq!(first_and_only_range.delta_steps_from_previous, 0);
-    assert_eq!(first_and_only_range.step_count, first_steps.len() as u8);
+    assert_eq!(
+        first_and_only_range
+            .authoritative_steps
+            .authoritative_participants
+            .len(),
+        2
+    );
 
     let hash_map = &first_and_only_range
         .authoritative_steps
@@ -108,12 +132,18 @@ fn check_authoritative() -> io::Result<()> {
     assert_eq!(hash_map.len(), PARTICIPANT_COUNT);
 
     let first_participant_steps_in_range = &hash_map[&first_participant_id];
-    assert_eq!(first_participant_steps_in_range.len(), first_steps.len());
-    assert_eq!(*first_participant_steps_in_range, first_steps);
+    assert_eq!(
+        first_participant_steps_in_range.steps.len(),
+        first_steps.len()
+    );
+    assert_eq!(*first_participant_steps_in_range.steps, first_steps);
 
     let second_participant_steps_in_range = &hash_map[&second_participant_id];
-    assert_eq!(second_participant_steps_in_range.len(), second_steps.len());
-    assert_eq!(*second_participant_steps_in_range, second_steps);
+    assert_eq!(
+        second_participant_steps_in_range.steps.len(),
+        second_steps.len()
+    );
+    assert_eq!(*second_participant_steps_in_range.steps, second_steps);
 
     Ok(())
 }

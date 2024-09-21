@@ -12,6 +12,7 @@ flood-rs = "0.0.10"
 blob-stream = { path = "../blob-stream" }
 nimble-participant = { path = "../participant" }
 tick-id = "0.0.7"
+log = "0.4.22"
 
 [dev-dependencies]
 nimble-sample-step = { path = "../sample-step" }

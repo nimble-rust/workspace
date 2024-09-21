@@ -7,8 +7,9 @@ use crate::{ClientRequestId, SessionConnectionSecret};
 use blob_stream::prelude::ReceiverToSenderFrontCommands;
 use flood_rs::{Deserialize, ReadOctetStream, Serialize, WriteOctetStream};
 use io::ErrorKind;
+use log::trace;
 use nimble_participant::ParticipantId;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::{fmt, io};
 use tick_id::TickId;
@@ -323,16 +324,21 @@ pub struct AuthoritativeStep<StepT: Serialize + Deserialize> {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct AuthoritativeStepRangeForAllParticipants<StepT: Serialize + Deserialize> {
-    pub authoritative_participants: HashMap<ParticipantId, Vec<StepT>>,
+pub struct SerializeAuthoritativeStepVectorForOneParticipants<StepT: Serialize + Deserialize> {
+    pub delta_tick_id_from_range: u8,
+    pub steps: Vec<StepT>,
 }
 
-impl<StepT: Serialize + Deserialize> AuthoritativeStepRangeForAllParticipants<StepT> {
-    pub fn serialize_with_len(
-        &self,
-        stream: &mut impl WriteOctetStream,
-        required_step_count_in_range: u8,
-    ) -> io::Result<()>
+#[derive(Debug, PartialEq, Clone)]
+pub struct SerializeAuthoritativeStepRangeForAllParticipants<StepT: Serialize + Deserialize> {
+    pub authoritative_participants:
+        HashMap<ParticipantId, SerializeAuthoritativeStepVectorForOneParticipants<StepT>>,
+}
+
+impl<StepT: Serialize + Deserialize + std::fmt::Debug>
+    SerializeAuthoritativeStepRangeForAllParticipants<StepT>
+{
+    pub fn serialize_with_len(&self, stream: &mut impl WriteOctetStream) -> io::Result<()>
     where
         Self: Sized,
     {
@@ -343,39 +349,45 @@ impl<StepT: Serialize + Deserialize> AuthoritativeStepRangeForAllParticipants<St
             self.authoritative_participants.iter()
         {
             participant_id.to_stream(stream)?;
+            stream.write_u8(authoritative_steps_for_one_player_vector.delta_tick_id_from_range)?;
+            stream.write_u8(authoritative_steps_for_one_player_vector.steps.len() as u8)?;
 
-            if authoritative_steps_for_one_player_vector.len()
-                != required_step_count_in_range as usize
+            for authoritative_step_for_one_player in
+                &authoritative_steps_for_one_player_vector.steps
             {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "all vectors must have same length",
-                ));
-            }
-
-            for authoritative_step_for_one_player in authoritative_steps_for_one_player_vector {
                 authoritative_step_for_one_player.serialize(stream)?;
             }
         }
         Ok(())
     }
 
-    pub fn deserialize_with_len(
-        stream: &mut impl ReadOctetStream,
-        required_step_count_in_range: usize,
-    ) -> io::Result<Self> {
+    pub fn deserialize_with_len(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         let required_participant_count_in_range = stream.read_u8()?;
         let mut authoritative_participants =
             HashMap::with_capacity(required_participant_count_in_range as usize);
         for _ in 0..required_participant_count_in_range {
             let participant_id = ParticipantId::from_stream(stream)?;
+            let delta_tick_id_from_range = stream.read_u8()?;
+            let number_of_steps_that_follows = stream.read_u8()? as usize;
+
+            trace!("participant_id {participant_id}, delta_tick_id_from_range {delta_tick_id_from_range}, number_of_steps_that_follows {number_of_steps_that_follows}");
+
             let mut authoritative_steps_for_one_participant =
-                Vec::with_capacity(required_step_count_in_range);
-            for _ in 0..required_step_count_in_range {
-                authoritative_steps_for_one_participant.push(StepT::deserialize(stream)?);
+                Vec::with_capacity(number_of_steps_that_follows);
+
+            for _ in 0..number_of_steps_that_follows {
+                let authoritative_step = StepT::deserialize(stream)?;
+                trace!("authoritative_step: {authoritative_step:?}");
+                authoritative_steps_for_one_participant.push(authoritative_step);
             }
-            authoritative_participants
-                .insert(participant_id, authoritative_steps_for_one_participant);
+
+            authoritative_participants.insert(
+                participant_id,
+                SerializeAuthoritativeStepVectorForOneParticipants {
+                    delta_tick_id_from_range,
+                    steps: authoritative_steps_for_one_participant,
+                },
+            );
         }
 
         Ok(Self {
@@ -389,14 +401,75 @@ pub struct PredictedStep<StepT> {
     pub predicted_players: HashMap<LocalIndex, StepT>,
 }
 
+#[derive(Clone, Debug)]
+pub struct CombinedPredictedSteps<StepT> {
+    pub first_tick: TickId,
+    pub steps: Vec<PredictedStep<StepT>>,
+}
+
+impl<StepT: Serialize + Deserialize + Clone> Deserialize for CombinedPredictedSteps<StepT> {
+    fn deserialize(stream: &mut impl ReadOctetStream) -> io::Result<Self>
+    where
+        Self: Sized,
+    {
+        Ok(Self {
+            first_tick: Default::default(),
+            steps: vec![],
+        })
+    }
+}
+
+impl<StepT: Serialize + Deserialize + Clone> Serialize for CombinedPredictedSteps<StepT> {
+    fn serialize(&self, stream: &mut impl WriteOctetStream) -> io::Result<()>
+    where
+        Self: Sized,
+    {
+        let mut unique_keys: HashSet<u8> = HashSet::new();
+
+        for map in &self.steps {
+            for key in map.predicted_players.keys() {
+                unique_keys.insert(*key);
+            }
+        }
+
+        let mut root_hash_map =
+            HashMap::<LocalIndex, SerializePredictedStepsVectorForOnePlayer<StepT>>::new();
+
+        for local_index in unique_keys {
+            let vector_for_one_player = SerializePredictedStepsVectorForOnePlayer::<StepT> {
+                first_tick_id: Default::default(),
+                predicted_steps: vec![],
+            };
+            root_hash_map.insert(local_index, vector_for_one_player);
+        }
+
+        let mut current_tick_id = self.first_tick;
+
+        for (_, combined_step) in self.steps.iter().enumerate() {
+            for (local_index, predicted_step) in &combined_step.predicted_players {
+                let vector_for_one_player = root_hash_map.get_mut(&local_index).unwrap();
+                if vector_for_one_player.predicted_steps.is_empty() {
+                    vector_for_one_player.first_tick_id = current_tick_id;
+                }
+                vector_for_one_player
+                    .predicted_steps
+                    .push(predicted_step.clone());
+            }
+            current_tick_id += 1;
+        }
+
+        Ok(())
+    }
+}
+
 type LocalIndex = u8;
 
 #[derive(Debug, Clone)]
-pub struct PredictedStepsForAllPlayers<StepT: Serialize + Deserialize> {
-    pub predicted_players: HashMap<LocalIndex, PredictedStepsForOnePlayer<StepT>>,
+pub struct SerializePredictedStepsForAllPlayers<StepT: Serialize + Deserialize> {
+    pub predicted_players: HashMap<LocalIndex, SerializePredictedStepsVectorForOnePlayer<StepT>>,
 }
 
-impl<StepT: Serialize + Deserialize> PredictedStepsForAllPlayers<StepT> {
+impl<StepT: Serialize + Deserialize> SerializePredictedStepsForAllPlayers<StepT> {
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.predicted_players.len() as u8)?;
 
@@ -414,7 +487,8 @@ impl<StepT: Serialize + Deserialize> PredictedStepsForAllPlayers<StepT> {
         let mut players_vector = HashMap::with_capacity(player_count as usize);
 
         for _ in 0..player_count {
-            let predicted_steps_for_one_player = PredictedStepsForOnePlayer::from_stream(stream)?;
+            let predicted_steps_for_one_player =
+                SerializePredictedStepsVectorForOnePlayer::from_stream(stream)?;
             let index = stream.read_u8()?;
             players_vector.insert(index, predicted_steps_for_one_player);
         }
@@ -426,12 +500,12 @@ impl<StepT: Serialize + Deserialize> PredictedStepsForAllPlayers<StepT> {
 }
 
 #[derive(Debug, Clone)]
-pub struct PredictedStepsForOnePlayer<StepT: Serialize + Deserialize> {
+pub struct SerializePredictedStepsVectorForOnePlayer<StepT: Serialize + Deserialize> {
     pub first_tick_id: TickId,
     pub predicted_steps: Vec<StepT>,
 }
 
-impl<StepT: Serialize + Deserialize> PredictedStepsForOnePlayer<StepT> {
+impl<StepT: Serialize + Deserialize> SerializePredictedStepsVectorForOnePlayer<StepT> {
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         TickIdUtil::to_stream(self.first_tick_id, stream)?;
         stream.write_u8(self.predicted_steps.len() as u8)?;
@@ -463,20 +537,20 @@ impl<StepT: Serialize + Deserialize> PredictedStepsForOnePlayer<StepT> {
 #[derive(Debug, Clone)]
 pub struct StepsRequest<StepT: Clone + Serialize + Deserialize + Debug> {
     pub ack: StepsAck,
-    pub combined_predicted_steps: PredictedStepsForAllPlayers<StepT>,
+    pub combined_predicted_steps: CombinedPredictedSteps<StepT>,
 }
 
 impl<StepT: Clone + Serialize + Deserialize + Debug> StepsRequest<StepT> {
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         self.ack.to_stream(stream)?;
-        self.combined_predicted_steps.to_stream(stream)?;
+        self.combined_predicted_steps.serialize(stream)?;
         Ok(())
     }
 
     pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         Ok(Self {
             ack: StepsAck::from_stream(stream)?,
-            combined_predicted_steps: PredictedStepsForAllPlayers::from_stream(stream)?,
+            combined_predicted_steps: CombinedPredictedSteps::deserialize(stream)?,
         })
     }
 }
