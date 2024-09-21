@@ -112,7 +112,7 @@ pub struct StepInfo<T> {
     pub tick_id: TickId,
 }
 
-#[derive(Debug)]
+#[derive(Default, Debug)]
 pub struct Steps<T> {
     steps: VecDeque<StepInfo<T>>,
     expected_read_id: TickId,
