@@ -12,7 +12,7 @@ use flood_rs::{Deserialize, ReadOctetStream, Serialize, WriteOctetStream};
 use io::ErrorKind;
 use log::trace;
 use nimble_participant::ParticipantId;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::io;
 use tick_id::TickId;
@@ -267,7 +267,7 @@ impl GameStepResponseHeader {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct AuthoritativeStepRange<StepT: Deserialize + Serialize + Debug + Clone> {
     pub tick_id: TickId,
     pub authoritative_steps: Vec<AuthoritativeStep<StepT>>,
@@ -329,6 +329,24 @@ impl<StepT: Deserialize + Serialize + Debug + Clone> Serialize for Authoritative
                 SerializeAuthoritativeStepVectorForOneParticipants<StepT>,
             >::new();
 
+            let mut unique_participant_ids: HashSet<ParticipantId> = HashSet::new();
+
+            for auth_step in &auth_range.authoritative_steps {
+                for key in auth_step.authoritative_participants.keys() {
+                    unique_participant_ids.insert(*key);
+                }
+            }
+
+            for participant_id in unique_participant_ids {
+                hash_map.insert(
+                    participant_id,
+                    SerializeAuthoritativeStepVectorForOneParticipants::<StepT> {
+                        delta_tick_id_from_range: 0,
+                        steps: vec![],
+                    },
+                );
+            }
+
             for (index_in_range, combined_auth_step) in
                 auth_range.authoritative_steps.iter().enumerate()
             {
@@ -377,7 +395,25 @@ impl<StepT: Deserialize + Serialize + Debug + Clone> Deserialize
         for serialized_step_range in &source_step_ranges.ranges {
             tick_id += serialized_step_range.delta_steps_from_previous as u32;
 
+            let mut max_vector_length = 0;
+
+            for serialized_step_vector in serialized_step_range
+                .authoritative_steps
+                .authoritative_participants
+                .values()
+            {
+                if serialized_step_vector.steps.len() > max_vector_length {
+                    max_vector_length = serialized_step_vector.steps.len();
+                }
+            }
+
             let mut auth_step_range_vec = Vec::<AuthoritativeStep<StepT>>::new();
+            for _ in 0..max_vector_length {
+                auth_step_range_vec.push(AuthoritativeStep::<StepT> {
+                    authoritative_participants: HashMap::new(),
+                })
+            }
+
             for (participant_id, serialized_step_vector) in &serialized_step_range
                 .authoritative_steps
                 .authoritative_participants

@@ -5,12 +5,13 @@
 use flood_rs::prelude::*;
 use nimble_participant::ParticipantId;
 use nimble_protocol::client_to_host::{
-    SerializeAuthoritativeStepRangeForAllParticipants,
+    AuthoritativeStep, SerializeAuthoritativeStepRangeForAllParticipants,
     SerializeAuthoritativeStepVectorForOneParticipants,
 };
 use nimble_protocol::client_to_host_oob::ConnectRequest;
 use nimble_protocol::host_to_client::{
-    SerializeAuthoritativeStepRange, SerializeAuthoritativeStepRanges,
+    AuthoritativeStepRange, AuthoritativeStepRanges, SerializeAuthoritativeStepRange,
+    SerializeAuthoritativeStepRanges,
 };
 use nimble_protocol::{ClientRequestId, Version};
 use nimble_sample_step::SampleStep;
@@ -144,6 +145,57 @@ fn check_authoritative() -> io::Result<()> {
         second_steps.len()
     );
     assert_eq!(*second_participant_steps_in_range.steps, second_steps);
+
+    Ok(())
+}
+
+fn create_authoritative_step_range() -> AuthoritativeStepRange<SampleStep> {
+    const PARTICIPANT_COUNT: usize = 2;
+    let steps_per_participant = vec![
+        [
+            SampleStep::Jump,
+            SampleStep::MoveLeft(-10),
+            SampleStep::MoveRight(32000),
+        ],
+        [SampleStep::MoveLeft(40), SampleStep::Jump, SampleStep::Jump],
+    ];
+
+    let mut authoritative_steps = Vec::new();
+    for index in 0..3 {
+        let mut authoritative_participants = HashMap::new();
+        for participant_index in 0..PARTICIPANT_COUNT {
+            let sample_step = &steps_per_participant[participant_index][index];
+            authoritative_participants
+                .insert(ParticipantId(participant_index as u8), sample_step.clone());
+        }
+        authoritative_steps.push(AuthoritativeStep {
+            authoritative_participants,
+        })
+    }
+
+    AuthoritativeStepRange {
+        tick_id: TickId(1),
+        authoritative_steps,
+    }
+}
+
+#[test]
+fn serialize_auth() -> io::Result<()> {
+    let ranges_to_send = AuthoritativeStepRanges::<SampleStep> {
+        ranges: [create_authoritative_step_range()].into(),
+    };
+
+    // Write the ranges to stream
+    let mut out_stream = OutOctetStream::new();
+    ranges_to_send.serialize(&mut out_stream)?;
+
+    // Read back
+    let mut in_stream = OctetRefReader::new(out_stream.octets_ref());
+    let received_ranges = AuthoritativeStepRanges::<SampleStep>::deserialize(&mut in_stream)?;
+
+    // Verify
+    assert_eq!(received_ranges.ranges.len(), 1);
+    assert_eq!(received_ranges.ranges[0], ranges_to_send.ranges[0]);
 
     Ok(())
 }

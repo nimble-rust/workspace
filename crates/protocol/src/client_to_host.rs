@@ -318,7 +318,7 @@ impl StepsAck {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct AuthoritativeStep<StepT: Serialize + Deserialize> {
     pub authoritative_participants: HashMap<ParticipantId, StepT>,
 }
