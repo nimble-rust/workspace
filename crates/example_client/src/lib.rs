@@ -6,44 +6,30 @@ use datagram::{DatagramCodec, DatagramCommunicator};
 use flood_rs::{Deserialize, Serialize};
 use hexify::format_hex;
 use log::{error, info, warn};
-use nimble_assent::prelude::*;
-use nimble_client::client::ClientStream;
-use nimble_protocol::client_to_host::AuthoritativeStep;
-use nimble_protocol::Version;
-use nimble_rectify::RectifyCallback;
-use nimble_seer::prelude::*;
+use nimble_rust::client::ClientStream;
+use nimble_rust::Version;
 use secure_random::GetRandom;
+
 use std::fmt::Debug;
 use std::io;
 use udp_client::UdpClient;
 
-pub struct ExampleClient<
-    Game: SeerCallback<AuthoritativeStep<StepData>>
-        + AssentCallback<AuthoritativeStep<StepData>>
-        + RectifyCallback,
-    StepData: Clone + Deserialize + Serialize + Debug + Eq + PartialEq,
-> {
-    pub client: ClientStream<Game, StepData>,
+pub struct ExampleClient<StepData: Clone + Deserialize + Serialize + Debug + Eq + PartialEq> {
+    pub client: ClientStream<StepData>,
     pub communicator: Box<dyn DatagramCommunicator>,
     pub codec: Box<dyn DatagramCodec>,
 }
 
 //"127.0.0.1:23000"
 
-impl<
-        Game: SeerCallback<AuthoritativeStep<StepData>>
-            + AssentCallback<AuthoritativeStep<StepData>>
-            + RectifyCallback,
-        StepData: Clone + Deserialize + Serialize + Debug + Eq + PartialEq,
-    > ExampleClient<Game, StepData>
-{
+impl<StepT: Clone + Deserialize + Serialize + Debug + Eq + PartialEq> ExampleClient<StepT> {
     pub fn new(url: &str) -> Self {
         let application_version = Version {
             major: 0,
             minor: 0,
             patch: 0,
         };
-        let client = ClientStream::<Game, StepData>::new(&application_version);
+        let client = ClientStream::<StepT>::new(&application_version);
         let udp_client = UdpClient::new(url).unwrap();
         let communicator: Box<dyn DatagramCommunicator> = Box::new(udp_client);
         let random2 = GetRandom;

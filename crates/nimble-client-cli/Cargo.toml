@@ -1,0 +1,12 @@
+[package]
+name = "cli"
+version = "0.0.1"
+edition = "2021"
+
+[dependencies]
+easy-repl = "0.2.1"
+anyhow = "1.0.86"
+example_client = { path = "../example_client" }
+flood-rs = "0.0.10"
+nimble-sample-step = "0.0.12-dev"
+nimble-rust = "0.0.13-dev"
