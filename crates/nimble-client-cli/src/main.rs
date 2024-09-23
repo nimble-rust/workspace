@@ -5,11 +5,14 @@
 use anyhow::{self, Context};
 use easy_repl::{command, CommandStatus, Repl};
 use example_client::ExampleClient;
+use log::{info, warn};
 use nimble_rust::Step;
 use nimble_sample_step::SampleStep;
 
 fn main() -> anyhow::Result<()> {
-    let _ = ExampleClient::<Step<SampleStep>>::new("localhost:27000");
+    env_logger::init();
+
+    let mut client = ExampleClient::<Step<SampleStep>>::new("localhost:27000");
 
     let mut repl = Repl::builder()
         .add(
@@ -22,8 +25,23 @@ fn main() -> anyhow::Result<()> {
                 }
             },
         )
+        .add(
+            "update",
+            command! {
+                "Update the client",
+                () => || {
+                    info!("client update");
+                    let result = client.update();
+                    match result {
+                        Ok(_) => { info!("worked!"); }
+                        Err(err) => { warn!("not worked: {}", err)}
+                    }
+                    Ok(CommandStatus::Done)
+                }
+            },
+        )
         .build()
         .context("Failed to create repl")?;
 
-    repl.run().context("Critical REPL error")
+    repl.run()
 }
