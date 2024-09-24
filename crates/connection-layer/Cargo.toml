@@ -11,6 +11,11 @@ flood-rs = "0.0.10"
 log = "0.4.22"
 mash-rs = "0.0.1"
 hexify = "0.0.1"
+datagram = "0.0.2"
+freelist-rs = "0.0.2"
+secure-random = { path = "../secure-random", version = "0.0.1" }
+rand = "0.9.0-alpha.2"
 
 [dev-dependencies]
 test-log = "0.2.16"
+hexify = "0.0.1"

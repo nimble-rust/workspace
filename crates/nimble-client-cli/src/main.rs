@@ -12,7 +12,7 @@ use nimble_sample_step::SampleStep;
 fn main() -> anyhow::Result<()> {
     env_logger::init();
 
-    let mut client = ExampleClient::<Step<SampleStep>>::new("localhost:27000");
+    let mut client = ExampleClient::<Step<SampleStep>>::new("localhost:23000");
 
     let mut repl = Repl::builder()
         .add(

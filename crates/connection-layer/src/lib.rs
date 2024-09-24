@@ -2,6 +2,7 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
+pub mod datagram_builder;
 pub mod prelude;
 
 use std::io::{Error, ErrorKind, Result};
@@ -122,6 +123,7 @@ impl ConnectionLayerMode {
     }
 }
 
+#[derive(Copy, Clone)]
 pub struct ConnectionSecretSeed(u32);
 
 /// Writes a connection header and a payload to the provided stream, including a Murmur3 hash for validation.
@@ -146,6 +148,15 @@ pub fn write_to_stream(
     ConnectionLayerMode::Connection(ConnectionLayer {
         connection_id,
         murmur3_hash: calculated_hash,
+    })
+    .to_stream(stream)
+}
+
+pub fn write_empty(stream: &mut impl WriteOctetStream) -> Result<()> {
+    let zero_connection_id = ConnectionId { value: 0 };
+    ConnectionLayerMode::Connection(ConnectionLayer {
+        connection_id: zero_connection_id,
+        murmur3_hash: 0,
     })
     .to_stream(stream)
 }

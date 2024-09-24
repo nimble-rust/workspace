@@ -60,38 +60,36 @@ impl<StepT: Clone + Deserialize + Serialize + Debug + Eq + PartialEq> ExampleCli
 
     pub fn update(&mut self) -> io::Result<()> {
         let mut buf = [1u8; 1200];
-        for _ in 0..20 {
-            let datagrams_to_send = self.client.send()?;
-            for datagram_to_send in datagrams_to_send {
-                info!(
-                    "send nimble datagram of size: {} payload: {}",
-                    datagram_to_send.len(),
-                    format_hex(datagram_to_send.as_slice())
-                );
-                let processed = self.codec.encode(datagram_to_send.as_slice())?;
-                self.communicator.send(processed.as_slice())?;
-            }
-            if let Ok(size) = self.communicator.receive(&mut buf) {
-                let received_buf = &buf[0..size];
-                info!(
-                    "received datagram of size: {} payload: {}",
-                    size,
-                    format_hex(received_buf)
-                );
-                match self.codec.decode(received_buf) {
-                    Ok(datagram_for_client) => {
-                        if !datagram_for_client.is_empty() {
-                            info!(
-                                "received datagram to client: {}",
-                                format_hex(&datagram_for_client)
-                            );
-                            if let Err(e) = self.client.receive(datagram_for_client.as_slice()) {
-                                warn!("receive error {}", e);
-                            }
+        let datagrams_to_send = self.client.send()?;
+        for datagram_to_send in datagrams_to_send {
+            info!(
+                "send nimble datagram of size: {} payload: {}",
+                datagram_to_send.len(),
+                format_hex(datagram_to_send.as_slice())
+            );
+            let processed = self.codec.encode(datagram_to_send.as_slice())?;
+            self.communicator.send(processed.as_slice())?;
+        }
+        if let Ok(size) = self.communicator.receive(&mut buf) {
+            let received_buf = &buf[0..size];
+            info!(
+                "received datagram of size: {} payload: {}",
+                size,
+                format_hex(received_buf)
+            );
+            match self.codec.decode(received_buf) {
+                Ok(datagram_for_client) => {
+                    if !datagram_for_client.is_empty() {
+                        info!(
+                            "received datagram to client: {}",
+                            format_hex(&datagram_for_client)
+                        );
+                        if let Err(e) = self.client.receive(datagram_for_client.as_slice()) {
+                            warn!("receive error {}", e);
                         }
                     }
-                    Err(some_error) => error!("error {}", some_error),
                 }
+                Err(some_error) => error!("error {}", some_error),
             }
         }
         Ok(())
