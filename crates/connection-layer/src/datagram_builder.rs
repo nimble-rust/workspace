@@ -7,6 +7,7 @@ use datagram::{DatagramDecoder, DatagramEncoder};
 use flood_rs::prelude::{InOctetStream, OutOctetStream};
 use flood_rs::{Deserialize, ReadOctetStream, Serialize, WriteOctetStream};
 use freelist_rs::FreeList;
+use log::{debug, trace};
 use secure_random::SecureRandom;
 use std::collections::HashMap;
 use std::io;
@@ -76,6 +77,7 @@ impl TryFrom<u8> for ClientToHostCommand {
     }
 }
 
+#[derive(Debug)]
 struct Version {
     pub major: u8,
     pub minor: u8,
@@ -104,6 +106,8 @@ impl Deserialize for Version {
 }
 
 pub type RequestId = u64; // So it is very likely that this number will change for each connection attempt
+
+#[derive(Debug)]
 struct ConnectRequest {
     pub request_id: RequestId,
     pub version: Version, // Connection Layer version
@@ -166,6 +170,7 @@ impl Deserialize for ClientToHostCommands {
     }
 }
 
+#[derive(Debug)]
 struct ConnectResponse {
     pub request_id: RequestId,
     pub connection_id: ConnectionId,
@@ -266,6 +271,11 @@ impl DatagramHostEncoder for ConnectionLayerHostCodec {
         let actual_connection = connection.unwrap();
         let mut stream = OutOctetStream::new();
         if actual_connection.has_received_connect {
+            trace!(
+                "host sending on connection {} size: {}",
+                actual_connection.connection_id.value,
+                buf.len()
+            );
             write_to_stream(
                 &mut stream,
                 actual_connection.connection_id,
@@ -273,6 +283,10 @@ impl DatagramHostEncoder for ConnectionLayerHostCodec {
                 buf,
             )?;
         } else {
+            debug!(
+                "host sending connect response connection_id: {} for request: {}",
+                actual_connection.connection_id.value, actual_connection.created_from_request
+            );
             ConnectionId { value: 0 }.to_stream(&mut stream)?;
             let connect_response = ConnectResponse {
                 request_id: actual_connection.created_from_request,
@@ -300,6 +314,12 @@ impl DatagramHostDecoder for ConnectionLayerHostCodec {
             if let Some(connection) = self.connections.get_mut(&connection_id.value) {
                 let murmur = in_stream.read_u32()?;
                 verify_hash(murmur, connection.seed, &buf[5..])?;
+                trace!(
+                    "host received payload of size: {} from connection {}",
+                    buf.len() - 5,
+                    connection.connection_id.value
+                );
+
                 connection.has_received_connect = true;
                 //                Ok(buf[5..].to_vec())
                 Ok((
@@ -317,6 +337,7 @@ impl DatagramHostDecoder for ConnectionLayerHostCodec {
             let command = ClientToHostCommands::deserialize(&mut in_stream)?;
             match command {
                 ClientToHostCommands::Connect(connect_request) => {
+                    debug!("host received connect request {connect_request:?}");
                     let assigned_connection_id = self.connection_ids.allocate().ok_or(
                         io::Error::new(io::ErrorKind::InvalidData, "free list problem"),
                     )?;
@@ -350,14 +371,23 @@ impl DatagramEncoder for ConnectionLayerClientCodec {
                     request_id: self.request_id,
                     version: Version { major: 0, minor: 2 },
                 };
+                debug!("client sending connect request {connect_request:?}");
                 ClientToHostCommands::Connect(connect_request).serialize(&mut stream)?;
             }
-            Some(connection_info) => write_to_stream(
-                &mut stream,
-                connection_info.connection_id,
-                connection_info.seed,
-                buf,
-            )?,
+            Some(connection_info) => {
+                trace!(
+                    "client sending payload connection_id: {} size: {}",
+                    connection_info.connection_id.value,
+                    buf.len()
+                );
+
+                write_to_stream(
+                    &mut stream,
+                    connection_info.connection_id,
+                    connection_info.seed,
+                    buf,
+                )?
+            }
         }
         flood_rs::WriteOctetStream::write(&mut stream, buf)?;
 
@@ -375,6 +405,7 @@ impl DatagramDecoder for ConnectionLayerClientCodec {
                 let command = HostToClientCommands::deserialize(&mut in_stream)?;
                 match command {
                     HostToClientCommands::Connect(connect_response) => {
+                        debug!("client received connect response {connect_response:?}");
                         self.connection_info = Some(ConnectionInfo {
                             connection_id: connect_response.connection_id,
                             seed: connect_response.seed,
@@ -389,6 +420,11 @@ impl DatagramDecoder for ConnectionLayerClientCodec {
                 } else {
                     let murmur = in_stream.read_u32()?;
                     verify_hash(murmur, connection_info.seed, &buf[5..])?;
+                    debug!(
+                        "client received payload size:{} connection:{}",
+                        buf.len() - 5,
+                        connection_id.value
+                    );
                     Ok(buf[5..].to_vec())
                 }
             }

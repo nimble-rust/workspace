@@ -123,7 +123,7 @@ impl ConnectionLayerMode {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct ConnectionSecretSeed(u32);
 
 /// Writes a connection header and a payload to the provided stream, including a Murmur3 hash for validation.

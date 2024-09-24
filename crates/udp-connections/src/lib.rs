@@ -7,7 +7,7 @@ use std::{fmt, io};
 
 use datagram::{DatagramDecoder, DatagramEncoder};
 use flood_rs::prelude::*;
-use log::info;
+use log::{info, trace};
 use secure_random::SecureRandom;
 
 #[derive(Debug, Copy, Clone, PartialEq, Default)]
@@ -492,7 +492,7 @@ impl Client {
                 }
                 let mut target_buffer = vec![0u8; cmd.0.size as usize];
                 in_stream.read(&mut target_buffer)?;
-                info!(
+                trace!(
                     "receive packet of size: {} target:{}  {}",
                     cmd.0.size,
                     target_buffer.len(),
@@ -536,7 +536,7 @@ impl Client {
     pub fn send_packet(&mut self, data: &[u8]) -> io::Result<ClientToHostPacket> {
         match self.phase {
             ClientPhase::Connected(connection_id) => {
-                info!("send packet: {}", hex_output(data));
+                trace!("send packet: {}", hex_output(data));
                 Ok(ClientToHostPacket {
                     header: PacketHeader {
                         connection_id,
@@ -553,7 +553,7 @@ impl Client {
     }
 
     pub fn send(&mut self, data: &[u8]) -> io::Result<ClientToHostCommands> {
-        info!("self.phase: {}", self.phase);
+        trace!("send: phase: {}", self.phase);
         match self.phase {
             ClientPhase::Challenge(_) => {
                 let challenge = self.send_challenge()?;
@@ -566,9 +566,8 @@ impl Client {
             }
 
             ClientPhase::Connected(_) => {
-                info!("connected");
                 let packet = self.send_packet(data)?;
-                info!("connected sending datagram {:?}", packet);
+                trace!("sending datagram {:?}", packet);
                 Ok(ClientToHostCommands::PacketType(packet))
             }
         }
