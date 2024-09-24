@@ -1,9 +1,9 @@
 [package]
-name = "nimble-connection-layer"
+name = "connection-layer"
 version = "0.0.1"
 edition = "2021"
 license = "MIT"
-description = "Nimble Connection Layer"
+description = "Connection Layer"
 repository = "https://github.com/nimble-rust/workspace"
 
 [dependencies]

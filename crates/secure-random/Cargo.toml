@@ -2,10 +2,13 @@
 name = "secure-random"
 version = "0.0.1"
 edition = "2021"
+license = "MIT"
+description = "Secure Random"
+repository = "https://github.com/nimble-rust/workspace"
 
 [dependencies]
-getrandom = "0.2"
-log = "0.4.22"
+getrandom = "^0.2.15"
+log = "^0.4.22"
 
 [dev-dependencies]
-test-log = "0.2.16"
+test-log = "^0.2.16"

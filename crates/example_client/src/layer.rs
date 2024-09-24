@@ -42,7 +42,7 @@ impl<StepT: Clone + Deserialize + Serialize + Debug + Eq + PartialEq>
         let udp_connections_client = udp_connections::Client::new(random2_box);
 
         let connection_layer =
-            nimble_connection_layer::datagram_builder::ConnectionLayerClientCodec::new(0);
+            connection_layer::datagram_builder::ConnectionLayerClientCodec::new(0);
         let connection_layer_codec: Box<dyn DatagramCodec> = Box::new(connection_layer);
 
         let udp_connections_codec: Box<dyn DatagramCodec> = Box::new(udp_connections_client);
