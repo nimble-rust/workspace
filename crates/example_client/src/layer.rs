@@ -2,8 +2,6 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-pub mod layer;
-
 use datagram::{DatagramCodec, DatagramCommunicator};
 use flood_rs::{Deserialize, Serialize};
 use hexify::format_hex;
@@ -16,15 +14,20 @@ use std::fmt::Debug;
 use std::io;
 use udp_client::UdpClient;
 
-pub struct ExampleClient<StepData: Clone + Deserialize + Serialize + Debug + Eq + PartialEq> {
+pub struct ExampleClientWithLayer<
+    StepData: Clone + Deserialize + Serialize + Debug + Eq + PartialEq,
+> {
     pub client: ClientStream<StepData>,
     pub communicator: Box<dyn DatagramCommunicator>,
     pub codec: Box<dyn DatagramCodec>,
+    pub connection_layer_codec: Box<dyn DatagramCodec>,
 }
 
 //"127.0.0.1:23000"
 
-impl<StepT: Clone + Deserialize + Serialize + Debug + Eq + PartialEq> ExampleClient<StepT> {
+impl<StepT: Clone + Deserialize + Serialize + Debug + Eq + PartialEq>
+    ExampleClientWithLayer<StepT>
+{
     pub fn new(url: &str) -> Self {
         let application_version = Version {
             major: 0,
@@ -38,7 +41,11 @@ impl<StepT: Clone + Deserialize + Serialize + Debug + Eq + PartialEq> ExampleCli
         let random2_box = Box::new(random2);
         let udp_connections_client = udp_connections::Client::new(random2_box);
 
-        let processor: Box<dyn DatagramCodec> = Box::new(udp_connections_client);
+        let connection_layer =
+            nimble_connection_layer::datagram_builder::ConnectionLayerClientCodec::new(0);
+        let connection_layer_codec: Box<dyn DatagramCodec> = Box::new(connection_layer);
+
+        let udp_connections_codec: Box<dyn DatagramCodec> = Box::new(udp_connections_client);
         //let joining_player = JoinPlayerRequest { local_index: 32 };
         /*
                 let join_game_request = JoinGameRequest {
@@ -56,7 +63,8 @@ impl<StepT: Clone + Deserialize + Serialize + Debug + Eq + PartialEq> ExampleCli
         Self {
             client,
             communicator,
-            codec: processor,
+            codec: udp_connections_codec,
+            connection_layer_codec,
         }
     }
 
@@ -69,8 +77,11 @@ impl<StepT: Clone + Deserialize + Serialize + Debug + Eq + PartialEq> ExampleCli
                 datagram_to_send.len(),
                 format_hex(datagram_to_send.as_slice())
             );
-            let processed = self.codec.encode(datagram_to_send.as_slice())?;
-            self.communicator.send(processed.as_slice())?;
+            let processed_with_layer = self.connection_layer_codec.encode(&datagram_to_send)?;
+            let processed_with_udp_connections =
+                self.codec.encode(processed_with_layer.as_slice())?;
+            self.communicator
+                .send(processed_with_udp_connections.as_slice())?;
         }
         if let Ok(size) = self.communicator.receive(&mut buf) {
             let received_buf = &buf[0..size];
@@ -79,6 +90,7 @@ impl<StepT: Clone + Deserialize + Serialize + Debug + Eq + PartialEq> ExampleCli
                 size,
                 format_hex(received_buf)
             );
+
             match self.codec.decode(received_buf) {
                 Ok(datagram_for_client) => {
                     if !datagram_for_client.is_empty() {
@@ -86,7 +98,9 @@ impl<StepT: Clone + Deserialize + Serialize + Debug + Eq + PartialEq> ExampleCli
                             "received datagram to client: {}",
                             format_hex(&datagram_for_client)
                         );
-                        if let Err(e) = self.client.receive(datagram_for_client.as_slice()) {
+                        let decoded_layer =
+                            &*self.connection_layer_codec.decode(&datagram_for_client)?;
+                        if let Err(e) = self.client.receive(decoded_layer) {
                             warn!("receive error {}", e);
                         }
                     }

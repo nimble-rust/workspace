@@ -11,6 +11,8 @@ hexify = "0.0.1"
 datagram = "0.0.2"
 udp-client = { path = "../udp-client", version = "*" }
 udp-connections = { path = "../udp-connections", version = "*" }
+nimble-connection-layer = { path = "../connection-layer", version = "*" }
 secure-random = { path = "../secure-random", version = "*" }
+
 [dev-dependencies]
 test-log = "0.2.16"

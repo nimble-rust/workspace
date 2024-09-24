@@ -18,4 +18,4 @@ rand = "0.9.0-alpha.2"
 
 [dev-dependencies]
 test-log = "0.2.16"
-hexify = "0.0.1"
+hexify = { version = "0.0.1", features = ["log_equal"] }

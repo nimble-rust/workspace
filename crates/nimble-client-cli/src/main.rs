@@ -4,7 +4,7 @@
  */
 use anyhow::{self, Context};
 use easy_repl::{command, CommandStatus, Repl};
-use example_client::ExampleClient;
+use example_client::layer::ExampleClientWithLayer;
 use log::{info, warn};
 use nimble_rust::Step;
 use nimble_sample_step::SampleStep;
@@ -12,7 +12,7 @@ use nimble_sample_step::SampleStep;
 fn main() -> anyhow::Result<()> {
     env_logger::init();
 
-    let mut client = ExampleClient::<Step<SampleStep>>::new("localhost:23000");
+    let mut client = ExampleClientWithLayer::<Step<SampleStep>>::new("localhost:23000");
 
     let mut repl = Repl::builder()
         .add(
