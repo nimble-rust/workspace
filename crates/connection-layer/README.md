@@ -1,4 +1,4 @@
-# Connection Layer Codec for Rust Datagram Transports
+# Connection Layer Codec for Datagram Transports
 
 ## Overview
 
@@ -12,6 +12,14 @@ allowing for simple connection management and data integrity verification.
 * Connection Management: Assigns unique connection IDs to clients, enabling the host to manage multiple connections.
 * Data Integrity: Uses Murmur3 hashing with a seed to verify the integrity of incoming datagrams.
 * Simple API: Provides easy-to-use encoders and decoders for both host and client sides.
+
+## Security Considerations
+
+> [!IMPORTANT]
+> The connections established using this codec are, by design, not secure. 
+> Data is transmitted in plain text and can be intercepted or modified by attackers. 
+> There is no protection against eavesdropping, man-in-the-middle attacks, 
+> or other network-based threats.
 
 ## Installation
 
