@@ -373,6 +373,7 @@ impl DatagramEncoder for ConnectionLayerClientCodec {
                 };
                 debug!("client sending connect request {connect_request:?}");
                 ClientToHostCommands::Connect(connect_request).serialize(&mut stream)?;
+                trace!("send request {}", hexify::format_hex(stream.octets_ref()));
             }
             Some(connection_info) => {
                 trace!(

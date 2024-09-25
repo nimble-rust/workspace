@@ -30,7 +30,7 @@ impl<StepT: Clone + Deserialize + Serialize + Debug + Eq + PartialEq>
 {
     pub fn new(url: &str) -> Self {
         let application_version = Version {
-            major: 0,
+            major: 1,
             minor: 0,
             patch: 0,
         };
