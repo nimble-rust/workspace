@@ -10,14 +10,16 @@ use nimble_rust::client::ClientStream;
 use nimble_rust::Version;
 use secure_random::GetRandom;
 
+use flood_rs::BufferDeserializer;
 use std::fmt::Debug;
 use std::io;
 use udp_client::UdpClient;
 
 pub struct ExampleClientWithLayer<
+    StateT: BufferDeserializer,
     StepData: Clone + Deserialize + Serialize + Debug + Eq + PartialEq,
 > {
-    pub client: ClientStream<StepData>,
+    pub client: ClientStream<StateT, StepData>,
     pub communicator: Box<dyn DatagramCommunicator>,
     pub codec: Box<dyn DatagramCodec>,
     pub connection_layer_codec: Box<dyn DatagramCodec>,
@@ -25,8 +27,10 @@ pub struct ExampleClientWithLayer<
 
 //"127.0.0.1:23000"
 
-impl<StepT: Clone + Deserialize + Serialize + Debug + Eq + PartialEq>
-    ExampleClientWithLayer<StepT>
+impl<
+        StateT: BufferDeserializer,
+        StepT: Clone + Deserialize + Serialize + Debug + Eq + PartialEq,
+    > ExampleClientWithLayer<StateT, StepT>
 {
     pub fn new(url: &str) -> Self {
         let application_version = Version {
@@ -34,7 +38,7 @@ impl<StepT: Clone + Deserialize + Serialize + Debug + Eq + PartialEq>
             minor: 0,
             patch: 0,
         };
-        let client = ClientStream::<StepT>::new(&application_version);
+        let client = ClientStream::<StateT, StepT>::new(&application_version);
         let udp_client = UdpClient::new(url).unwrap();
         let communicator: Box<dyn DatagramCommunicator> = Box::new(udp_client);
         let random2 = GetRandom;

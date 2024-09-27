@@ -7,8 +7,8 @@ edition = "2021"
 easy-repl = "0.2.1"
 anyhow = "1.0.86"
 example_client = { path = "../example_client" }
-flood-rs = "0.0.10"
-nimble-sample-step = "0.0.12-dev"
-nimble-rust = "0.0.13-dev"
-env_logger = "0.11.5"
-log = "0.4.22"
+flood-rs = "^0.0.11"
+nimble-sample-step = { path = "../../../nimble/crates/sample-step" }
+nimble-rust = { path = "../../../nimble/crates/nimble" }
+env_logger = "^0.11.5"
+log = "^0.4.22"

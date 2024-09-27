@@ -5,14 +5,30 @@
 use anyhow::{self, Context};
 use easy_repl::{command, CommandStatus, Repl};
 use example_client::ExampleClient;
-use log::{info, warn};
+use flood_rs::BufferDeserializer;
+use log::{debug, info, warn};
 use nimble_rust::Step;
 use nimble_sample_step::SampleStep;
+
+#[derive(Debug)]
+struct GenericState {
+    #[allow(unused)]
+    pub buf: Vec<u8>,
+}
+
+impl BufferDeserializer for GenericState {
+    fn deserialize(buf: &[u8]) -> std::io::Result<(Self, usize)>
+    where
+        Self: Sized,
+    {
+        Ok((GenericState { buf: buf.into() }, buf.len()))
+    }
+}
 
 fn main() -> anyhow::Result<()> {
     env_logger::init();
 
-    let mut client = ExampleClient::<Step<SampleStep>>::new("localhost:23000");
+    let mut client = ExampleClient::<GenericState, Step<SampleStep>>::new("localhost:23000");
 
     let mut repl = Repl::builder()
         .add(
@@ -36,6 +52,9 @@ fn main() -> anyhow::Result<()> {
                         Ok(_) => { info!("worked!"); }
                         Err(err) => { warn!("not worked: {}", err)}
                     }
+
+                    let state = client.state();
+                    debug!("{:?}", state);
                     Ok(CommandStatus::Done)
                 }
             },

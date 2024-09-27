@@ -4,9 +4,9 @@ version = "0.0.1"
 edition = "2021"
 
 [dependencies]
-log = "0.4.22"
-flood-rs = "0.0.10"
-nimble-rust = "0.0.13-dev"
+log = "^0.4.22"
+flood-rs = "^0.0.11"
+nimble-rust = { path = "../../../nimble/crates/nimble" }
 hexify = "0.0.1"
 datagram = "0.0.2"
 udp-client = { path = "../udp-client", version = "*" }
@@ -15,4 +15,4 @@ connection-layer = { path = "../connection-layer", version = "*" }
 secure-random = { path = "../secure-random", version = "*" }
 
 [dev-dependencies]
-test-log = "0.2.16"
+test-log = "^0.2.16"

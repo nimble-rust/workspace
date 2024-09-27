@@ -5,7 +5,7 @@
 pub mod layer;
 
 use datagram::{DatagramCodec, DatagramCommunicator};
-use flood_rs::{Deserialize, Serialize};
+use flood_rs::{BufferDeserializer, Deserialize, Serialize};
 use hexify::format_hex;
 use log::{error, info, warn};
 use nimble_rust::client::ClientStream;
@@ -16,22 +16,29 @@ use std::fmt::Debug;
 use std::io;
 use udp_client::UdpClient;
 
-pub struct ExampleClient<StepData: Clone + Deserialize + Serialize + Debug + Eq + PartialEq> {
-    pub client: ClientStream<StepData>,
+pub struct ExampleClient<
+    StateT: Debug + BufferDeserializer,
+    StepData: Clone + Deserialize + Serialize + Debug + Eq + PartialEq,
+> {
+    pub client: ClientStream<StateT, StepData>,
     pub communicator: Box<dyn DatagramCommunicator>,
     pub codec: Box<dyn DatagramCodec>,
 }
 
 //"127.0.0.1:23000"
 
-impl<StepT: Clone + Deserialize + Serialize + Debug + Eq + PartialEq> ExampleClient<StepT> {
+impl<
+        StateT: Debug + BufferDeserializer,
+        StepT: Clone + Deserialize + Serialize + Debug + Eq + PartialEq,
+    > ExampleClient<StateT, StepT>
+{
     pub fn new(url: &str) -> Self {
         let application_version = Version {
             major: 1,
             minor: 0,
             patch: 0,
         };
-        let client = ClientStream::<StepT>::new(&application_version);
+        let client = ClientStream::<StateT, StepT>::new(&application_version);
         let udp_client = UdpClient::new(url).unwrap();
         let communicator: Box<dyn DatagramCommunicator> = Box::new(udp_client);
         let random2 = GetRandom;
@@ -58,6 +65,10 @@ impl<StepT: Clone + Deserialize + Serialize + Debug + Eq + PartialEq> ExampleCli
             communicator,
             codec: processor,
         }
+    }
+
+    pub fn state(&self) -> Option<&StateT> {
+        self.client.state()
     }
 
     pub fn update(&mut self) -> io::Result<()> {
