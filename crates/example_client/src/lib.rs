@@ -87,7 +87,11 @@ impl<
                 .send(processed.as_slice())
                 .map_err(ClientStreamError::IoErr)?;
         }
-        if let Ok(size) = self.communicator.receive(&mut buf) {
+        while let Ok(size) = self.communicator.receive(&mut buf) {
+            if size == 0 {
+                // No more data to process; exit the loop
+                break;
+            }
             let received_buf = &buf[0..size];
             info!(
                 "received datagram of size: {} payload: {}",
@@ -98,7 +102,7 @@ impl<
                 Ok(datagram_for_client) => {
                     if !datagram_for_client.is_empty() {
                         info!(
-                            "received datagram to client: {}",
+                            "received datagram to normal client: {}",
                             format_hex(&datagram_for_client)
                         );
                         if let Err(e) = self.client.receive(datagram_for_client.as_slice()) {
