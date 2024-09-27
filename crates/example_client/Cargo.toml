@@ -13,6 +13,7 @@ udp-client = { path = "../udp-client", version = "*" }
 udp-connections = { path = "../udp-connections", version = "*" }
 connection-layer = { path = "../connection-layer", version = "*" }
 secure-random = { path = "../secure-random", version = "*" }
+err-rs = "^0.0.2"
 
 [dev-dependencies]
 test-log = "^0.2.16"

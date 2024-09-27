@@ -5,15 +5,14 @@
 pub mod layer;
 
 use datagram::{DatagramCodec, DatagramCommunicator};
+use err_rs::{ErrorLevel, ErrorLevelProvider};
 use flood_rs::{BufferDeserializer, Deserialize, Serialize};
 use hexify::format_hex;
 use log::{error, info, warn};
-use nimble_rust::client::ClientStream;
+use nimble_rust::client::{ClientStream, ClientStreamError};
 use nimble_rust::Version;
 use secure_random::GetRandom;
-
 use std::fmt::Debug;
-use std::io;
 use udp_client::UdpClient;
 
 pub struct ExampleClient<
@@ -71,7 +70,7 @@ impl<
         self.client.state()
     }
 
-    pub fn update(&mut self) -> io::Result<()> {
+    pub fn update(&mut self) -> Result<(), ClientStreamError> {
         let mut buf = [1u8; 1200];
         let datagrams_to_send = self.client.send()?;
         for datagram_to_send in datagrams_to_send {
@@ -80,8 +79,13 @@ impl<
                 datagram_to_send.len(),
                 format_hex(datagram_to_send.as_slice())
             );
-            let processed = self.codec.encode(datagram_to_send.as_slice())?;
-            self.communicator.send(processed.as_slice())?;
+            let processed = self
+                .codec
+                .encode(datagram_to_send.as_slice())
+                .map_err(ClientStreamError::IoErr)?;
+            self.communicator
+                .send(processed.as_slice())
+                .map_err(ClientStreamError::IoErr)?;
         }
         if let Ok(size) = self.communicator.receive(&mut buf) {
             let received_buf = &buf[0..size];
@@ -98,7 +102,11 @@ impl<
                             format_hex(&datagram_for_client)
                         );
                         if let Err(e) = self.client.receive(datagram_for_client.as_slice()) {
-                            warn!("receive error {}", e);
+                            if e.error_level() == ErrorLevel::Info {
+                                info!("received info {:?}", e);
+                            } else {
+                                warn!("receive error {:?}", e);
+                            }
                         }
                     }
                 }

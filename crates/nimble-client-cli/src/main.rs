@@ -4,6 +4,7 @@
  */
 use anyhow::{self, Context};
 use easy_repl::{command, CommandStatus, Repl};
+use err_rs::{ErrorLevel, ErrorLevelProvider};
 use example_client::ExampleClient;
 use flood_rs::BufferDeserializer;
 use log::{debug, info, warn};
@@ -44,19 +45,27 @@ fn main() -> anyhow::Result<()> {
         .add(
             "update",
             command! {
-                "Update the client",
-                () => || {
-                    info!("client update");
-                    let result = client.update();
-                    match result {
-                        Ok(_) => { info!("worked!"); }
-                        Err(err) => { warn!("not worked: {}", err)}
-                    }
+                            "Update the client",
+                            () => || {
+                                info!("client update");
+                                let result = client.update();
+                                match result {
+                                    Ok(_) => { info!("worked!"); }
+                                    Err(err) => {
+                                        if err.error_level() == ErrorLevel::Info {
+                                            info!("update: {:?}", err);
+                                        } else {
+                                            warn!("update: err: {:?}", err)
+                                         }
+                                    }
+                                }
 
-                    let state = client.state();
-                    debug!("{:?}", state);
-                    Ok(CommandStatus::Done)
-                }
+                                let state = client.state();
+                                if state.is_some() {
+                                    debug!("has_state");
+                                }
+                                Ok(CommandStatus::Done)
+                            }
             },
         )
         .build()

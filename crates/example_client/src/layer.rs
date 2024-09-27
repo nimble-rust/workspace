@@ -3,16 +3,14 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 use datagram::{DatagramCodec, DatagramCommunicator};
+use flood_rs::BufferDeserializer;
 use flood_rs::{Deserialize, Serialize};
 use hexify::format_hex;
 use log::{error, info, warn};
-use nimble_rust::client::ClientStream;
+use nimble_rust::client::{ClientStream, ClientStreamError};
 use nimble_rust::Version;
 use secure_random::GetRandom;
-
-use flood_rs::BufferDeserializer;
 use std::fmt::Debug;
-use std::io;
 use udp_client::UdpClient;
 
 pub struct ExampleClientWithLayer<
@@ -72,7 +70,7 @@ impl<
         }
     }
 
-    pub fn update(&mut self) -> io::Result<()> {
+    pub fn update(&mut self) -> Result<(), ClientStreamError> {
         let mut buf = [1u8; 1200];
         let datagrams_to_send = self.client.send()?;
         for datagram_to_send in datagrams_to_send {
@@ -81,11 +79,17 @@ impl<
                 datagram_to_send.len(),
                 format_hex(datagram_to_send.as_slice())
             );
-            let processed_with_layer = self.connection_layer_codec.encode(&datagram_to_send)?;
-            let processed_with_udp_connections =
-                self.codec.encode(processed_with_layer.as_slice())?;
+            let processed_with_layer = self
+                .connection_layer_codec
+                .encode(&datagram_to_send)
+                .map_err(ClientStreamError::IoErr)?;
+            let processed_with_udp_connections = self
+                .codec
+                .encode(processed_with_layer.as_slice())
+                .map_err(ClientStreamError::IoErr)?;
             self.communicator
-                .send(processed_with_udp_connections.as_slice())?;
+                .send(processed_with_udp_connections.as_slice())
+                .map_err(ClientStreamError::IoErr)?;
         }
         if let Ok(size) = self.communicator.receive(&mut buf) {
             let received_buf = &buf[0..size];
@@ -102,10 +106,12 @@ impl<
                             "received datagram to client: {}",
                             format_hex(&datagram_for_client)
                         );
-                        let decoded_layer =
-                            &*self.connection_layer_codec.decode(&datagram_for_client)?;
+                        let decoded_layer = &*self
+                            .connection_layer_codec
+                            .decode(&datagram_for_client)
+                            .map_err(ClientStreamError::IoErr)?;
                         if let Err(e) = self.client.receive(decoded_layer) {
-                            warn!("receive error {}", e);
+                            warn!("receive error {:?}", e);
                         }
                     }
                 }

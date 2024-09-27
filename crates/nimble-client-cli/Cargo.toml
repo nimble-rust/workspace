@@ -12,3 +12,4 @@ nimble-sample-step = { path = "../../../nimble/crates/sample-step" }
 nimble-rust = { path = "../../../nimble/crates/nimble" }
 env_logger = "^0.11.5"
 log = "^0.4.22"
+err-rs = "^0.0.2"

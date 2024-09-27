@@ -2,13 +2,13 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-use std::io::{Error, ErrorKind};
-use std::{fmt, io};
-
 use datagram::{DatagramDecoder, DatagramEncoder};
 use flood_rs::prelude::*;
 use log::{info, trace};
 use secure_random::SecureRandom;
+use std::error::Error;
+use std::fmt::{Debug, Display, Formatter};
+use std::{fmt, io};
 
 #[derive(Debug, Copy, Clone, PartialEq, Default)]
 pub struct Nonce(pub u64);
@@ -222,7 +222,7 @@ impl TryFrom<u8> for HostToClientCommand {
             0x12 => Ok(HostToClientCommand::Connect),
             0x13 => Ok(HostToClientCommand::Packet),
             _ => Err(io::Error::new(
-                ErrorKind::InvalidData,
+                std::io::ErrorKind::InvalidData,
                 format!("Unknown HostToClient UdpConnections Command {}", value),
             )),
         }
@@ -321,7 +321,7 @@ impl TryFrom<u8> for ClientToHostCommand {
             0x02 => Ok(ClientToHostCommand::Connect),
             0x03 => Ok(ClientToHostCommand::Packet),
             _ => Err(io::Error::new(
-                ErrorKind::InvalidData,
+                io::ErrorKind::InvalidData,
                 format!("Unknown command {}", value),
             )),
         }
@@ -367,7 +367,7 @@ impl ClientToHostCommands {
             ),
             _ => {
                 return Err(io::Error::new(
-                    ErrorKind::InvalidData,
+                    io::ErrorKind::InvalidData,
                     format!("unknown command {}", command_value),
                 ));
             }
@@ -422,6 +422,28 @@ impl fmt::Display for ClientPhase {
     }
 }
 
+#[derive(Debug)]
+pub enum UdpConnectionsError {
+    IoError(std::io::Error),
+    ReceiveConnectInWrongPhase,
+    WrongNonceWhileConnecting,
+    WrongNonceInChallenge,
+    ReceivedChallengeInWrongPhase,
+    WrongConnectionId,
+    ReceivedPacketInWrongPhase,
+    SendChallengeInWrongPhase,
+    SendConnectRequestInWrongPhase,
+    SendPacketInWrongPhase,
+}
+
+impl Display for UdpConnectionsError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl Error for UdpConnectionsError {}
+
 pub struct Client {
     phase: ClientPhase,
 }
@@ -432,33 +454,24 @@ impl Client {
         Self { phase }
     }
 
-    pub fn on_challenge(&mut self, cmd: InChallengeCommand) -> io::Result<()> {
+    pub fn on_challenge(&mut self, cmd: InChallengeCommand) -> Result<(), UdpConnectionsError> {
         match self.phase {
             ClientPhase::Challenge(nonce) => {
                 if cmd.nonce != nonce {
-                    return Err(Error::new(ErrorKind::InvalidData, "Wrong nonce"));
+                    return Err(UdpConnectionsError::WrongNonceInChallenge);
                 }
                 self.phase = ClientPhase::Connecting(nonce, cmd.incoming_server_challenge);
                 Ok(())
             }
-            _ => Err(Error::new(
-                ErrorKind::InvalidInput,
-                format!(
-                    "on_challenge: Message not applicable in current client state {}",
-                    self.phase
-                ),
-            )),
+            _ => Err(UdpConnectionsError::ReceivedChallengeInWrongPhase),
         }
     }
 
-    pub fn on_connect(&mut self, cmd: ConnectResponse) -> io::Result<()> {
+    pub fn on_connect(&mut self, cmd: ConnectResponse) -> Result<(), UdpConnectionsError> {
         match self.phase {
             ClientPhase::Connecting(nonce, _) => {
                 if cmd.nonce != nonce {
-                    return Err(Error::new(
-                        ErrorKind::InvalidData,
-                        "Wrong nonce when connecting",
-                    ));
+                    return Err(UdpConnectionsError::WrongNonceWhileConnecting);
                 }
                 info!(
                     "udp_connections: on_connect connected {}",
@@ -467,13 +480,7 @@ impl Client {
                 self.phase = ClientPhase::Connected(cmd.connection_id);
                 Ok(())
             }
-            _ => Err(Error::new(
-                ErrorKind::InvalidInput,
-                format!(
-                    "can not receive on_connect in current client state {:?}",
-                    self.phase
-                ),
-            )),
+            _ => Err(UdpConnectionsError::ReceiveConnectInWrongPhase),
         }
     }
 
@@ -481,17 +488,16 @@ impl Client {
         &mut self,
         cmd: HostToClientPacketHeader,
         in_stream: &mut InOctetStream,
-    ) -> io::Result<Vec<u8>> {
+    ) -> Result<Vec<u8>, UdpConnectionsError> {
         match self.phase {
             ClientPhase::Connected(expected_connection_id) => {
                 if cmd.0.connection_id != expected_connection_id {
-                    return Err(Error::new(
-                        ErrorKind::InvalidData,
-                        "Wrong connection_id for received packet",
-                    ));
+                    return Err(UdpConnectionsError::WrongConnectionId);
                 }
                 let mut target_buffer = vec![0u8; cmd.0.size as usize];
-                in_stream.read(&mut target_buffer)?;
+                in_stream
+                    .read(&mut target_buffer)
+                    .map_err(UdpConnectionsError::IoError)?;
                 trace!(
                     "receive packet of size: {} target:{}  {}",
                     cmd.0.size,
@@ -500,40 +506,28 @@ impl Client {
                 );
                 Ok(target_buffer)
             }
-            _ => Err(Error::new(
-                ErrorKind::InvalidInput,
-                format!(
-                    "can not receive on_packet in current client state {:?}",
-                    self.phase
-                ),
-            )),
+            _ => Err(UdpConnectionsError::ReceivedPacketInWrongPhase),
         }
     }
 
-    pub fn send_challenge(&mut self) -> io::Result<ClientToHostChallengeCommand> {
+    pub fn send_challenge(&mut self) -> Result<ClientToHostChallengeCommand, UdpConnectionsError> {
         match self.phase {
             ClientPhase::Challenge(nonce) => Ok(ClientToHostChallengeCommand { nonce }),
-            _ => Err(Error::new(
-                ErrorKind::InvalidInput,
-                "can not send_challenge in current client state",
-            )),
+            _ => Err(UdpConnectionsError::SendChallengeInWrongPhase),
         }
     }
 
-    pub fn send_connect_request(&mut self) -> io::Result<ConnectCommand> {
+    pub fn send_connect_request(&mut self) -> Result<ConnectCommand, UdpConnectionsError> {
         match self.phase {
             ClientPhase::Connecting(nonce, server_challenge) => Ok(ConnectCommand {
                 nonce,
                 server_challenge,
             }),
-            _ => Err(Error::new(
-                ErrorKind::InvalidInput,
-                "can not send_connect_request in current client state",
-            )),
+            _ => Err(UdpConnectionsError::SendConnectRequestInWrongPhase),
         }
     }
 
-    pub fn send_packet(&mut self, data: &[u8]) -> io::Result<ClientToHostPacket> {
+    pub fn send_packet(&mut self, data: &[u8]) -> Result<ClientToHostPacket, UdpConnectionsError> {
         match self.phase {
             ClientPhase::Connected(connection_id) => {
                 trace!("send packet: {}", hex_output(data));
@@ -545,14 +539,11 @@ impl Client {
                     payload: data.to_vec(),
                 })
             }
-            _ => Err(Error::new(
-                ErrorKind::InvalidInput,
-                "can not send_connect_request in current client state",
-            )),
+            _ => Err(UdpConnectionsError::SendPacketInWrongPhase),
         }
     }
 
-    pub fn send(&mut self, data: &[u8]) -> io::Result<ClientToHostCommands> {
+    pub fn send(&mut self, data: &[u8]) -> Result<ClientToHostCommands, UdpConnectionsError> {
         trace!("send: phase: {}", self.phase);
         match self.phase {
             ClientPhase::Challenge(_) => {
@@ -572,25 +563,12 @@ impl Client {
             }
         }
     }
-}
 
-impl DatagramEncoder for Client {
-    fn encode(&mut self, data: &[u8]) -> io::Result<Vec<u8>> {
-        let mut out_stream = OutOctetStream::new();
-
-        let client_to_server_cmd = self.send(data)?;
-
-        client_to_server_cmd.to_stream(&mut out_stream)?;
-        out_stream.write(data)?;
-
-        Ok(out_stream.octets())
-    }
-}
-
-impl DatagramDecoder for Client {
-    fn decode(&mut self, buffer: &[u8]) -> io::Result<Vec<u8>> {
+    pub fn decode(&mut self, buffer: &[u8]) -> Result<Vec<u8>, UdpConnectionsError> {
         let mut in_stream = InOctetStream::new(buffer);
-        let command = HostToClientCommands::from_stream(&mut in_stream)?;
+        let command = HostToClientCommands::from_stream(&mut in_stream)
+            .map_err(UdpConnectionsError::IoError)?;
+
         match command {
             HostToClientCommands::ChallengeType(challenge_command) => {
                 self.on_challenge(challenge_command)?;
@@ -604,5 +582,27 @@ impl DatagramDecoder for Client {
                 self.on_packet(packet_command, &mut in_stream)
             }
         }
+    }
+}
+
+impl DatagramEncoder for Client {
+    fn encode(&mut self, data: &[u8]) -> io::Result<Vec<u8>> {
+        let mut out_stream = OutOctetStream::new();
+
+        let client_to_server_cmd = self
+            .send(data)
+            .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
+
+        client_to_server_cmd.to_stream(&mut out_stream)?;
+        out_stream.write(data)?;
+
+        Ok(out_stream.octets())
+    }
+}
+
+impl DatagramDecoder for Client {
+    fn decode(&mut self, buffer: &[u8]) -> io::Result<Vec<u8>> {
+        self.decode(buffer)
+            .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))
     }
 }
