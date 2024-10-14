@@ -4,7 +4,6 @@ members = [
     "crates/udp-connections",
     "crates/secure-random",
     "crates/connection-layer",
-    "crates/nimble-client-cli",
     "crates/example_client",
-    ]
+]
 resolver = "2"

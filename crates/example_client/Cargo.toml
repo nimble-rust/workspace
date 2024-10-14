@@ -5,15 +5,17 @@ edition = "2021"
 
 [dependencies]
 log = "^0.4.22"
-flood-rs = "^0.0.11"
+flood-rs = "^0.0.12"
 nimble-rust = { path = "../../../nimble/crates/nimble" }
-hexify = "0.0.1"
+hexify = "0.0.3"
 datagram = "0.0.2"
 udp-client = { path = "../udp-client", version = "*" }
 udp-connections = { path = "../udp-connections", version = "*" }
 connection-layer = { path = "../connection-layer", version = "*" }
 secure-random = { path = "../secure-random", version = "*" }
-err-rs = "^0.0.2"
+err-rs = "^0.0.4"
+app-version = "0.0.2"
+monotonic-time-rs = "0.0.5"
 
 [dev-dependencies]
 test-log = "^0.2.16"

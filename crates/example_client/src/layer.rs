@@ -3,21 +3,20 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 use datagram::{DatagramCodec, DatagramCommunicator};
-use flood_rs::BufferDeserializer;
 use flood_rs::{Deserialize, Serialize};
 use hexify::format_hex;
 use log::{error, info, warn};
-use nimble_rust::client::{ClientStream, ClientStreamError};
-use nimble_rust::Version;
+use monotonic_time_rs::Millis;
+use nimble_rust::{Client, ClientError, GameCallbacks};
 use secure_random::GetRandom;
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 use udp_client::UdpClient;
 
 pub struct ExampleClientWithLayer<
-    StateT: BufferDeserializer,
-    StepData: Clone + Deserialize + Serialize + Debug + Eq + PartialEq,
+    GameT: GameCallbacks<StepT> + Debug,
+    StepT: Clone + Deserialize + Serialize + Debug + Display,
 > {
-    pub client: ClientStream<StateT, StepData>,
+    pub client: Client<GameT, StepT>,
     pub communicator: Box<dyn DatagramCommunicator>,
     pub codec: Box<dyn DatagramCodec>,
     pub connection_layer_codec: Box<dyn DatagramCodec>,
@@ -26,17 +25,13 @@ pub struct ExampleClientWithLayer<
 //"127.0.0.1:23000"
 
 impl<
-        StateT: BufferDeserializer,
-        StepT: Clone + Deserialize + Serialize + Debug + Eq + PartialEq,
-    > ExampleClientWithLayer<StateT, StepT>
+        GameT: GameCallbacks<StepT> + Debug,
+        StepT: Clone + Deserialize + Serialize + Debug + Display + Eq,
+    > ExampleClientWithLayer<GameT, StepT>
 {
     pub fn new(url: &str) -> Self {
-        let application_version = Version {
-            major: 1,
-            minor: 0,
-            patch: 0,
-        };
-        let client = ClientStream::<StateT, StepT>::new(&application_version);
+        let now = Millis::new(0);
+        let client = Client::<GameT, StepT>::new(now);
         let udp_client = UdpClient::new(url).unwrap();
         let communicator: Box<dyn DatagramCommunicator> = Box::new(udp_client);
         let random2 = GetRandom;
@@ -70,9 +65,9 @@ impl<
         }
     }
 
-    pub fn update(&mut self) -> Result<(), ClientStreamError> {
+    pub fn update(&mut self, now: Millis) -> Result<(), ClientError> {
         let mut buf = [1u8; 1200];
-        let datagrams_to_send = self.client.send()?;
+        let datagrams_to_send = self.client.send(now)?;
         for datagram_to_send in datagrams_to_send {
             info!(
                 "send nimble datagram of size: {} payload: {}",
@@ -82,14 +77,14 @@ impl<
             let processed_with_layer = self
                 .connection_layer_codec
                 .encode(&datagram_to_send)
-                .map_err(ClientStreamError::IoErr)?;
+                .map_err(ClientError::IoError)?;
             let processed_with_udp_connections = self
                 .codec
                 .encode(processed_with_layer.as_slice())
-                .map_err(ClientStreamError::IoErr)?;
+                .map_err(ClientError::IoError)?;
             self.communicator
                 .send(processed_with_udp_connections.as_slice())
-                .map_err(ClientStreamError::IoErr)?;
+                .map_err(ClientError::IoError)?;
         }
         if let Ok(size) = self.communicator.receive(&mut buf) {
             let received_buf = &buf[0..size];
@@ -109,8 +104,8 @@ impl<
                         let decoded_layer = &*self
                             .connection_layer_codec
                             .decode(&datagram_for_client)
-                            .map_err(ClientStreamError::IoErr)?;
-                        if let Err(e) = self.client.receive(decoded_layer) {
+                            .map_err(ClientError::IoError)?;
+                        if let Err(e) = self.client.receive(now, decoded_layer) {
                             warn!("receive error {:?}", e);
                         }
                     }

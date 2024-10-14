@@ -6,20 +6,20 @@ pub mod layer;
 
 use datagram::{DatagramCodec, DatagramCommunicator};
 use err_rs::{ErrorLevel, ErrorLevelProvider};
-use flood_rs::{BufferDeserializer, Deserialize, Serialize};
+use flood_rs::{Deserialize, Serialize};
 use hexify::format_hex;
 use log::{error, info, warn};
-use nimble_rust::client::{ClientStream, ClientStreamError};
-use nimble_rust::Version;
+use monotonic_time_rs::Millis;
+use nimble_rust::{Client, ClientError, GameCallbacks};
 use secure_random::GetRandom;
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 use udp_client::UdpClient;
 
 pub struct ExampleClient<
-    StateT: Debug + BufferDeserializer,
-    StepData: Clone + Deserialize + Serialize + Debug + Eq + PartialEq,
+    StateT: GameCallbacks<StepT> + Debug,
+    StepT: Clone + Deserialize + Serialize + Debug + Display + Eq,
 > {
-    pub client: ClientStream<StateT, StepData>,
+    pub client: Client<StateT, StepT>,
     pub communicator: Box<dyn DatagramCommunicator>,
     pub codec: Box<dyn DatagramCodec>,
 }
@@ -27,17 +27,13 @@ pub struct ExampleClient<
 //"127.0.0.1:23000"
 
 impl<
-        StateT: Debug + BufferDeserializer,
-        StepT: Clone + Deserialize + Serialize + Debug + Eq + PartialEq,
+        StateT: GameCallbacks<StepT> + Debug,
+        StepT: Clone + Deserialize + Serialize + Debug + Display + Eq + PartialEq,
     > ExampleClient<StateT, StepT>
 {
     pub fn new(url: &str) -> Self {
-        let application_version = Version {
-            major: 1,
-            minor: 0,
-            patch: 0,
-        };
-        let client = ClientStream::<StateT, StepT>::new(&application_version);
+        let now = Millis::new(0);
+        let client = Client::<StateT, StepT>::new(now);
         let udp_client = UdpClient::new(url).unwrap();
         let communicator: Box<dyn DatagramCommunicator> = Box::new(udp_client);
         let random2 = GetRandom;
@@ -66,13 +62,13 @@ impl<
         }
     }
 
-    pub fn state(&self) -> Option<&StateT> {
-        self.client.state()
+    pub fn game(&self) -> Option<&StateT> {
+        self.client.game()
     }
 
-    pub fn update(&mut self) -> Result<(), ClientStreamError> {
+    pub fn update(&mut self, now: Millis) -> Result<(), ClientError> {
         let mut buf = [1u8; 1200];
-        let datagrams_to_send = self.client.send()?;
+        let datagrams_to_send = self.client.send(now)?;
         for datagram_to_send in datagrams_to_send {
             info!(
                 "send nimble datagram of size: {} payload: {}",
@@ -82,10 +78,10 @@ impl<
             let processed = self
                 .codec
                 .encode(datagram_to_send.as_slice())
-                .map_err(ClientStreamError::IoErr)?;
+                .map_err(ClientError::IoError)?;
             self.communicator
                 .send(processed.as_slice())
-                .map_err(ClientStreamError::IoErr)?;
+                .map_err(ClientError::IoError)?;
         }
         while let Ok(size) = self.communicator.receive(&mut buf) {
             if size == 0 {
@@ -105,7 +101,7 @@ impl<
                             "received datagram to normal client: {}",
                             format_hex(&datagram_for_client)
                         );
-                        if let Err(e) = self.client.receive(datagram_for_client.as_slice()) {
+                        if let Err(e) = self.client.receive(now, datagram_for_client.as_slice()) {
                             if e.error_level() == ErrorLevel::Info {
                                 info!("received info {:?}", e);
                             } else {
