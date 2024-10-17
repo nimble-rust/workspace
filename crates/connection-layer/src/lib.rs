@@ -55,8 +55,6 @@ impl ConnectionId {
     }
 }
 
-
-
 /// Represents the header of a connection with an ID and a Murmur3 hash.
 #[derive(Eq, PartialEq, Debug)]
 pub struct ConnectionLayer {

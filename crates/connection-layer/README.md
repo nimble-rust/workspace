@@ -27,7 +27,7 @@ Add the following to your Cargo.toml:
 
 ```toml
 [dependencies]
-connection-layer = "^0.0.1"
+connection-layer = "0.0.1"
 ```
 
 ## License
