@@ -3,19 +3,19 @@ name = "connection-layer"
 version = "0.0.1"
 edition = "2021"
 license = "MIT"
-description = "Datagram Connection Layer"
+description = "Datagram Connection Hash Layer"
 repository = "https://github.com/nimble-rust/workspace"
 
 [dependencies]
-flood-rs = "^0.0.11"
-log = "^0.4.22"
-mash-rs = "^0.0.1"
-hexify = "^0.0.1"
+flood-rs = "0.0.12"
+log = "0.4.22"
+mash-rs = "0.0.1"
+hexify = "0.0.3"
 datagram = "^0.0.2"
-freelist-rs = "^0.0.2"
+freelist-rs = "0.0.4"
 secure-random = { path = "../secure-random", version = "0.0.1" }
-rand = "^0.8.5"
+rand = "0.8.5"
 
 [dev-dependencies]
-test-log = "^0.2.16"
-hexify = { version = "0.0.1", features = ["log_equal"] }
+test-log = "0.2.16"
+hexify = { version = "0.0.3", features = ["log_equal"] }

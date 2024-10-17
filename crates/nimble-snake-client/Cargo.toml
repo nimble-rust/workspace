@@ -1,0 +1,8 @@
+[package]
+name = "nimble-snake-client"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+nimble-client-with-codec = { path = "../client-with-codec", version = "0.0.1" }
+flood-rs = "0.0.12"

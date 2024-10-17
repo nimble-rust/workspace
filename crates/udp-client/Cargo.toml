@@ -4,7 +4,7 @@ version = "0.0.1"
 edition = "2021"
 
 [dependencies]
-datagram = "^0.0.2"
+datagram = "0.0.2"
 
 [dev-dependencies]
-test-log = "^0.2.16"
+test-log = "0.2.16"

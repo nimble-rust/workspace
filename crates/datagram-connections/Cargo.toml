@@ -1,0 +1,17 @@
+[package]
+name = "datagram-connections"
+version = "0.0.1"
+edition = "2021"
+license = "MIT"
+description = "Datagram Connections Layer"
+repository = "https://github.com/nimble-rust/workspace"
+
+[dependencies]
+flood-rs = "0.0.12"
+datagram = "0.0.2"
+secure-random = { path = "../secure-random", version = "0.0.1" }
+log = "0.4.22"
+hexify = "0.0.3"
+
+[dev-dependencies]
+test-log = "0.2.16"

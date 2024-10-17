@@ -3,9 +3,8 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 use datagram::DatagramEncoder;
+use datagram_connections::prelude::*;
 use secure_random::SecureRandom;
-
-use udp_connections::Client;
 
 #[derive(Debug)]
 pub struct FakeRandom {

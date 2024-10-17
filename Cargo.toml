@@ -1,9 +1,10 @@
 [workspace]
 members = [
     "crates/udp-client",
-    "crates/udp-connections",
+    "crates/datagram-connections",
     "crates/secure-random",
     "crates/connection-layer",
-    "crates/example_client",
+    "crates/client-with-codec",
+    "crates/nimble-snake-client",
 ]
 resolver = "2"

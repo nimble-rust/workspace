@@ -2,14 +2,20 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-pub mod datagram_builder;
 pub mod prelude;
-
-use std::io::{Error, ErrorKind, Result};
+mod client_to_host;
+mod host_to_client;
+mod host_codec;
+mod client_codec;
 
 use flood_rs::prelude::*;
 use hexify::format_hex_u32_be;
 use mash_rs::murmur3_32;
+use std::io;
+use std::io::{Error, ErrorKind, Result};
+
+pub type RequestId = u64; // So it is very likely that this number will change for each connection attempt
+
 
 /// A seed used for generating a [Murmur3 hash](https://en.wikipedia.org/wiki/MurmurHash#MurmurHash3) for connection validation.
 
@@ -49,22 +55,7 @@ impl ConnectionId {
     }
 }
 
-/// Prepares an output stream by writing a default connection ID and reserving space for a hash.
-///
-/// This function is typically used before writing the actual payload to the stream.
-///
-/// # Arguments
-///
-/// * `stream` - A mutable reference to a stream implementing `WriteOctetStream`.
-///
-/// # Errors
-///
-/// Returns an `io::Result` error if writing to the stream fails.
-pub fn prepare_out_stream(stream: &mut impl WriteOctetStream) -> Result<()> {
-    let connection_id = ConnectionId { value: 0 };
-    connection_id.to_stream(stream)?; // connection id must be outside the hashing
-    stream.write_u32(0) // prepare hash value
-}
+
 
 /// Represents the header of a connection with an ID and a Murmur3 hash.
 #[derive(Eq, PartialEq, Debug)]
@@ -149,7 +140,7 @@ pub fn write_to_stream(
         connection_id,
         murmur3_hash: calculated_hash,
     })
-    .to_stream(stream)
+        .to_stream(stream)
 }
 
 pub fn write_empty(stream: &mut impl WriteOctetStream) -> Result<()> {
@@ -158,7 +149,7 @@ pub fn write_empty(stream: &mut impl WriteOctetStream) -> Result<()> {
         connection_id: zero_connection_id,
         murmur3_hash: 0,
     })
-    .to_stream(stream)
+        .to_stream(stream)
 }
 
 /// Verifies the integrity of a payload against an expected Murmur3 hash.
@@ -184,5 +175,34 @@ pub fn verify_hash(expected_hash: u32, seed: ConnectionSecretSeed, payload: &[u8
         ))
     } else {
         Ok(())
+    }
+}
+
+
+#[derive(Debug)]
+struct Version {
+    pub major: u8,
+    pub minor: u8,
+}
+
+impl Serialize for Version {
+    fn serialize(&self, stream: &mut impl WriteOctetStream) -> io::Result<()>
+    where
+        Self: Sized,
+    {
+        stream.write_u8(self.major)?;
+        stream.write_u8(self.minor)
+    }
+}
+
+impl Deserialize for Version {
+    fn deserialize(stream: &mut impl ReadOctetStream) -> io::Result<Self>
+    where
+        Self: Sized,
+    {
+        Ok(Self {
+            major: stream.read_u8()?,
+            minor: stream.read_u8()?,
+        })
     }
 }

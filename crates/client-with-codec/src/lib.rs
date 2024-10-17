@@ -2,47 +2,45 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
+pub mod layer;
+pub use app_version::{VersionProvider, Version};
+
 use datagram::{DatagramCodec, DatagramCommunicator};
 use flood_rs::{Deserialize, Serialize};
 use hexify::format_hex;
 use log::{error, info, warn};
 use monotonic_time_rs::Millis;
-use nimble_rust::{Client, ClientError, GameCallbacks};
+pub use nimble_rust::*;
+
 use secure_random::GetRandom;
 use std::fmt::{Debug, Display};
 use udp_client::UdpClient;
 
-pub struct ExampleClientWithLayer<
-    GameT: GameCallbacks<StepT> + Debug,
-    StepT: Clone + Deserialize + Serialize + Debug + Display,
+
+pub struct ClientWithCodec<
+    StateT: GameCallbacks<StepT> + Debug,
+    StepT: Clone + Deserialize + Serialize + Debug + Display + Eq,
 > {
-    pub client: Client<GameT, StepT>,
+    pub client: Client<StateT, StepT>,
     pub communicator: Box<dyn DatagramCommunicator>,
     pub codec: Box<dyn DatagramCodec>,
-    pub connection_layer_codec: Box<dyn DatagramCodec>,
 }
 
-//"127.0.0.1:23000"
-
 impl<
-        GameT: GameCallbacks<StepT> + Debug,
-        StepT: Clone + Deserialize + Serialize + Debug + Display + Eq,
-    > ExampleClientWithLayer<GameT, StepT>
+        StateT: GameCallbacks<StepT> + Debug,
+        StepT: Clone + Deserialize + Serialize + Debug + Display + Eq + PartialEq,
+    > ClientWithCodec<StateT, StepT>
 {
     pub fn new(url: &str) -> Self {
         let now = Millis::new(0);
-        let client = Client::<GameT, StepT>::new(now);
+        let client = Client::<StateT, StepT>::new(now);
         let udp_client = UdpClient::new(url).unwrap();
         let communicator: Box<dyn DatagramCommunicator> = Box::new(udp_client);
         let random2 = GetRandom;
         let random2_box = Box::new(random2);
-        let udp_connections_client = udp_connections::Client::new(random2_box);
+        let datagram_connections_layer_client = datagram_connections::Client::new(random2_box);
 
-        let connection_layer =
-            connection_layer::datagram_builder::ConnectionLayerClientCodec::new(0);
-        let connection_layer_codec: Box<dyn DatagramCodec> = Box::new(connection_layer);
-
-        let udp_connections_codec: Box<dyn DatagramCodec> = Box::new(udp_connections_client);
+        let datagram_connections_codec_box: Box<dyn DatagramCodec> = Box::new(datagram_connections_layer_client);
         //let joining_player = JoinPlayerRequest { local_index: 32 };
         /*
                 let join_game_request = JoinGameRequest {
@@ -60,9 +58,12 @@ impl<
         Self {
             client,
             communicator,
-            codec: udp_connections_codec,
-            connection_layer_codec,
+            codec: datagram_connections_codec_box,
         }
+    }
+
+    pub fn game(&self) -> Option<&StateT> {
+        self.client.game()
     }
 
     pub fn update(&mut self, now: Millis) -> Result<(), ClientError> {
@@ -74,39 +75,38 @@ impl<
                 datagram_to_send.len(),
                 format_hex(datagram_to_send.as_slice())
             );
-            let processed_with_layer = self
-                .connection_layer_codec
-                .encode(&datagram_to_send)
-                .map_err(ClientError::IoError)?;
-            let processed_with_udp_connections = self
+            let processed = self
                 .codec
-                .encode(processed_with_layer.as_slice())
+                .encode(datagram_to_send.as_slice())
                 .map_err(ClientError::IoError)?;
             self.communicator
-                .send(processed_with_udp_connections.as_slice())
+                .send(processed.as_slice())
                 .map_err(ClientError::IoError)?;
         }
-        if let Ok(size) = self.communicator.receive(&mut buf) {
+        while let Ok(size) = self.communicator.receive(&mut buf) {
+            if size == 0 {
+                // No more data to process; exit the loop
+                break;
+            }
             let received_buf = &buf[0..size];
             info!(
                 "received datagram of size: {} payload: {}",
                 size,
                 format_hex(received_buf)
             );
-
             match self.codec.decode(received_buf) {
                 Ok(datagram_for_client) => {
                     if !datagram_for_client.is_empty() {
                         info!(
-                            "received datagram to client: {}",
+                            "received datagram to normal client: {}",
                             format_hex(&datagram_for_client)
                         );
-                        let decoded_layer = &*self
-                            .connection_layer_codec
-                            .decode(&datagram_for_client)
-                            .map_err(ClientError::IoError)?;
-                        if let Err(e) = self.client.receive(now, decoded_layer) {
-                            warn!("receive error {:?}", e);
+                        if let Err(e) = self.client.receive(now, datagram_for_client.as_slice()) {
+                            if e.error_level() == ErrorLevel::Info {
+                                info!("received info {:?}", e);
+                            } else {
+                                warn!("receive error {:?}", e);
+                            }
                         }
                     }
                 }
