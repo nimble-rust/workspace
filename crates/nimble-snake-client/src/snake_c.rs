@@ -1,6 +1,6 @@
+use flood_rs::{Deserialize, ReadOctetStream, Serialize, WriteOctetStream};
 use std::fmt::{Debug, Display, Formatter};
 use std::os::raw::c_int;
-use flood_rs::{Deserialize, ReadOctetStream, Serialize, WriteOctetStream};
 
 // Custom CBool Type to Represent C's bool
 #[repr(transparent)]
@@ -94,15 +94,12 @@ pub struct ExamplePlayerInGameInput {
 impl Default for ExamplePlayerInGameInput {
     fn default() -> Self {
         ExamplePlayerInGameInput {
-            horizontalAxis: 0,                    // Neutral horizontal position
-            verticalAxis: 0,                      // Neutral vertical position
-            abilityButton: CBool::default(),      // Ability button not pressed
+            horizontalAxis: 0,               // Neutral horizontal position
+            verticalAxis: 0,                 // Neutral vertical position
+            abilityButton: CBool::default(), // Ability button not pressed
         }
     }
 }
-
-
-
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -135,7 +132,6 @@ pub struct ExamplePlayerInput {
     pub intentionalPadding: [u8; EXAMPLE_PLAYER_INPUT_INTENTIONAL_PADDING_SIZE],
 }
 
-
 impl Serialize for ExamplePlayerInput {
     fn serialize(&self, stream: &mut impl WriteOctetStream) -> std::io::Result<()> {
         todo!()
@@ -156,13 +152,11 @@ impl PartialEq<Self> for ExamplePlayerInput {
 
 impl Eq for ExamplePlayerInput {}
 
-
 impl Display for ExamplePlayerInput {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", self)
     }
 }
-
 
 impl Default for ExamplePlayerInput {
     fn default() -> Self {
@@ -175,7 +169,6 @@ impl Default for ExamplePlayerInput {
         }
     }
 }
-
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -223,7 +216,6 @@ pub struct ExampleGame {
     pub lastParticipantLookupCount: u8,
     pub participantLookup: [ExampleParticipant; EXAMPLE_GAME_MAX_PARTICIPANTS],
 }
-
 
 impl Default for ExamplePlayer {
     fn default() -> Self {
@@ -285,11 +277,13 @@ impl Default for ExampleSnakes {
     }
 }
 
-
 impl Default for ExampleGame {
     fn default() -> Self {
         ExampleGame {
-            area: ExampleGameArea { width: 800, height: 600 },
+            area: ExampleGameArea {
+                width: 800,
+                height: 600,
+            },
             players: ExamplePlayers::default(),
             snakes: ExampleSnakes::default(),
             food: ExampleFood::default(),

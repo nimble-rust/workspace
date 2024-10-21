@@ -3,7 +3,7 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 pub mod layer;
-pub use app_version::{VersionProvider, Version};
+pub use app_version::{Version, VersionProvider};
 
 use datagram::{DatagramCodec, DatagramCommunicator};
 use flood_rs::{Deserialize, Serialize};
@@ -15,7 +15,6 @@ pub use nimble_rust::*;
 use secure_random::GetRandom;
 use std::fmt::{Debug, Display};
 use udp_client::UdpClient;
-
 
 pub struct ClientWithCodec<
     StateT: GameCallbacks<StepT> + Debug,
@@ -38,9 +37,11 @@ impl<
         let communicator: Box<dyn DatagramCommunicator> = Box::new(udp_client);
         let random2 = GetRandom;
         let random2_box = Box::new(random2);
-        let datagram_connections_layer_client = datagram_connections::Client::new(random2_box);
+        let datagram_connections_layer_client =
+            datagram_connections::prelude::Client::new(random2_box);
 
-        let datagram_connections_codec_box: Box<dyn DatagramCodec> = Box::new(datagram_connections_layer_client);
+        let datagram_connections_codec_box: Box<dyn DatagramCodec> =
+            Box::new(datagram_connections_layer_client);
         //let joining_player = JoinPlayerRequest { local_index: 32 };
         /*
                 let join_game_request = JoinGameRequest {

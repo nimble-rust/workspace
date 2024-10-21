@@ -1,8 +1,7 @@
+use crate::{ConnectionId, ConnectionSecretSeed, RequestId};
+use flood_rs::{Deserialize, ReadOctetStream, Serialize, WriteOctetStream};
 use std::io;
 use std::io::ErrorKind;
-use flood_rs::{Deserialize, ReadOctetStream, Serialize, WriteOctetStream};
-use crate::{ConnectionId, ConnectionSecretSeed, RequestId};
-
 
 #[repr(u8)]
 enum HostToClientCommand {

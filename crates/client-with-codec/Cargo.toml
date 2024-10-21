@@ -6,8 +6,8 @@ edition = "2021"
 [dependencies]
 log = "0.4.22"
 flood-rs = "0.0.12"
-nimble-rust = { path = "../../../nimble/crates/nimble" }
-# nimble-rust = "0.0.14-dev"
+# nimble-rust = { path = "../../../nimble/crates/nimble" }
+nimble-rust = "0.0.15-dev2"
 
 hexify = "0.0.3"
 datagram = "0.0.2"

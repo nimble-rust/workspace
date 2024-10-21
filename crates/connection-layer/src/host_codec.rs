@@ -41,7 +41,6 @@ impl ConnectionLayerHostCodec {
     }
 }
 
-
 impl DatagramHostEncoder for ConnectionLayerHostCodec {
     fn encode(&mut self, connection_id: u8, buf: &[u8]) -> io::Result<Vec<u8>> {
         let connection = self.connections.get_mut(&connection_id);
@@ -84,7 +83,6 @@ impl DatagramHostEncoder for ConnectionLayerHostCodec {
         Ok(stream.octets().to_vec())
     }
 }
-
 
 pub trait DatagramHostDecoder {
     fn decode(&mut self, buf: &[u8]) -> io::Result<(u8, Vec<u8>)>;
@@ -130,7 +128,7 @@ impl DatagramHostDecoder for ConnectionLayerHostCodec {
                         connection_id: ConnectionId {
                             value: assigned_connection_id,
                         },
-                        seed: ConnectionSecretSeed(self.random.get_random_u64() as u32),
+                        seed: ConnectionSecretSeed(self.random.random_u64() as u32),
                         has_received_connect: false,
                     };
                     self.connections

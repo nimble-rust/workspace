@@ -13,7 +13,6 @@ pub struct ConnectionInfo {
     pub seed: ConnectionSecretSeed,
 }
 
-
 pub struct ConnectionLayerClientCodec {
     pub connection_info: Option<ConnectionInfo>,
     pub request_id: RequestId,
@@ -27,7 +26,6 @@ impl ConnectionLayerClientCodec {
         }
     }
 }
-
 
 impl DatagramEncoder for ConnectionLayerClientCodec {
     fn encode(&mut self, buf: &[u8]) -> io::Result<Vec<u8>> {

@@ -11,7 +11,7 @@ flood-rs = "0.0.12"
 log = "0.4.22"
 mash-rs = "0.0.1"
 hexify = "0.0.3"
-datagram = "^0.0.2"
+datagram = "0.0.2"
 freelist-rs = "0.0.4"
 secure-random = { path = "../secure-random", version = "0.0.1" }
 rand = "0.8.5"

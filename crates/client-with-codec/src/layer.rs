@@ -22,8 +22,6 @@ pub struct ExampleClientWithLayer<
     pub connection_layer_codec: Box<dyn DatagramCodec>,
 }
 
-//"127.0.0.1:23000"
-
 impl<
         GameT: GameCallbacks<StepT> + Debug,
         StepT: Clone + Deserialize + Serialize + Debug + Display + Eq,
@@ -36,13 +34,13 @@ impl<
         let communicator: Box<dyn DatagramCommunicator> = Box::new(udp_client);
         let random2 = GetRandom;
         let random2_box = Box::new(random2);
-        let datagram_connections_layer = datagram_connections::Client::new(random2_box);
+        let datagram_connections_layer = datagram_connections::prelude::Client::new(random2_box);
 
-        let connection_layer =
-            connection_layer::datagram_builder::ConnectionLayerClientCodec::new(0);
+        let connection_layer = connection_layer::prelude::ConnectionLayerClientCodec::new(0);
         let connection_layer_codec: Box<dyn DatagramCodec> = Box::new(connection_layer);
 
-        let datagram_connections_codec_box: Box<dyn DatagramCodec> = Box::new(datagram_connections_layer);
+        let datagram_connections_codec_box: Box<dyn DatagramCodec> =
+            Box::new(datagram_connections_layer);
         //let joining_player = JoinPlayerRequest { local_index: 32 };
         /*
                 let join_game_request = JoinGameRequest {

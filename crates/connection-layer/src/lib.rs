@@ -2,11 +2,11 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/workspace
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-pub mod prelude;
-mod client_to_host;
-mod host_to_client;
-mod host_codec;
 mod client_codec;
+mod client_to_host;
+mod host_codec;
+mod host_to_client;
+pub mod prelude;
 
 use flood_rs::prelude::*;
 use hexify::format_hex_u32_be;
@@ -15,7 +15,6 @@ use std::io;
 use std::io::{Error, ErrorKind, Result};
 
 pub type RequestId = u64; // So it is very likely that this number will change for each connection attempt
-
 
 /// A seed used for generating a [Murmur3 hash](https://en.wikipedia.org/wiki/MurmurHash#MurmurHash3) for connection validation.
 
@@ -138,7 +137,7 @@ pub fn write_to_stream(
         connection_id,
         murmur3_hash: calculated_hash,
     })
-        .to_stream(stream)
+    .to_stream(stream)
 }
 
 pub fn write_empty(stream: &mut impl WriteOctetStream) -> Result<()> {
@@ -147,7 +146,7 @@ pub fn write_empty(stream: &mut impl WriteOctetStream) -> Result<()> {
         connection_id: zero_connection_id,
         murmur3_hash: 0,
     })
-        .to_stream(stream)
+    .to_stream(stream)
 }
 
 /// Verifies the integrity of a payload against an expected Murmur3 hash.
@@ -175,7 +174,6 @@ pub fn verify_hash(expected_hash: u32, seed: ConnectionSecretSeed, payload: &[u8
         Ok(())
     }
 }
-
 
 #[derive(Debug)]
 struct Version {

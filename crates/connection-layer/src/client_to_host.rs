@@ -22,7 +22,6 @@ impl TryFrom<u8> for ClientToHostCommand {
     }
 }
 
-
 #[derive(Debug)]
 pub struct ConnectRequest {
     pub request_id: RequestId,

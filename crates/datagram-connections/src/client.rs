@@ -41,7 +41,7 @@ pub struct Client {
 
 impl Client {
     pub fn new(mut random: Box<dyn SecureRandom>) -> Self {
-        let phase = ClientPhase::Challenge(Nonce(random.get_random_u64()));
+        let phase = ClientPhase::Challenge(Nonce(random.random_u64()));
         Self { phase }
     }
 

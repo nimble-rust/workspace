@@ -36,7 +36,7 @@ pub struct FakeRandom {
 }
 
 impl SecureRandom for FakeRandom {
-    fn get_random_u64(&mut self) -> u64 {
+    fn random_u64(&mut self) -> u64 {
         self.counter += 1;
         self.counter
     }
