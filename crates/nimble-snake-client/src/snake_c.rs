@@ -1,5 +1,6 @@
 use flood_rs::{Deserialize, ReadOctetStream, Serialize, WriteOctetStream};
 use std::fmt::{Debug, Display, Formatter};
+use std::mem;
 use std::os::raw::c_int;
 
 // Custom CBool Type to Represent C's bool
@@ -215,6 +216,24 @@ pub struct ExampleGame {
 
     pub lastParticipantLookupCount: u8,
     pub participantLookup: [ExampleParticipant; EXAMPLE_GAME_MAX_PARTICIPANTS],
+}
+
+// Implement TryFrom for ExampleGame
+impl TryFrom<&[u8]> for ExampleGame {
+    type Error = &'static str;
+
+    fn try_from(slice: &[u8]) -> Result<Self, Self::Error> {
+        let size = size_of::<ExampleGame>();
+
+        // Ensure the slice length matches the size of the struct
+        if slice.len() == size {
+            // SAFETY: We assume the slice is valid and correctly aligned for ExampleGame
+            let ptr = slice.as_ptr() as *const ExampleGame;
+            unsafe { Ok(*ptr) } // Dereference the pointer to get the struct
+        } else {
+            Err("Invalid slice length")
+        }
+    }
 }
 
 impl Default for ExamplePlayer {

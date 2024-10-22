@@ -6,3 +6,7 @@ edition = "2021"
 [dependencies]
 nimble-client-with-codec = { path = "../client-with-codec", version = "0.0.1" }
 flood-rs = "0.0.12"
+monotonic-time-rs = "0.0.5"
+log = "0.4.22"
+hexify = "0.0.3"
+env_logger = "0.11.5"
