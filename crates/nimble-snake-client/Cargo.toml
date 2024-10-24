@@ -10,3 +10,6 @@ monotonic-time-rs = "0.0.5"
 log = "0.4.22"
 hexify = "0.0.3"
 env_logger = "0.11.5"
+# ----
+tick-id = "0.0.9"
+nimble-participant = { path = "../../../nimble/crates/participant" }

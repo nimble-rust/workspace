@@ -42,19 +42,6 @@ impl<
 
         let datagram_connections_codec_box: Box<dyn DatagramCodec> =
             Box::new(datagram_connections_layer_client);
-        //let joining_player = JoinPlayerRequest { local_index: 32 };
-        /*
-                let join_game_request = JoinGameRequest {
-                    nonce: Nonce(0),
-                    join_game_type: JoinGameType::NoSecret,
-                    player_requests: JoinPlayerRequests {
-                        players: vec![joining_player],
-                    },
-                };
-        */
-        // client.set_joining_player(join_game_request);
-        // client.debug_set_tick_id(0x8BADF00D);
-        // thread::sleep(Duration::from_millis(16));
 
         Self {
             client,

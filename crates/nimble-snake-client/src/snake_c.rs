@@ -1,6 +1,6 @@
 use flood_rs::{Deserialize, ReadOctetStream, Serialize, WriteOctetStream};
 use std::fmt::{Debug, Display, Formatter};
-use std::mem;
+use std::{mem, slice};
 use std::os::raw::c_int;
 
 // Custom CBool Type to Represent C's bool
@@ -124,6 +124,12 @@ impl Debug for ExamplePlayerInputUnion {
     }
 }
 
+pub fn example_player_to_raw_octets(input: &ExamplePlayerInput) -> &[u8] {
+    let ptr = input as *const _ as *const u8;
+    let size = mem::size_of::<ExamplePlayerInput>();
+    unsafe { slice::from_raw_parts(ptr, size) }
+}
+
 /// Example Player Input Struct containing a union
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
@@ -135,7 +141,7 @@ pub struct ExamplePlayerInput {
 
 impl Serialize for ExamplePlayerInput {
     fn serialize(&self, stream: &mut impl WriteOctetStream) -> std::io::Result<()> {
-        todo!()
+        stream.write(example_player_to_raw_octets(self).as_ref())
     }
 }
 

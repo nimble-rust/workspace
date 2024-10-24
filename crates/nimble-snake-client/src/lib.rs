@@ -1,4 +1,3 @@
-use crate::snake_c::{ExampleGame, ExamplePlayerInput};
 use flood_rs::BufferDeserializer;
 use hexify::format_hex;
 use log::debug;
@@ -6,8 +5,9 @@ use nimble_client_with_codec::{
     AssentCallback, ClientWithCodec, RectifyCallback, SeerCallback, Step, StepMap, Version,
     VersionProvider, WrappedOctetStep,
 };
+use crate::snake_c::{ExampleGame, ExamplePlayerInput};
 
-mod snake_c;
+pub mod snake_c;
 
 #[derive(Debug)]
 pub struct SnakeGame {
@@ -44,24 +44,24 @@ pub type AuthSnakeStep = StepMap<Step<SnakeStep>>;
 
 impl RectifyCallback for SnakeGame {
     fn on_copy_from_authoritative(&mut self) {
-        todo!()
+        self.predicted = self.authoritative.clone();
     }
 }
 
 impl AssentCallback<AuthSnakeStep> for SnakeGame {
     fn on_tick(&mut self, step: &AuthSnakeStep) {
-        todo!()
+        // TODO:
     }
 }
 
 impl SeerCallback<AuthSnakeStep> for SnakeGame {
     fn on_tick(&mut self, step: &AuthSnakeStep) {
-        todo!()
+        // TODO:
     }
 }
 
 pub struct SnakeClient {
-    pub client: ClientWithCodec<SnakeGame, SnakeStep>,
+    client: ClientWithCodec<SnakeGame, SnakeStep>,
 }
 
 impl SnakeClient {
@@ -69,5 +69,13 @@ impl SnakeClient {
         Self {
             client: ClientWithCodec::new(url),
         }
+    }
+
+    pub fn client(&self) -> &ClientWithCodec<SnakeGame, SnakeStep> {
+        &self.client
+    }
+
+    pub fn client_mut(&mut self) -> &mut ClientWithCodec<SnakeGame, SnakeStep> {
+        &mut self.client
     }
 }
